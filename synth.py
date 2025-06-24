@@ -79,6 +79,21 @@ def make_values():
     """
     do_statement(statement)
 
+    # # create table views
+    # statement = """
+    #     begin transaction;
+    #     drop view if exists pets;
+    #     create view pets as
+
+    #         select * from column_values c 
+    #         join table_definitions t on c.table_id = t.id 
+    #         join column_definitions d on c.column_id = d.id
+    #         where t.deleted_at is null
+    #         and d.deleted_at is null
+    #         and c.deleted_at is null
+    #         and t.name = 'pets' 
+    # """
+
     # add some values for each column 
     statement = """
         insert into column_values (row_id, table_id, column_id, version, created_at, value)
@@ -108,6 +123,23 @@ def ask():
         
     s = """
         select * from column_values c 
+        join table_definitions t on c.table_id = t.id 
+        join column_definitions d on c.column_id = d.id
+        where t.deleted_at is null
+        and d.deleted_at is null
+        and c.deleted_at is null
+        and t.name = 'pets' 
+    """
+    print(s)
+    cur = db.cursor()
+    out = cur.execute(s).fetchall()
+    for x in out:
+        print(dict(zip([c[0] for c in cur.description],x)))
+
+
+    # test out view
+    s = """
+        select d.name, d.type, c.* from column_values c 
         join table_definitions t on c.table_id = t.id 
         join column_definitions d on c.column_id = d.id
         where t.deleted_at is null
