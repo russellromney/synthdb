@@ -197,11 +197,11 @@ class ConfigManager:
                 'port': 5432,
                 'database': 'synthdb_dev',
                 'user': 'developer',
-                'password': 'dev_password'
+                'password': '${DEV_DB_PASSWORD}'  # Environment variable
             },
             'production': {
                 'backend': 'postgresql',
-                'host': 'prod-db.company.com',
+                'host': 'production-db.example.com',  # Replace with your production host
                 'port': 5432,
                 'database': 'synthdb_prod',
                 'user': 'app_user',
