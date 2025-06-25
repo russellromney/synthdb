@@ -37,6 +37,7 @@ Issues = "https://github.com/russellromney/synthdb/issues"
 
 [project.scripts]
 synthdb = "synthdb.cli:app"
+sdb = "synthdb.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["."]

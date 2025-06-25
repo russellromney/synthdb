@@ -32,31 +32,37 @@ pip install -e .
 
 ```bash
 # Initialize a new database
-synthdb init
+synthdb database init
+# or use the shorter alias:
+sdb database init
 
 # Create a table
-synthdb create-table products
+sdb table create products
 
 # Add columns
-synthdb add-column products name text
-synthdb add-column products price real
-synthdb add-column products active boolean
+sdb table add column products name text
+sdb table add column products price real
+sdb table add column products active boolean
 
 # Insert data
-synthdb insert products 0 name "Widget" text
-synthdb insert products 0 price "19.99" real
-synthdb insert products 0 active "true" boolean
+sdb insert products 0 name "Widget" text
+sdb insert products 0 price "19.99" real
+sdb insert products 0 active "true" boolean
 
 # Query data
-synthdb query products
-synthdb query products --where "price > 15"
+sdb query products
+sdb query products --where "price > 15"
 
 # List tables and columns
-synthdb list-tables
-synthdb list-columns products
+sdb table list
+sdb table list products
+
+# Show detailed information
+sdb database info
+sdb table show products
 
 # Export table structure
-synthdb export products
+sdb table export products
 ```
 
 ### Python API
@@ -175,16 +181,24 @@ synthdb/
 
 ## CLI Commands
 
-- `synthdb init` - Initialize database
-- `synthdb create-table <name>` - Create table
-- `synthdb add-column <table> <column> <type>` - Add column
-- `synthdb query <table> [--where <clause>]` - Query table
-- `synthdb export <table>` - Export table structure
-- `synthdb list-tables` - List all tables
-- `synthdb list-columns <table>` - List table columns
-- `synthdb insert <table> <row_id> <column> <value> <type>` - Insert value
+> **Note:** You can use `sdb` as a shorter alias for `synthdb` in all commands.
 
-All commands support `--db <path>` to specify database file (defaults to `db.db`).
+### Database Operations
+- `sdb database init [--path <path>]` - Initialize database
+- `sdb database info [--path <path>]` - Show database information
+
+### Table Operations
+- `sdb table create <name>` - Create table
+- `sdb table list [<table>]` - List tables or columns in specific table
+- `sdb table show <name>` - Show detailed table information
+- `sdb table export <name>` - Export table structure
+- `sdb table add column <table> <column> <type>` - Add column
+
+### Data Operations
+- `sdb insert <table> <row_id> <column> <value> <type>` - Insert value
+- `sdb query <table> [--where <clause>]` - Query table data
+
+All commands support `--path <path>` to specify database file (defaults to `db.db`).
 
 ## License
 

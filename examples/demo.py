@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from synthdb import (
     make_db, create_table, add_column, insert_typed_value, 
-    create_table_views, query_view, export_table_structure,
+    query_view, export_table_structure,
     list_tables, list_columns
 )
 
