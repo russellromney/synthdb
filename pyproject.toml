@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "synthdb"
 version = "0.1.0"
-description = "A synthetic database system using Entity-Attribute-Value (EAV) model"
+description = "A flexible database system with schema-on-write capabilities"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -22,12 +22,30 @@ classifiers = [
 dependencies = [
     "typer>=0.9.0",
     "rich>=13.0.0",
+    "pylimbo>=0.0.8",
+    "python-dateutil>=2.8.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+]
+postgresql = [
+    "psycopg2-binary>=2.9.0",
+]
+mysql = [
+    "mysql-connector-python>=8.0.0",
+]
+config = [
+    "PyYAML>=6.0",
+    "toml>=0.10.0",
+]
+all = [
+    "psycopg2-binary>=2.9.0",
+    "mysql-connector-python>=8.0.0",
+    "PyYAML>=6.0",
+    "toml>=0.10.0",
 ]
 
 [project.urls]
