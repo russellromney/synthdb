@@ -27,23 +27,32 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type):
     elif data_type == 'json':
         value = json.dumps(value) if not isinstance(value, str) else value
     
-    # Insert into main table
-    statement = f"""
-        INSERT INTO {table_name} (row_id, table_id, column_id, value)
-        VALUES (?, ?, ?, ?)
-    """
     db = sqlite3.connect('db.db')
-    db.cursor().execute(statement, (row_id, table_id, column_id, value))
-    db.commit()
-    
-    # Insert into history table
-    history_statement = f"""
-        INSERT INTO {history_table_name} (row_id, table_id, column_id, value)
-        VALUES (?, ?, ?, ?)
-    """
-    db.cursor().execute(history_statement, (row_id, table_id, column_id, value))
-    db.commit()
-    db.close()
+    try:
+        cur = db.cursor()
+        
+        # Insert into main table
+        statement = f"""
+            INSERT INTO {table_name} (row_id, table_id, column_id, value)
+            VALUES (?, ?, ?, ?)
+        """
+        cur.execute(statement, (row_id, table_id, column_id, value))
+        
+        # Insert into history table
+        history_statement = f"""
+            INSERT INTO {history_table_name} (row_id, table_id, column_id, value)
+            VALUES (?, ?, ?, ?)
+        """
+        cur.execute(history_statement, (row_id, table_id, column_id, value))
+        
+        # Commit the transaction
+        db.commit()
+    except Exception as e:
+        # Rollback on error
+        db.rollback()
+        raise e
+    finally:
+        db.close()
 
 def do_statement(s: str,many: bool = False):
     db = sqlite3.connect('db.db')
@@ -167,14 +176,26 @@ def create_table_views():
         """
         columns = cur.execute(columns_query, (table_id,)).fetchall()
         
-        if not columns:
-            continue
-            
         # Build the view SQL
         view_name = table_name
         
         # Drop existing view
         drop_view_sql = f"DROP VIEW IF EXISTS {view_name}"
+        
+        if not columns:
+            # Create a basic view with just row_id for tables with no columns
+            create_view_sql = f"""
+                CREATE VIEW {view_name} AS
+                SELECT 
+                    NULL as row_id,
+                    NULL as created_at,
+                    NULL as updated_at
+                WHERE 1=0
+            """
+            print(f"Creating empty view for table: {table_name}")
+            cur.execute(drop_view_sql)
+            cur.execute(create_view_sql)
+            continue
         
         # Create UNION query only for data types actually used by this table
         used_types = set(data_type for _, _, data_type in columns)
@@ -182,7 +203,7 @@ def create_table_views():
         for data_type in used_types:
             table_name_for_type = get_type_table_name(data_type)
             union_parts.append(f"""
-                SELECT row_id, column_id, value, '{data_type}' as value_type
+                SELECT row_id, column_id, value, '{data_type}' as value_type, created_at, updated_at
                 FROM {table_name_for_type}
                 WHERE table_id = {table_id} AND deleted_at IS NULL
             """)
@@ -203,7 +224,9 @@ def create_table_views():
         create_view_sql = f"""
             CREATE VIEW {view_name} AS
             SELECT 
-                uv.row_id,{','.join(select_parts)}
+                uv.row_id,
+                MIN(uv.created_at) as created_at,
+                MAX(uv.updated_at) as updated_at,{','.join(select_parts)}
             FROM (
                 {' UNION ALL '.join(union_parts)}
             ) uv
@@ -387,21 +410,32 @@ def ask():
 def create_table(table_name):
     """Create a new table definition"""
     db = sqlite3.connect('db.db')
-    cur = db.cursor()
-    
-    # Get the next table ID
-    cur.execute("SELECT COALESCE(MAX(id), -1) + 1 FROM table_definitions")
-    table_id = cur.fetchone()[0]
-    
-    # Insert the new table
-    cur.execute("""
-        INSERT INTO table_definitions (id, version, name)
-        VALUES (?, 0, ?)
-    """, (table_id, table_name))
-    
-    db.commit()
-    db.close()
-    return table_id
+    try:
+        cur = db.cursor()
+        
+        # Get the next table ID
+        cur.execute("SELECT COALESCE(MAX(id), -1) + 1 FROM table_definitions")
+        table_id = cur.fetchone()[0]
+        
+        # Insert the new table
+        cur.execute("""
+            INSERT INTO table_definitions (id, version, name)
+            VALUES (?, 0, ?)
+        """, (table_id, table_name))
+        
+        # Commit the transaction
+        db.commit()
+        
+        # Create initial view for the table (even if no columns yet)
+        create_table_views()
+        return table_id
+        
+    except Exception as e:
+        # Rollback on error
+        db.rollback()
+        raise e
+    finally:
+        db.close()
 
 
 def add_column(table_name, column_name, data_type):

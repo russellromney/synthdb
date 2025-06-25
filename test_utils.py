@@ -27,6 +27,11 @@ def test_create_table():
     assert result is not None, "Table should be created"
     assert result[1] == "products", "Table name should match"
     assert result[0] == table_id, "Table ID should match"
+    
+    # Verify view was created (even for empty table)
+    view_result = query_view("products")
+    assert view_result == [], "Empty table should return empty result"
+    
     print("✓ create_table test passed")
 
 
@@ -95,6 +100,13 @@ def test_query_view():
     assert len(results) == 2, f"Should have 2 rows, got {len(results)}"
     assert results[0]['name'] == "Widget", "First row name should be Widget"
     assert float(results[0]['price']) == 19.99, "First row price should be 19.99"
+    
+    # Verify timestamp columns are included
+    assert 'row_id' in results[0], "Should include row_id"
+    assert 'created_at' in results[0], "Should include created_at"
+    assert 'updated_at' in results[0], "Should include updated_at"
+    assert results[0]['created_at'] is not None, "created_at should not be null"
+    assert results[0]['updated_at'] is not None, "updated_at should not be null"
     
     # Test query with WHERE clause
     results = query_view("products", "price > 25")

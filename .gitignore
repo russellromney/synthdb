@@ -74,3 +74,5 @@ yarn-error.log*
 htmlcov/
 .tox/
 .pytest_cache/
+
+db.db
