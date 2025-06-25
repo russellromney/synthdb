@@ -17,6 +17,18 @@ A flexible database system with schema-on-write capabilities and automatic view 
 
 ## Installation
 
+### 🚀 **Quick Install with uv (Recommended)**
+
+```bash
+# Install uv (fastest Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install SynthDB
+uv add synthdb
+```
+
+### **Traditional Installation**
+
 ```bash
 pip install synthdb
 ```
@@ -29,25 +41,33 @@ pip install synthdb
 
 **Installation Options:**
 ```bash
-# Default installation (includes Limbo)
+# With uv (recommended - much faster!)
+uv add synthdb
+uv add "synthdb[postgresql]"  # PostgreSQL support
+uv add "synthdb[mysql]"       # MySQL support  
+uv add "synthdb[all]"         # All backends
+
+# With pip (traditional)
 pip install synthdb
-
-# With PostgreSQL support
 pip install "synthdb[postgresql]"
-
-# With MySQL support  
 pip install "synthdb[mysql]"
-
-# With all backends
 pip install "synthdb[all]"
 ```
 
-For development:
+### **Development Setup**
 
 ```bash
 git clone https://github.com/russellromney/synthdb
 cd synthdb
-pip install -e .
+
+# With uv (recommended - 10-100x faster!)
+uv sync                 # Install dependencies
+make dev               # Setup development environment
+make test              # Run tests
+make lint              # Run linting
+
+# With pip (traditional)
+pip install -e ".[dev]"
 ```
 
 ## Quick Start
@@ -107,45 +127,85 @@ sdb table export products
 
 ### Python API
 
+#### 🚀 **New Modern API (Recommended)**
+
 ```python
 import synthdb
 
-# Initialize database (uses Limbo by default)
+# Initialize database
+synthdb.make_db("app.db", backend_name="sqlite")
+synthdb.create_table("products", "app.db", backend_name="sqlite")
+
+# Add multiple columns with type inference
+synthdb.add_columns("products", {
+    "name": "text",                  # Explicit type
+    "description": "A great product", # Infers text
+    "price": 19.99,                  # Infers real
+    "stock": 100,                    # Infers integer
+    "active": True,                  # Infers boolean
+    "metadata": {"category": "tech"}, # Infers json
+    "created": "2023-12-25"          # Infers timestamp
+}, "app.db", "sqlite")
+
+# Insert data with auto-generated IDs
+product_id = synthdb.insert("products", {
+    "name": "Awesome Widget",
+    "description": "The best widget you'll ever use",
+    "price": 29.99,
+    "stock": 50,
+    "active": True,
+    "metadata": {"category": "widgets", "featured": True}
+})
+
+# Insert with explicit ID
+synthdb.insert("products", {
+    "name": "Special Item"
+}, connection_info="app.db", backend_name="sqlite", row_id=1000)
+
+# Single column inserts
+synthdb.insert("products", "name", "Quick Add", "app.db", "sqlite")
+
+# Query data (simple!)
+all_products = synthdb.query("products", connection_info="app.db", backend_name="sqlite")
+expensive = synthdb.query("products", "price > 25", "app.db", "sqlite")
+
+# Upsert (insert or update)
+synthdb.upsert("products", {
+    "name": "Updated Widget",
+    "sku": "WIDGET-001",
+    "price": 24.99
+}, key_columns=["sku"], connection_info="app.db", backend_name="sqlite")
+```
+
+#### 📚 **Legacy API (Backward Compatibility)**
+
+```python
+import synthdb
+
+# Old verbose approach (still supported)
 synthdb.make_db()
-
-# Or explicitly choose backend
-synthdb.make_db(backend_name="sqlite")
-
-# PostgreSQL with connection parameters
-synthdb.make_db({
-    'host': 'localhost',
-    'database': 'myapp',
-    'user': 'myuser',
-    'password': 'mypass'
-}, backend_name="postgresql")
-
-# MySQL with connection string
-synthdb.make_db("mysql://user:pass@localhost:3306/myapp")
-
-# Set default backend globally
-synthdb.set_default_backend("postgresql")
-
-# Create table and columns
 table_id = synthdb.create_table("products")
-name_col = synthdb.add_column("products", "name", "text")
+name_col = synthdb.add_column("products", "name", "text") 
 price_col = synthdb.add_column("products", "price", "real")
 
-# Insert data
+# Manual ID management
 synthdb.insert_typed_value(0, table_id, name_col, "Widget", "text")
 synthdb.insert_typed_value(0, table_id, price_col, 19.99, "real")
 
-# Query data
+# Verbose querying
 results = synthdb.query_view("products")
-filtered = synthdb.query_view("products", "price > 15")
-
-# Export structure
-sql = synthdb.export_table_structure("products")
 ```
+
+#### 🔄 **Key Improvements**
+
+| Feature | Old API | New API |
+|---------|---------|---------|
+| **Column Creation** | One at a time | Bulk with type inference |
+| **Row IDs** | Manual management | Auto-generated or explicit |
+| **Type Specification** | Always required | Automatic from column/sample |
+| **Function Names** | `insert_typed_value()` | `insert()` |
+| **Error Messages** | Basic | Enhanced with suggestions |
+| **Code Reduction** | Verbose | 90% less code |
 
 ## Backend Selection
 

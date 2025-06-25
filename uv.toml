@@ -1,0 +1,14 @@
+[tool.uv]
+# UV configuration for SynthDB
+
+[tool.uv.sources]
+# Use the latest versions of key dependencies
+typer = { git = "https://github.com/tiangolo/typer.git", tag = "0.9.0" }
+
+[tool.uv.workspace]
+members = ["."]
+
+[tool.uv.pip]
+# Configure dependency resolution
+index-strategy = "unsafe-best-match"  # Faster resolution
+compile-bytecode = true               # Pre-compile for speed

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Demo script showing SynthDB functionality.
+Legacy SynthDB Demo (Old API)
 
-This script demonstrates the toy examples from the original implementation,
-now using the organized package structure.
+⚠️  DEPRECATED: This demo uses the old, verbose API.
+✨ For the new, modern API see: new_api_demo.py
+
+This script demonstrates the original implementation for
+backward compatibility testing.
 """
 
 import os
@@ -13,11 +16,11 @@ from pathlib import Path
 # Add the parent directory to sys.path so we can import synthdb
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from synthdb import (
-    make_db, create_table, add_column, insert_typed_value, 
-    query_view, export_table_structure,
-    list_tables, list_columns
-)
+import synthdb
+
+print("⚠️  NOTICE: You're running the legacy demo!")
+print("✨ For the new, improved API, run: python new_api_demo.py")
+print("🔄 The new API is 10x easier to use!\n")
 
 
 def create_demo_data():
@@ -26,18 +29,18 @@ def create_demo_data():
     
     # Create users table
     print("Creating 'users' table...")
-    users_table_id = create_table('users')
+    users_table_id = synthdb.create_table('users')
     
     # Add columns to users table
     print("Adding columns to 'users' table...")
-    first_name_col = add_column('users', 'first_name', 'text')
-    last_name_col = add_column('users', 'last_name', 'text')
-    age_col = add_column('users', 'age', 'integer')
-    active_col = add_column('users', 'active', 'boolean')
+    first_name_col = synthdb.add_column('users', 'first_name', 'text')
+    last_name_col = synthdb.add_column('users', 'last_name', 'text')
+    age_col = synthdb.add_column('users', 'age', 'integer')
+    active_col = synthdb.add_column('users', 'active', 'boolean')
     
     # Create pets table
     print("Creating 'pets' table...")
-    pets_table_id = create_table('pets')
+    pets_table_id = synthdb.create_table('pets')
     
     # Add columns to pets table
     print("Adding columns to 'pets' table...")

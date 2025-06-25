@@ -342,7 +342,7 @@ def table_add_column(
 
 
 # Data commands (moved to main app level)
-@app.command("insert")
+@app.command("insert")  
 def insert_cmd(
     table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
     row_id: int = typer.Argument(..., help="Row ID"),
@@ -353,6 +353,7 @@ def insert_cmd(
     auto: bool = typer.Option(False, "--auto", "-a", help="Automatically infer data type"),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
 ):
+    """Insert a value into a specific table/row/column (LEGACY - see 'add' command for modern API)."""
     """Insert a value into a specific table/row/column."""
     # Build connection info
     connection_info = build_connection_info(path, backend)
@@ -690,6 +691,48 @@ def config_test(
         
     except Exception as e:
         console.print(f"[red]✗ Connection failed: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command("add")
+def add_cmd(
+    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    data: str = typer.Argument(..., help="JSON data to insert"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    row_id: int = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
+):
+    """Add data using the modern API (auto-generated IDs, type inference)."""
+    import json
+    
+    try:
+        # Parse JSON data
+        try:
+            data_dict = json.loads(data)
+        except json.JSONDecodeError as e:
+            console.print(f"[red]Invalid JSON data: {e}[/red]")
+            raise typer.Exit(1)
+        
+        # Build connection info
+        connection_info = build_connection_info(path, backend)
+        
+        # Use new API
+        from .api import insert
+        
+        result_id = insert(
+            table, data_dict, 
+            connection_info=connection_info, 
+            backend_name=backend,
+            row_id=row_id
+        )
+        
+        if row_id is not None:
+            console.print(f"[green]Added data to row {result_id} in table '{table}'[/green]")
+        else:
+            console.print(f"[green]Added data with auto-generated ID {result_id} in table '{table}'[/green]")
+            
+    except Exception as e:
+        console.print(f"[red]Error adding data: {e}[/red]")
         raise typer.Exit(1)
 
 

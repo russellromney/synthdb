@@ -7,6 +7,10 @@ data with dynamic schemas while presenting familiar table-like views.
 
 __version__ = "0.1.0"
 
+# New, intuitive API (recommended)
+from .api import insert, query, add_columns, upsert
+
+# Legacy API (backward compatibility)
 from .core import create_table, add_column, insert_typed_value
 from .utils import query_view, export_table_structure, list_tables, list_columns
 from .database import make_db
@@ -17,6 +21,13 @@ from .inference import smart_insert, infer_type, create_table_from_data, suggest
 from .bulk import bulk_insert_rows, load_csv, load_json, export_csv, export_json
 
 __all__ = [
+    # New API (recommended)
+    "insert",
+    "query", 
+    "add_columns",
+    "upsert",
+    
+    # Legacy API (backward compatibility)
     "create_table",
     "add_column", 
     "insert_typed_value",
