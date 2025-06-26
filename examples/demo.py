@@ -23,7 +23,7 @@ def main_demo():
     
     # Connect to database - the modern way
     print("\n📦 Connecting to Database...")
-    db = synthdb.connect('demo.limbo')  # Uses Limbo by default for best performance
+    db = synthdb.connect('demo.db', backend='sqlite')  # Use SQLite for compatibility
     print(f"✅ Connected: {db}")
     
     print("\n1️⃣ Create Table and Add Columns")
@@ -181,6 +181,43 @@ def main_demo():
         salary_str = str(salary) if salary is not None else 'N/A'
         print(f"   {user['row_id']:3d} | {name:20} | {email:20} | {age_str:3} | ${salary_str:8} | {active}")
     
+    print("\n8️⃣ Column Copying Operations")
+    print("-" * 31)
+    
+    # Create a second table for column copying demo
+    db.create_table('customers')
+    print("✅ Created 'customers' table")
+    
+    # Add a base column to customers
+    db.add_columns('customers', {'company': 'text'})
+    print("✅ Added 'company' column to customers")
+    
+    # Insert some customers data
+    db.insert('customers', {'company': 'ACME Corp'})
+    db.insert('customers', {'company': 'Tech Solutions Inc'})
+    print("✅ Added sample customer data")
+    
+    # Example 1: Copy column structure only (fast)
+    email_col_id = db.copy_column('users', 'email', 'customers', 'contact_email', copy_data=False)
+    print(f"✅ Copied email column structure to customers (ID: {email_col_id})")
+    
+    # Example 2: Copy column with data (complete copy)
+    age_col_id = db.copy_column('users', 'age', 'customers', 'contact_age', copy_data=True)
+    print(f"✅ Copied age column with data to customers (ID: {age_col_id})")
+    
+    # Example 3: Copy within same table (backup/duplicate column)
+    backup_col_id = db.copy_column('users', 'email', 'users', 'backup_email', copy_data=True)
+    print(f"✅ Created backup email column in users (ID: {backup_col_id})")
+    
+    # Show the results
+    print("\n📊 Column Copying Results:")
+    customers = db.query('customers')
+    print(f"   • Customers table now has {len(db.list_columns('customers'))} columns")
+    print(f"   • Contact ages copied: {[c.get('contact_age') for c in customers if c.get('contact_age')]}")
+    
+    users_with_backup = db.query('users')
+    print(f"   • Users with backup emails: {len([u for u in users_with_backup if u.get('backup_email')])}")
+    
     print("\n✨ Demo completed successfully!")
 
 
@@ -221,6 +258,7 @@ def api_benefits():
     print("   • Bulk column operations")
     print("   • Built-in upsert functionality")
     print("   • Auto-generated or explicit row IDs")
+    print("   • Column copying (structure-only or with data)")
     
     print("\n🛡️ Robust & Reliable:")
     print("   • Enhanced error handling and validation")
@@ -232,7 +270,7 @@ def api_benefits():
 def cleanup():
     """Clean up demo files."""
     try:
-        os.remove('demo.limbo')
+        os.remove('demo.db')
         print("\n🧹 Demo database cleaned up")
     except FileNotFoundError:
         pass

@@ -296,3 +296,40 @@ def upsert(table_name: str, data: Dict[str, Any], key_columns: List[str],
         return insert(table_name, data, connection_info=connection_info, backend_name=backend_name, row_id=row_id)
 
 
+def copy_column(source_table: str, source_column: str, target_table: str, target_column: str,
+               copy_data: bool = False, connection_info: str = 'db.db', backend_name: str = None) -> int:
+    """
+    Copy a column from one table to another, optionally including data.
+    
+    Args:
+        source_table: Name of source table
+        source_column: Name of source column
+        target_table: Name of target table  
+        target_column: Name of new column in target table
+        copy_data: If True, copy data; if False, only copy structure
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Returns:
+        ID of the newly created column
+        
+    Examples:
+        # Copy structure only (fast)
+        copy_column("users", "email", "customers", "contact_email")
+        
+        # Copy structure and data (slower)
+        copy_column("users", "email", "customers", "contact_email", copy_data=True)
+        
+        # Copy within same table
+        copy_column("users", "email", "users", "backup_email", copy_data=True)
+    """
+    from .core import copy_column_structure, copy_column_with_data
+    
+    if copy_data:
+        return copy_column_with_data(source_table, source_column, target_table, target_column,
+                                   connection_info, backend_name)
+    else:
+        return copy_column_structure(source_table, source_column, target_table, target_column,
+                                   connection_info, backend_name)
+
+

@@ -119,6 +119,31 @@ db.insert('users', {
 print("✅ Schema evolved! New columns added.")
 ```
 
+## Copy Columns
+
+Easily duplicate column structures between tables:
+
+```python
+# Create a customers table
+db.create_table('customers')
+db.add_columns('customers', {'company': 'text'})
+
+# Copy just the column structure (fast)
+db.copy_column('users', 'email', 'customers', 'contact_email', copy_data=False)
+
+# Copy column structure AND data (complete copy)
+db.copy_column('users', 'age', 'customers', 'contact_age', copy_data=True)
+
+# Copy within the same table (backup/duplicate)
+db.copy_column('users', 'email', 'users', 'backup_email', copy_data=True)
+
+print("✅ Column copying complete!")
+
+# Verify the results
+customers = db.query('customers')
+print(f"Customers table now has {len(db.list_columns('customers'))} columns")
+```
+
 ## Inspect Your Database
 
 Explore your database structure:

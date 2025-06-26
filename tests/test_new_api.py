@@ -326,3 +326,138 @@ class TestAPIIntegration:
         # Should be a new product since SKU didn't exist
         final_products = self.db.query('products')
         assert len(final_products) == 3
+
+
+class TestColumnCopyAPI:
+    """Test column copying functionality."""
+    
+    def setup_method(self):
+        """Setup test databases with sample data."""
+        self.temp_file = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.db_path = self.temp_file.name
+        self.temp_file.close()
+        
+        self.db = synthdb.connect(self.db_path, backend='sqlite')
+        
+        # Create source table with data
+        self.db.create_table('users')
+        self.db.add_columns('users', {
+            'name': 'text',
+            'email': 'text', 
+            'age': 'integer',
+            'active': 'boolean'
+        })
+        
+        # Insert test data
+        self.db.insert('users', {'name': 'Alice', 'email': 'alice@example.com', 'age': 25, 'active': True})
+        self.db.insert('users', {'name': 'Bob', 'email': 'bob@example.com', 'age': 30, 'active': False})
+        
+        # Create target table
+        self.db.create_table('customers')
+        self.db.add_columns('customers', {'company': 'text'})
+
+    def teardown_method(self):
+        """Cleanup test database."""
+        try:
+            os.unlink(self.db_path)
+        except FileNotFoundError:
+            pass
+
+    def test_copy_column_structure_only(self):
+        """Test copying column structure without data."""
+        # Copy email column structure only
+        column_id = self.db.copy_column('users', 'email', 'customers', 'contact_email', copy_data=False)
+        
+        assert isinstance(column_id, int)
+        
+        # Verify column was created
+        columns = self.db.list_columns('customers')
+        column_names = [col['name'] for col in columns]
+        assert 'contact_email' in column_names
+        
+        # Verify no data was copied
+        customers = self.db.query('customers')
+        if customers:  # If there are any rows
+            for row in customers:
+                assert row.get('contact_email') is None
+
+    def test_copy_column_with_data(self):
+        """Test copying column structure and data."""
+        # First add some data to customers table to test copying into existing rows
+        self.db.insert('customers', {'company': 'ACME Corp'})
+        self.db.insert('customers', {'company': 'Tech Inc'})
+        
+        # Copy email column with data
+        column_id = self.db.copy_column('users', 'email', 'customers', 'contact_email', copy_data=True)
+        
+        assert isinstance(column_id, int)
+        
+        # Verify column was created
+        columns = self.db.list_columns('customers')
+        column_names = [col['name'] for col in columns]
+        assert 'contact_email' in column_names
+        
+        # Verify data was copied
+        customers = self.db.query('customers')
+        emails = [row.get('contact_email') for row in customers if row.get('contact_email')]
+        assert 'alice@example.com' in emails
+        assert 'bob@example.com' in emails
+
+    def test_copy_column_within_same_table(self):
+        """Test copying a column within the same table."""
+        # Copy email to backup_email in same table
+        column_id = self.db.copy_column('users', 'email', 'users', 'backup_email', copy_data=True)
+        
+        assert isinstance(column_id, int)
+        
+        # Verify column was created
+        columns = self.db.list_columns('users')
+        column_names = [col['name'] for col in columns]
+        assert 'backup_email' in column_names
+        
+        # Verify data was copied correctly
+        users = self.db.query('users')
+        for user in users:
+            assert user['email'] == user['backup_email']
+
+    def test_copy_column_different_types(self):
+        """Test copying columns of different data types."""
+        # Test integer column
+        int_column_id = self.db.copy_column('users', 'age', 'customers', 'customer_age', copy_data=True)
+        
+        # Test boolean column
+        bool_column_id = self.db.copy_column('users', 'active', 'customers', 'is_active', copy_data=True)
+        
+        assert isinstance(int_column_id, int)
+        assert isinstance(bool_column_id, int)
+        
+        # Verify columns and data types
+        columns = self.db.list_columns('customers')
+        column_info = {col['name']: col['data_type'] for col in columns}
+        
+        assert column_info['customer_age'] == 'integer'
+        assert column_info['is_active'] == 'boolean'
+
+    def test_copy_column_error_source_not_found(self):
+        """Test error when source column doesn't exist."""
+        with pytest.raises(ValueError, match="Column 'nonexistent' not found"):
+            self.db.copy_column('users', 'nonexistent', 'customers', 'test_col')
+
+    def test_copy_column_error_source_table_not_found(self):
+        """Test error when source table doesn't exist."""
+        with pytest.raises(ValueError, match="Column 'email' not found in table 'nonexistent'"):
+            self.db.copy_column('nonexistent', 'email', 'customers', 'test_col')
+
+    def test_copy_column_error_target_table_not_found(self):
+        """Test error when target table doesn't exist."""
+        with pytest.raises(ValueError, match="Table 'nonexistent' not found"):
+            self.db.copy_column('users', 'email', 'nonexistent', 'test_col')
+
+    def test_copy_column_api_import(self):
+        """Test that copy_column is available from the main API."""
+        from synthdb.api import copy_column
+        
+        # Test function exists and can be called
+        column_id = copy_column('users', 'email', 'customers', 'contact_email', 
+                               copy_data=False, connection_info=self.db_path, backend_name='sqlite')
+        assert isinstance(column_id, int)

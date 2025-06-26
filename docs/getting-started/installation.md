@@ -4,7 +4,7 @@ This guide will help you install SynthDB and get it running on your system.
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - pip or uv package manager
 
 ## Quick Installation

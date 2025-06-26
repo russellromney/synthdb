@@ -248,6 +248,35 @@ class Connection:
         return upsert(table_name, data, key_columns, self.connection_info, 
                      self.backend_name, row_id)
     
+    def copy_column(self, source_table: str, source_column: str, target_table: str, 
+                   target_column: str, copy_data: bool = False) -> int:
+        """
+        Copy a column from one table to another, optionally including data.
+        
+        Args:
+            source_table: Name of source table
+            source_column: Name of source column
+            target_table: Name of target table
+            target_column: Name of new column in target table
+            copy_data: If True, copy data; if False, only copy structure
+            
+        Returns:
+            ID of the newly created column
+            
+        Examples:
+            # Copy structure only (fast)
+            db.copy_column("users", "email", "customers", "contact_email")
+            
+            # Copy structure and data (slower)
+            db.copy_column("users", "email", "customers", "contact_email", copy_data=True)
+            
+            # Copy within same table
+            db.copy_column("users", "email", "users", "backup_email", copy_data=True)
+        """
+        from .api import copy_column
+        return copy_column(source_table, source_column, target_table, target_column,
+                          copy_data, self.connection_info, self.backend_name)
+    
     def list_tables(self) -> List[Dict[str, Any]]:
         """
         List all tables in the database.

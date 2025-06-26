@@ -64,11 +64,12 @@ Thumbs.db
 *.log
 logs/
 
-# Node.js (in case you add any JS tooling)
+# Node.js (if you add any JS tooling in the future)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
 
 # Backup files
 *.bak
@@ -81,8 +82,23 @@ htmlcov/
 .tox/
 .pytest_cache/
 
+# Database files (test artifacts)
 db.db
-.db
+final_test.db*
+test_cli_auto.db*
+test.limbo*
+demo.limbo*
+*.limbo
+*.limbo-wal
+*.limbo-shm
+
+# Documentation build artifacts
+site/
+docs/_build/
+
+# uv lock file (should be committed, but if you want to ignore)
+# uv.lock
+
+# Temporary/test files
+sqlite
 tasks
-.limbo
-.limbo-wal

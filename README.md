@@ -12,7 +12,6 @@ A flexible database system with schema-on-write capabilities. SynthDB makes it e
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
 - **Multiple Backends**: Supports Limbo and SQLite backends
-- **Production Ready**: SQLite for stable production deployments
 - **Configurable**: Choose your backend based on performance and stability needs
 
 ## Installation

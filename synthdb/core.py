@@ -161,3 +161,128 @@ def _add_column_with_connection(backend, connection, table_name, column_name, da
     # The transaction context manager will handle commit
     
     return column_id
+
+
+def copy_column_structure(source_table, source_column, target_table, target_column, 
+                         db_path: str = 'db.db', backend_name: str = None):
+    """
+    Copy column structure (metadata) without data.
+    
+    Args:
+        source_table: Name of source table
+        source_column: Name of source column
+        target_table: Name of target table
+        target_column: Name of new column in target table
+        db_path: Database path
+        backend_name: Backend name
+        
+    Returns:
+        ID of the newly created column
+    """
+    from .transactions import transaction_context
+    
+    backend_to_use = backend_name or config.get_backend_for_path(db_path)
+    
+    with transaction_context(db_path, backend_to_use) as (backend, connection):
+        # Get source column metadata
+        cur = backend.execute(connection, """
+            SELECT cd.data_type 
+            FROM column_definitions cd
+            JOIN table_definitions td ON cd.table_id = td.id
+            WHERE td.name = ? AND cd.name = ? 
+            AND td.deleted_at IS NULL AND cd.deleted_at IS NULL
+        """, (source_table, source_column))
+        
+        result = backend.fetchone(cur)
+        if not result:
+            raise ValueError(f"Column '{source_column}' not found in table '{source_table}'")
+        
+        data_type = result['data_type']
+        
+        # Add new column with same type
+        column_id = _add_column_with_connection(backend, connection, target_table, 
+                                              target_column, data_type, db_path, backend_to_use)
+    
+    # Recreate views after transaction completes
+    from .views import create_table_views
+    create_table_views(db_path, backend_name=backend_to_use)
+    
+    return column_id
+
+
+def copy_column_with_data(source_table, source_column, target_table, target_column,
+                         db_path: str = 'db.db', backend_name: str = None):
+    """
+    Copy column structure and all data.
+    
+    Args:
+        source_table: Name of source table
+        source_column: Name of source column  
+        target_table: Name of target table
+        target_column: Name of new column in target table
+        db_path: Database path
+        backend_name: Backend name
+        
+    Returns:
+        ID of the newly created column
+    """
+    from .transactions import transaction_context
+    
+    backend_to_use = backend_name or config.get_backend_for_path(db_path)
+    
+    with transaction_context(db_path, backend_to_use) as (backend, connection):
+        # Get source column metadata
+        cur = backend.execute(connection, """
+            SELECT cd.id as column_id, cd.data_type, td.id as table_id
+            FROM column_definitions cd
+            JOIN table_definitions td ON cd.table_id = td.id
+            WHERE td.name = ? AND cd.name = ? 
+            AND td.deleted_at IS NULL AND cd.deleted_at IS NULL
+        """, (source_table, source_column))
+        
+        result = backend.fetchone(cur)
+        if not result:
+            raise ValueError(f"Column '{source_column}' not found in table '{source_table}'")
+        
+        source_column_id = result['column_id']
+        source_table_id = result['table_id']
+        data_type = result['data_type']
+        
+        # Get target table ID
+        cur = backend.execute(connection, 
+            "SELECT id FROM table_definitions WHERE name = ? AND deleted_at IS NULL", 
+            (target_table,))
+        target_result = backend.fetchone(cur)
+        if not target_result:
+            raise ValueError(f"Table '{target_table}' not found")
+        target_table_id = target_result['id']
+        
+        # Add new column
+        new_column_id = _add_column_with_connection(backend, connection, target_table, 
+                                                   target_column, data_type, db_path, backend_to_use)
+        
+        # Copy all values from source column to target column
+        type_table = get_type_table_name(data_type)
+        history_table = get_type_table_name(data_type, is_history=True)
+        
+        # Copy main values
+        backend.execute(connection, f"""
+            INSERT INTO {type_table} (row_id, table_id, column_id, value)
+            SELECT row_id, ?, ?, value
+            FROM {type_table}
+            WHERE table_id = ? AND column_id = ?
+        """, (target_table_id, new_column_id, source_table_id, source_column_id))
+        
+        # Copy history values
+        backend.execute(connection, f"""
+            INSERT INTO {history_table} (row_id, table_id, column_id, value, created_at)
+            SELECT row_id, ?, ?, value, created_at
+            FROM {history_table}
+            WHERE table_id = ? AND column_id = ?
+        """, (target_table_id, new_column_id, source_table_id, source_column_id))
+    
+    # Recreate views after transaction completes
+    from .views import create_table_views
+    create_table_views(db_path, backend_name=backend_to_use)
+    
+    return new_column_id
