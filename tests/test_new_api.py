@@ -101,8 +101,8 @@ class TestNewAPI:
         # Insert first row
         self.db.insert('users', {'name': 'Alice'}, row_id=10)
         
-        # Try to insert with same ID
-        with pytest.raises(ValueError, match="Row ID 10 already exists"):
+        # Try to insert with same ID and column
+        with pytest.raises(ValueError, match="Row ID 10 already has a value for column 'name'"):
             self.db.insert('users', {'name': 'Bob'}, row_id=10)
 
     def test_insert_invalid_column(self):
@@ -157,14 +157,15 @@ class TestNewAPI:
             'age': 'integer'
         })
         
-        # Upsert new row
+        # Upsert new row with specific ID
+        target_id = 100
         row_id = self.db.upsert('users', {
             'name': 'Diana',
             'email': 'diana@example.com',
             'age': 28
-        }, key_columns=['email'])
+        }, row_id=target_id)
         
-        assert isinstance(row_id, int)
+        assert row_id == target_id
 
     def test_upsert_update(self):
         """Test upsert when row exists (update)."""
@@ -181,12 +182,12 @@ class TestNewAPI:
             'age': 25
         })
         
-        # Upsert (should update)
+        # Upsert (should update existing row)
         updated_id = self.db.upsert('users', {
             'name': 'Eve Smith',  # Updated name
-            'email': 'eve@example.com',  # Same email (key)
+            'email': 'eve.smith@example.com',  # Updated email
             'age': 26  # Updated age
-        }, key_columns=['email'])
+        }, row_id=initial_id)
         
         assert updated_id == initial_id  # Should be same row
 
@@ -197,14 +198,94 @@ class TestNewAPI:
             'email': 'text'
         })
         
-        # Upsert with explicit ID
+        # Upsert with explicit ID (row doesn't exist)
         explicit_id = 500
         result_id = self.db.upsert('users', {
             'name': 'Frank',
             'email': 'frank@example.com'
-        }, key_columns=['email'], row_id=explicit_id)
+        }, row_id=explicit_id)
         
         assert result_id == explicit_id
+
+    def test_upsert_with_row_id_existing(self):
+        """Test upsert with row_id when the row exists (should update)."""
+        self.db.add_columns('users', {
+            'name': 'text',
+            'email': 'text',
+            'age': 'integer'
+        })
+        
+        # Insert initial row
+        initial_id = self.db.insert('users', {
+            'name': 'Alice',
+            'email': 'alice@example.com',
+            'age': 25
+        })
+        
+        # Upsert using specific row_id (should update existing row)
+        result_id = self.db.upsert('users', {
+            'name': 'Alice Updated',
+            'age': 30
+        }, row_id=initial_id)
+        
+        assert result_id == initial_id
+        
+        # Verify the row was updated
+        users = self.db.query('users', f'row_id = {initial_id}')
+        assert len(users) == 1
+        assert users[0]['name'] == 'Alice Updated'
+        assert users[0]['age'] == 30
+
+    def test_upsert_with_row_id_nonexistent(self):
+        """Test upsert with row_id when the row doesn't exist (should insert with that ID)."""
+        self.db.add_columns('users', {
+            'name': 'text',
+            'email': 'text'
+        })
+        
+        # Upsert with specific row_id that doesn't exist
+        target_id = 999
+        result_id = self.db.upsert('users', {
+            'name': 'Bob',
+            'email': 'bob@example.com'
+        }, row_id=target_id)
+        
+        assert result_id == target_id
+        
+        # Verify the row was inserted with correct ID
+        users = self.db.query('users', f'row_id = {target_id}')
+        assert len(users) == 1
+        assert users[0]['name'] == 'Bob'
+        assert users[0]['email'] == 'bob@example.com'
+
+    def test_upsert_updates_specific_row(self):
+        """Test that upsert updates the exact row specified by row_id."""
+        self.db.add_columns('users', {
+            'name': 'text',
+            'email': 'text'
+        })
+        
+        # Insert two rows
+        id1 = self.db.insert('users', {'name': 'User1', 'email': 'user1@example.com'})
+        id2 = self.db.insert('users', {'name': 'User2', 'email': 'user2@example.com'})
+        
+        # Upsert using row_id=id1
+        result_id = self.db.upsert('users', {
+            'name': 'Updated User1',
+            'email': 'updated@example.com'
+        }, row_id=id1)
+        
+        assert result_id == id1
+        
+        # Verify id1 was updated
+        user1 = self.db.query('users', f'row_id = {id1}')[0]
+        assert user1['name'] == 'Updated User1'
+        assert user1['email'] == 'updated@example.com'
+        
+        # Verify id2 was not affected
+        user2 = self.db.query('users', f'row_id = {id2}')[0]
+        assert user2['name'] == 'User2'
+        assert user2['email'] == 'user2@example.com'
 
     def test_error_message_quality(self):
         """Test that error messages are helpful and informative."""
@@ -316,16 +397,17 @@ class TestAPIIntegration:
         # Add sku column for upsert test
         self.db.add_columns('products', {'sku': 'text'})
         
-        # Upsert test
+        # Upsert test - update existing laptop with new data
         updated_id = self.db.upsert('products', {
             'name': 'Laptop Pro',  # Updated name
             'sku': 'LAPTOP-001',
             'price': 1399.99       # Updated price
-        }, key_columns=['sku'])
+        }, row_id=product2)  # Update the laptop we inserted earlier
         
-        # Should be a new product since SKU didn't exist
+        # Should have updated existing product, not created new one
         final_products = self.db.query('products')
-        assert len(final_products) == 3
+        assert len(final_products) == 2  # Still only 2 products
+        assert updated_id == product2
 
 
 class TestColumnCopyAPI:

@@ -78,17 +78,21 @@ for user in active_users:
 
 ## Update Data
 
-Use upsert to insert or update based on key columns:
+Use upsert to insert or update based on row_id:
 
 ```python
-# Update existing user or insert if not found
+# Get the user's row_id first (from a previous insert or query)
+users = db.query('users', 'name = "Bob Smith"')
+user_id = users[0]['row_id'] if users else 100  # Use existing ID or specific new ID
+
+# Update existing user or insert with specified ID
 updated_id = db.upsert('users', {
     'name': 'Bob Smith',
     'email': 'bob.smith@newcompany.com',  # Updated email
     'age': 31,                           # Updated age
     'active': True,
     'metadata': {'role': 'senior_engineer'}  # Updated role
-}, key_columns=['name'])  # Match on name
+}, row_id=user_id)
 
 print(f"✅ Upserted user with ID: {updated_id}")
 ```
@@ -224,6 +228,18 @@ try:
     # Try to access non-existent column
     db.query('users', 'nonexistent_column = "value"')
 except Exception as e:
+    print(f"Expected error: {e}")
+
+try:
+    # Try to use protected column name
+    db.add_column('users', 'row_id', 'text')
+except ValueError as e:
+    print(f"Expected error: {e}")
+
+try:
+    # Try to use protected table name
+    db.create_table('text_values')
+except ValueError as e:
     print(f"Expected error: {e}")
 ```
 

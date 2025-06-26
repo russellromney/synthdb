@@ -141,12 +141,12 @@ db.insert('products', 'name', 'Quick Add')
 all_products = db.query('products')
 expensive = db.query('products', 'price > 25')
 
-# Upsert (insert or update)
+# Upsert (insert or update by row_id)
 db.upsert('products', {
     'name': 'Updated Widget',
     'sku': 'WIDGET-001',
     'price': 24.99
-}, key_columns=['sku'])
+}, row_id=product_id)
 
 # Database inspection
 tables = db.list_tables()
@@ -315,7 +315,7 @@ synthdb/
 
 #### Query Methods
 - `db.query(table, where_clause=None)` - Query table data
-- `db.upsert(table, data, key_columns, row_id=None)` - Insert or update based on key columns
+- `db.upsert(table, data, row_id)` - Insert or update based on row_id
 
 #### Inspection Methods
 - `db.list_tables()` - List all tables with metadata
@@ -408,6 +408,40 @@ SynthDB is ideal for:
 - Type-specific tables optimize storage and indexing
 - History tables provide audit capability with minimal overhead
 - Consider partitioning strategies for very large datasets
+
+## Naming Restrictions
+
+SynthDB enforces naming restrictions to protect internal functionality:
+
+### Protected Column Names
+- **`row_id`** - Reserved for SynthDB's internal row identifier
+- Column names are case-insensitive, so `ROW_ID`, `Row_Id`, etc. are also protected
+
+### Protected Table Names
+SynthDB prevents creating tables with names that conflict with internal tables:
+
+**Core Tables:**
+- `table_definitions`, `column_definitions`, `row_id_sequence`
+
+**Value Storage Tables:**
+- `text_values`, `integer_values`, `real_values`, `boolean_values`, `json_values`, `timestamp_values`
+
+**History Tables:**
+- `text_value_history`, `integer_value_history`, `real_value_history`, `boolean_value_history`, `json_value_history`, `timestamp_value_history`
+
+Table names are also case-insensitive for protection purposes.
+
+### Error Messages
+When attempting to use protected names, SynthDB provides clear error messages:
+```python
+# Column name error
+db.add_column('users', 'row_id', 'text')
+# ValueError: Column name 'row_id' is protected and cannot be used. Protected column names: row_id
+
+# Table name error  
+db.create_table('text_values')
+# ValueError: Table name 'text_values' conflicts with internal SynthDB tables and cannot be used. Please choose a different name.
+```
 
 ## Limitations
 

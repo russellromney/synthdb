@@ -4,23 +4,25 @@ Modern, intuitive API for SynthDB operations.
 This module provides the core API functions used by the Connection class.
 """
 
-from typing import Dict, Any, Union, Optional, List
+from typing import Dict, Any, Union, List
 from .core import insert_typed_value, add_column as _add_column
 from .utils import list_tables, list_columns, query_view
 from .inference import infer_type
 from .transactions import transaction_context
+from .constants import validate_column_name
 
 
-def _row_id_exists(backend, connection, table_id: int, row_id: int) -> bool:
-    """Check if a row ID already exists in any type table for the given table."""
+
+def _column_value_exists(backend, connection, table_id: int, row_id: int, column_id: int) -> bool:
+    """Check if a specific (row_id, column_id) combination already has a value."""
     type_tables = ['text_values', 'integer_values', 'real_values', 
                    'boolean_values', 'json_values', 'timestamp_values']
     
     for type_table in type_tables:
         try:
             cur = backend.execute(connection, 
-                f"SELECT 1 FROM {type_table} WHERE table_id = ? AND row_id = ? LIMIT 1", 
-                (table_id, row_id))
+                f"SELECT 1 FROM {type_table} WHERE table_id = ? AND row_id = ? AND column_id = ? AND deleted_at IS NULL LIMIT 1", 
+                (table_id, row_id, column_id))
             result = backend.fetchone(cur)
             if result:
                 return True
@@ -105,9 +107,6 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
     # Handle row ID - explicit or auto-generated
     with transaction_context(connection_info, backend_name) as (backend, connection):
         if row_id is not None:
-            # Validate explicit row ID doesn't already exist (for new row creation)
-            if _row_id_exists(backend, connection, table_id, row_id):
-                raise ValueError(f"Row ID {row_id} already exists in table '{table_name}'")
             final_row_id = row_id
         else:
             # Auto-generate next available row ID
@@ -122,6 +121,13 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
             
             column_info = column_lookup[col_name]
             column_id = column_info['id']
+            
+            # Check if this specific (row_id, column_id) combination already has a value
+            if row_id is not None:
+                # For explicit row_id, check if this column already has a value
+                existing_check = _column_value_exists(backend, connection, table_id, final_row_id, column_id)
+                if existing_check:
+                    raise ValueError(f"Row ID {final_row_id} already has a value for column '{col_name}' in table '{table_name}'")
             
             # Use force_type if provided, otherwise use column's defined type
             if force_type:
@@ -227,50 +233,36 @@ def add_columns(table_name: str, columns: Dict[str, Union[str, Any]],
     return column_ids
 
 
-def upsert(table_name: str, data: Dict[str, Any], key_columns: List[str],
-          connection_info: str = 'db.db', backend_name: str = None, row_id: int = None) -> int:
+def upsert(table_name: str, data: Dict[str, Any], row_id: int,
+          connection_info: str = 'db.db', backend_name: str = None) -> int:
     """
-    Insert or update data based on key columns.
+    Insert or update data for a specific row_id.
+    
+    If the row_id exists, updates the existing row with new data.
+    If the row_id doesn't exist, creates a new row with that row_id.
     
     Args:
         table_name: Name of the table
         data: Column data to insert/update
-        key_columns: Columns to use for matching existing rows
+        row_id: Specific row ID to insert or update
         connection_info: Database connection  
         backend_name: Backend to use
-        row_id: Explicit row ID for new inserts (ignored for updates)
         
     Returns:
-        Row ID of inserted or updated row
+        The row_id that was inserted or updated
         
     Examples:
-        # Insert new user or update if email exists
-        row_id = upsert("users", 
-            {"name": "John", "email": "john@example.com", "age": 25},
-            key_columns=["email"]
-        )
+        # Update existing row or create new row with ID 100
+        upsert("users", {"name": "Jane", "age": 30}, row_id=100)
         
-        # Insert with explicit ID if not found
-        upsert("users", {"name": "Jane"}, key_columns=["email"], row_id=100)
+        # Update row 1 with new data
+        upsert("users", {"name": "John Updated", "email": "john.new@example.com"}, row_id=1)
     """
-    # Build WHERE clause from key columns
-    key_conditions = []
-    for key_col in key_columns:
-        if key_col not in data:
-            raise ValueError(f"Key column '{key_col}' not found in data")
-        key_conditions.append(f"{key_col} = '{data[key_col]}'")
-    
-    where_clause = " AND ".join(key_conditions)
-    
-    # Check if row exists
-    existing_rows = query(table_name, where_clause, connection_info, backend_name)
+    # Check if the specific row_id exists
+    existing_rows = query(table_name, f"row_id = {row_id}", connection_info, backend_name)
     
     if existing_rows:
-        # Update existing row
-        existing_row = existing_rows[0]
-        row_id = existing_row['row_id']
-        
-        # Update each column (excluding key columns if unchanged)
+        # Update existing row with specified row_id
         with transaction_context(connection_info, backend_name) as (backend, connection):
             tables = list_tables(connection_info, backend_name)
             table_info = next((t for t in tables if t['name'] == table_name), None)
@@ -285,14 +277,15 @@ def upsert(table_name: str, data: Dict[str, Any], key_columns: List[str],
                     column_id = column_info['id']
                     data_type = column_info['data_type']
                     
-                    insert_typed_value(
+                    from .core import upsert_typed_value
+                    upsert_typed_value(
                         row_id, table_id, column_id, col_value, data_type,
                         backend=backend, connection=connection
                     )
         
         return row_id
     else:
-        # Insert new row (with optional explicit ID)
+        # Insert new row with the specified row_id
         return insert(table_name, data, connection_info=connection_info, backend_name=backend_name, row_id=row_id)
 
 

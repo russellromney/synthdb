@@ -5,6 +5,7 @@ import json
 from .types import get_type_table_name
 from .backends import get_backend, detect_backend_from_connection, parse_connection_string
 from .config import config
+from .constants import validate_column_name, validate_table_name
 
 
 def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: str = 'db.db', 
@@ -73,8 +74,60 @@ def _insert_with_connection(backend, connection, table_name, history_table_name,
     # Note: No commit here - handled by transaction context manager
 
 
+def upsert_typed_value(row_id, table_id, column_id, value, data_type, 
+                      backend=None, connection=None):
+    """
+    Insert or update a value in the appropriate type-specific table.
+    
+    This function handles both inserts and updates by soft-deleting existing values
+    before inserting the new value.
+    
+    Args:
+        row_id: Row identifier
+        table_id: Table identifier  
+        column_id: Column identifier
+        value: Value to insert/update
+        data_type: Data type for value storage
+        backend: Backend instance for transaction reuse
+        connection: Connection for transaction reuse
+    """
+    table_name = get_type_table_name(data_type)
+    history_table_name = get_type_table_name(data_type, is_history=True)
+    
+    # Convert value to appropriate type
+    if data_type == 'boolean':
+        value = 1 if value else 0
+    elif data_type == 'json':
+        value = json.dumps(value) if not isinstance(value, str) else value
+    
+    # Soft delete existing values for this cell
+    soft_delete_statement = f"""
+        UPDATE {table_name} 
+        SET deleted_at = CURRENT_TIMESTAMP 
+        WHERE row_id = ? AND table_id = ? AND column_id = ? AND deleted_at IS NULL
+    """
+    backend.execute(connection, soft_delete_statement, (row_id, table_id, column_id))
+    
+    # Insert the new value
+    insert_statement = f"""
+        INSERT INTO {table_name} (row_id, table_id, column_id, value)
+        VALUES (?, ?, ?, ?)
+    """
+    backend.execute(connection, insert_statement, (row_id, table_id, column_id, value))
+    
+    # Insert into history table (same transaction)
+    history_statement = f"""
+        INSERT INTO {history_table_name} (row_id, table_id, column_id, value)
+        VALUES (?, ?, ?, ?)
+    """
+    backend.execute(connection, history_statement, (row_id, table_id, column_id, value))
+
+
 def create_table(table_name, db_path: str = 'db.db', backend_name: str = None):
     """Create a new table definition"""
+    # Validate table name is not protected
+    validate_table_name(table_name)
+    
     # Get the appropriate backend
     backend_to_use = backend_name or config.get_backend_for_path(db_path)
     backend = get_backend(backend_to_use)
@@ -139,6 +192,9 @@ def add_column(table_name, column_name, data_type, db_path: str = 'db.db', backe
 
 def _add_column_with_connection(backend, connection, table_name, column_name, data_type, db_path, backend_name):
     """Add a column using provided backend and connection."""
+    # Validate column name is not protected
+    validate_column_name(column_name)
+    
     # Get table ID
     cur = backend.execute(connection, "SELECT id FROM table_definitions WHERE name = ? AND deleted_at IS NULL", (table_name,))
     result = backend.fetchone(cur)

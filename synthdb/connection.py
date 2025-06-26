@@ -223,30 +223,30 @@ class Connection:
         """
         return query_view(table_name, where, self.connection_info, self.backend_name)
     
-    def upsert(self, table_name: str, data: Dict[str, Any], key_columns: List[str],
-               row_id: int = None) -> int:
+    def upsert(self, table_name: str, data: Dict[str, Any], row_id: int) -> int:
         """
-        Insert or update data based on key columns.
+        Insert or update data for a specific row_id.
+        
+        If the row_id exists, updates the existing row with new data.
+        If the row_id doesn't exist, creates a new row with that row_id.
         
         Args:
             table_name: Name of the table
             data: Column data to insert/update
-            key_columns: Columns to use for matching existing rows
-            row_id: Explicit row ID for new inserts (ignored for updates)
+            row_id: Specific row ID to insert or update
             
         Returns:
-            Row ID of inserted or updated row
+            The row_id that was inserted or updated
             
         Examples:
-            # Insert new user or update if email exists
-            user_id = db.upsert('users', 
-                {'name': 'John', 'email': 'john@example.com', 'age': 25},
-                key_columns=['email']
-            )
+            # Update existing row or create new row with ID 100
+            db.upsert('users', {'name': 'Jane', 'age': 30}, row_id=100)
+            
+            # Update row 1 with new data
+            db.upsert('users', {'name': 'John Updated', 'email': 'john.new@example.com'}, row_id=1)
         """
         from .api import upsert
-        return upsert(table_name, data, key_columns, self.connection_info, 
-                     self.backend_name, row_id)
+        return upsert(table_name, data, row_id, self.connection_info, self.backend_name)
     
     def copy_column(self, source_table: str, source_column: str, target_table: str, 
                    target_column: str, copy_data: bool = False) -> int:

@@ -115,22 +115,23 @@ def main_demo():
     print("-" * 22)
     
     # Insert new user via upsert
-    david_id = db.upsert('users', {
+    david_id = 500  # Specific ID for David
+    result_id = db.upsert('users', {
         'name': 'David Wilson',
         'email': 'david@example.com',
         'age': 29,
         'salary': 78000.0,
         'active': True
-    }, key_columns=['email'])
-    print(f"✅ Upserted new user David: {david_id}")
+    }, row_id=david_id)
+    print(f"✅ Upserted new user David: {result_id}")
     
-    # Update existing user via upsert (same email)
+    # Update existing user via upsert (same row_id)
     david_updated_id = db.upsert('users', {
         'name': 'David Wilson-Smith',  # Updated name
-        'email': 'david@example.com',   # Same email (key)
+        'email': 'david.wilson@example.com',  # Updated email
         'age': 30,                      # Updated age  
         'salary': 82000.0               # Updated salary
-    }, key_columns=['email'])
+    }, row_id=david_id)
     print(f"✅ Updated David's info, same ID: {david_updated_id}")
     
     print("\n5️⃣ Database Inspection")
@@ -162,6 +163,18 @@ def main_demo():
         db.insert('users', {'invalid_column': 'test'})
     except ValueError as e:
         print(f"✅ Caught invalid column error: {e}")
+    
+    try:
+        # Try to use protected column name
+        db.add_column('users', 'row_id', 'text')
+    except ValueError as e:
+        print(f"✅ Caught protected column name error: {e}")
+    
+    try:
+        # Try to use protected table name
+        db.create_table('text_values')
+    except ValueError as e:
+        print(f"✅ Caught protected table name error: {e}")
     
     print("\n7️⃣ Final Results")
     print("-" * 18)

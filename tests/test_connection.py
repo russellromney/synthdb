@@ -163,24 +163,26 @@ class TestSynthDBConnection:
             'age': 25
         })
         
-        # Insert new user
+        # Insert new user with specific ID
+        target_id = 100
         user_id = self.db.upsert('users', {
             'name': 'John Doe',
             'email': 'john@example.com',
             'age': 30
-        }, key_columns=['email'])
+        }, row_id=target_id)
         
+        assert user_id == target_id
         users = self.db.query('users')
         assert len(users) == 1
         assert users[0]['name'] == 'John Doe'
         assert users[0]['age'] == 30
         
-        # Update existing user (same email)
+        # Update existing user (same row_id)
         updated_id = self.db.upsert('users', {
             'name': 'John Smith',  # Updated name
-            'email': 'john@example.com',  # Same email (key)
+            'email': 'john.smith@example.com',  # Updated email
             'age': 31  # Updated age
-        }, key_columns=['email'])
+        }, row_id=target_id)
         
         # Should be same ID
         assert updated_id == user_id
@@ -254,7 +256,7 @@ class TestSynthDBConnection:
         
         # Try to insert with duplicate explicit ID
         user_id = self.db.insert('users', {'name': 'John'})
-        with pytest.raises(ValueError, match=f"Row ID {user_id} already exists"):
+        with pytest.raises(ValueError, match=f"Row ID {user_id} already has a value for column 'name'"):
             self.db.insert('users', {'name': 'Jane'}, row_id=user_id)
     
     def test_repr(self):
