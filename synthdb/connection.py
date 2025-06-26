@@ -277,6 +277,39 @@ class Connection:
         return copy_column(source_table, source_column, target_table, target_column,
                           copy_data, self.connection_info, self.backend_name)
     
+    def copy_table(self, source_table: str, target_table: str, copy_data: bool = False) -> int:
+        """
+        Copy a table's structure and optionally its data.
+        
+        Creates a new table that is a copy of an existing table. Can copy just the
+        structure (table and column definitions) or include all data as well.
+        When copying data, new row IDs are generated to avoid conflicts.
+        
+        Args:
+            source_table: Name of table to copy from
+            target_table: Name of new table to create
+            copy_data: If True, copy all data; if False, structure only
+            
+        Returns:
+            ID of the newly created table
+            
+        Raises:
+            ValueError: If source table doesn't exist or target already exists
+            
+        Examples:
+            # Copy structure only (fast)
+            table_id = db.copy_table("users", "users_template")
+            
+            # Copy structure and all data (slower)
+            table_id = db.copy_table("users", "users_backup", copy_data=True)
+            
+            # Create archive copy
+            table_id = db.copy_table("orders_2023", "orders_2023_archive", copy_data=True)
+        """
+        from .core import copy_table as _copy_table
+        return _copy_table(source_table, target_table, copy_data, 
+                          self.connection_info, self.backend_name)
+    
     def list_tables(self) -> List[Dict[str, Any]]:
         """
         List all tables in the database.

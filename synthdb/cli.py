@@ -310,6 +310,35 @@ def table_export(
         raise typer.Exit(1)
 
 
+@table_app.command("copy")
+def table_copy(
+    source: str = typer.Argument(..., help="Source table name", autocompletion=get_table_names),
+    target: str = typer.Argument(..., help="Target table name"),
+    with_data: bool = typer.Option(False, "--with-data", help="Copy data along with structure"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+):
+    """Copy a table's structure and optionally its data."""
+    try:
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
+        # Perform the copy
+        new_table_id = db.copy_table(source, target, copy_data=with_data)
+        
+        if with_data:
+            console.print(f"[green]Copied table '{source}' to '{target}' (including data) with ID {new_table_id}[/green]")
+        else:
+            console.print(f"[green]Copied table structure from '{source}' to '{target}' with ID {new_table_id}[/green]")
+            
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error copying table: {e}[/red]")
+        raise typer.Exit(1)
+
+
 # Table sub-commands for complex operations
 table_add_app = typer.Typer(name="add", help="Add things to tables")
 table_app.add_typer(table_add_app)

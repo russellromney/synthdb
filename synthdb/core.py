@@ -510,3 +510,208 @@ def copy_column_with_data(source_table, source_column, target_table, target_colu
     create_table_views(db_path, backend_name=backend_to_use)
     
     return new_column_id
+
+
+def copy_table(source_table: str, target_table: str, copy_data: bool = False,
+               db_path: str = 'db.db', backend_name: str = None) -> int:
+    """
+    Copy a table's structure and optionally its data.
+    
+    Args:
+        source_table: Name of table to copy from
+        target_table: Name of new table to create
+        copy_data: If True, copy all data; if False, structure only
+        db_path: Database path
+        backend_name: Backend to use
+        
+    Returns:
+        ID of the newly created table
+        
+    Raises:
+        ValueError: If source table doesn't exist or target already exists
+    """
+    from .transactions import transaction_context
+    
+    # Validate table names
+    validate_table_name(source_table)
+    validate_table_name(target_table)
+    
+    backend_to_use = backend_name or config.get_backend_for_path(db_path)
+    
+    with transaction_context(db_path, backend_to_use) as (backend, connection):
+        # Check source exists
+        try:
+            source_table_id = get_table_id(source_table, backend, connection)
+        except ValueError:
+            raise ValueError(f"Source table '{source_table}' not found")
+        
+        # Check target doesn't exist
+        try:
+            get_table_id(target_table, backend, connection)
+            # If we reach here, table exists - that's an error
+            raise ValueError(f"Target table '{target_table}' already exists")
+        except ValueError as e:
+            if "already exists" in str(e):
+                # Re-raise the "already exists" error
+                raise
+            # Otherwise, table doesn't exist - that's good
+        
+        # Phase 1: Copy structure
+        new_table_id = _copy_table_structure(
+            source_table_id, target_table, backend, connection
+        )
+        
+        if copy_data:
+            # Phase 2: Copy data
+            _copy_table_data(source_table_id, new_table_id, backend, connection)
+        
+        # Views will be recreated after transaction commits
+        
+    # Recreate views after transaction
+    from .views import create_table_views
+    create_table_views(db_path, backend_name=backend_to_use)
+    
+    return new_table_id
+
+
+def _copy_table_structure(source_table_id: int, target_name: str, 
+                         backend, connection) -> int:
+    """Copy table structure efficiently within a transaction."""
+    # 1. Get next table ID
+    cur = backend.execute(connection, 
+        "SELECT COALESCE(MAX(id), -1) + 1 as next_id FROM table_definitions")
+    result = backend.fetchone(cur)
+    new_table_id = result['next_id'] if result else 0
+    
+    # 2. Create new table entry
+    backend.execute(connection, """
+        INSERT INTO table_definitions (id, version, name)
+        VALUES (?, 0, ?)
+    """, (new_table_id, target_name))
+    
+    # 3. Get source columns
+    cur = backend.execute(connection, """
+        SELECT id, name, data_type
+        FROM column_definitions
+        WHERE table_id = ? AND deleted_at IS NULL
+        ORDER BY id
+    """, (source_table_id,))
+    source_columns = backend.fetchall(cur)
+    
+    if source_columns:
+        # 4. Get starting column ID
+        cur = backend.execute(connection, 
+            "SELECT COALESCE(MAX(id), -1) + 1 as next_id FROM column_definitions")
+        result = backend.fetchone(cur)
+        next_col_id = result['next_id'] if result else 0
+        
+        # 5. Insert all columns
+        for i, col in enumerate(source_columns):
+            backend.execute(connection, """
+                INSERT INTO column_definitions (id, table_id, version, name, data_type)
+                VALUES (?, ?, 0, ?, ?)
+            """, (next_col_id + i, new_table_id, col['name'], col['data_type']))
+    
+    return new_table_id
+
+
+def _copy_table_data(source_table_id: int, target_table_id: int, 
+                    backend, connection) -> None:
+    """Copy table data efficiently within a transaction."""
+    # 1. Get column mappings
+    column_map = _get_column_mapping(source_table_id, target_table_id, backend, connection)
+    
+    if not column_map:
+        return  # No columns to copy
+    
+    # 2. Get all source rows
+    cur = backend.execute(connection, """
+        SELECT DISTINCT row_id 
+        FROM row_metadata
+        WHERE table_id = ? AND is_deleted = 0
+    """, (source_table_id,))
+    source_rows = backend.fetchall(cur)
+    
+    if not source_rows:
+        return  # No data to copy
+    
+    # 3. Create row mappings
+    import uuid
+    row_map = {}
+    for row in source_rows:
+        old_row_id = row['row_id']
+        new_row_id = str(uuid.uuid4())
+        row_map[old_row_id] = new_row_id
+        
+        # Create row metadata
+        create_row_metadata(new_row_id, target_table_id, backend, connection)
+    
+    # 4. Copy values for each data type
+    for data_type in ['text', 'integer', 'real', 'timestamp']:
+        _copy_values_by_type(
+            source_table_id, target_table_id, column_map, row_map,
+            data_type, backend, connection
+        )
+
+
+def _get_column_mapping(source_table_id: int, target_table_id: int, 
+                       backend, connection) -> dict:
+    """Get mapping of source column IDs to target column IDs."""
+    # Get source columns
+    cur = backend.execute(connection, """
+        SELECT id, name 
+        FROM column_definitions
+        WHERE table_id = ? AND deleted_at IS NULL
+        ORDER BY id
+    """, (source_table_id,))
+    source_cols = {col['name']: col['id'] for col in backend.fetchall(cur)}
+    
+    # Get target columns
+    cur = backend.execute(connection, """
+        SELECT id, name 
+        FROM column_definitions
+        WHERE table_id = ? AND deleted_at IS NULL
+        ORDER BY id
+    """, (target_table_id,))
+    target_cols = {col['name']: col['id'] for col in backend.fetchall(cur)}
+    
+    # Create mapping (source_id -> target_id)
+    column_map = {}
+    for name, source_id in source_cols.items():
+        if name in target_cols:
+            column_map[source_id] = target_cols[name]
+    
+    return column_map
+
+
+def _copy_values_by_type(source_table_id: int, target_table_id: int,
+                        column_map: dict, row_map: dict, data_type: str,
+                        backend, connection) -> None:
+    """Copy values for a specific data type."""
+    table_name = get_type_table_name(data_type)
+    
+    # Get values to copy
+    source_col_ids = ','.join(map(str, column_map.keys()))
+    if not source_col_ids:
+        return
+    
+    cur = backend.execute(connection, f"""
+        SELECT row_id, column_id, version, value, is_current
+        FROM {table_name}
+        WHERE table_id = ? 
+          AND column_id IN ({source_col_ids})
+          AND row_id IN ({','.join(['?' for _ in row_map])})
+    """, [source_table_id] + list(row_map.keys()))
+    
+    values = backend.fetchall(cur)
+    
+    # Insert values with new IDs
+    for val in values:
+        new_row_id = row_map[val['row_id']]
+        new_col_id = column_map[val['column_id']]
+        
+        backend.execute(connection, f"""
+            INSERT INTO {table_name} (row_id, table_id, column_id, version, value, is_current)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (new_row_id, target_table_id, new_col_id, 
+              val['version'], val['value'], val['is_current']))

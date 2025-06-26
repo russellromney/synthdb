@@ -323,6 +323,44 @@ def copy_column(source_table: str, source_column: str, target_table: str, target
                                    connection_info, backend_name)
 
 
+def copy_table(source_table: str, target_table: str, copy_data: bool = False,
+              connection_info: str = 'db.db', backend_name: str = None) -> int:
+    """
+    Copy a table's structure and optionally its data.
+    
+    Creates a new table that is a copy of an existing table. Can copy just the
+    structure (table and column definitions) or include all data as well.
+    When copying data, new row IDs are generated to avoid conflicts.
+    
+    Args:
+        source_table: Name of table to copy from
+        target_table: Name of new table to create
+        copy_data: If True, copy all data; if False, structure only
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Returns:
+        ID of the newly created table
+        
+    Raises:
+        ValueError: If source table doesn't exist or target already exists
+        
+    Examples:
+        # Copy structure only (fast)
+        table_id = copy_table("users", "users_template")
+        
+        # Copy structure and all data (slower)
+        table_id = copy_table("users", "users_backup", copy_data=True)
+        
+        # Create archive copy
+        table_id = copy_table("orders_2023", "orders_2023_archive", copy_data=True)
+    """
+    from .core import copy_table as _copy_table
+    
+    return _copy_table(source_table, target_table, copy_data,
+                      connection_info, backend_name)
+
+
 def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
                 connection_info: str = 'db.db', backend_name: str = None) -> bool:
     """
