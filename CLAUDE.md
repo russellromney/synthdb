@@ -9,3 +9,5 @@ remember that this is an alpha project with nothing actually in production, so d
 don't add implementation time to plans - you (the model) will be making these changes. 
 
 never read files in the venv folder, in pycache, or pytest_cache.
+
+ignore the contents of the "tasks" file in the root directory. 
