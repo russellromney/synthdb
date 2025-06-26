@@ -346,7 +346,7 @@ def table_add_column(
 @app.command("insert")  
 def insert_cmd(
     table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    row_id: int = typer.Argument(..., help="Row ID"),
+    row_id: str = typer.Argument(..., help="Row ID"),
     column: str = typer.Argument(..., help="Column name", autocompletion=get_column_names),
     value: str = typer.Argument(..., help="Value to insert"),
     data_type: str = typer.Argument(None, help="Data type (text, integer, real, boolean, json, timestamp). If not provided, type will be inferred.", autocompletion=get_data_types),
@@ -729,7 +729,7 @@ def add_cmd(
     data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
-    row_id: int = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
+    row_id: str = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
 ):
     """Add data using the modern API (auto-generated IDs, type inference)."""
     _add_implementation(table, data, path, backend, row_id)
@@ -741,7 +741,7 @@ def insert_short(
     data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
-    row_id: int = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
+    row_id: str = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
 ):
     """Add data using the modern API (shortcut)."""
     _add_implementation(table, data, path, backend, row_id)
@@ -782,7 +782,7 @@ def _export_table_structure(db, table_name: str) -> str:
     return create_statement
 
 
-def _add_implementation(table: str, data: str, path: str, backend: str, row_id: int):
+def _add_implementation(table: str, data: str, path: str, backend: str, row_id: str):
     """Implementation for add/insert commands."""
     import json
     

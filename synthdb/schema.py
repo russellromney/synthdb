@@ -23,13 +23,6 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             )
             """,
             """
-            CREATE TABLE IF NOT EXISTS row_id_sequence (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                table_id INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """,
-            """
             CREATE TABLE IF NOT EXISTS column_definitions (
                 id INTEGER PRIMARY KEY,
                 table_id INTEGER,
@@ -42,7 +35,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS text_values (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -53,7 +46,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS integer_values (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -64,7 +57,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS real_values (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -75,7 +68,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS boolean_values (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -86,7 +79,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS json_values (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -97,7 +90,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS timestamp_values (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -110,7 +103,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
         "history_tables": [
             """
             CREATE TABLE IF NOT EXISTS text_value_history (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -119,7 +112,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS integer_value_history (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -128,7 +121,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS real_value_history (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -137,7 +130,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS boolean_value_history (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -146,7 +139,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS json_value_history (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -155,7 +148,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """,
             """
             CREATE TABLE IF NOT EXISTS timestamp_value_history (
-                row_id INTEGER,
+                row_id TEXT,
                 table_id INTEGER,
                 column_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

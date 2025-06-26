@@ -421,7 +421,7 @@ SynthDB enforces naming restrictions to protect internal functionality:
 SynthDB prevents creating tables with names that conflict with internal tables:
 
 **Core Tables:**
-- `table_definitions`, `column_definitions`, `row_id_sequence`
+- `table_definitions`, `column_definitions`
 
 **Value Storage Tables:**
 - `text_values`, `integer_values`, `real_values`, `boolean_values`, `json_values`, `timestamp_values`

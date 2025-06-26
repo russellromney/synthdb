@@ -101,11 +101,6 @@ class TestProtectedNames:
             with pytest.raises(ValueError, match=f"Table name '{table_name}' conflicts with internal SynthDB tables"):
                 self.db.create_table(table_name)
     
-    def test_protected_table_name_sequence_table(self):
-        """Test that row_id_sequence table name is protected."""
-        with pytest.raises(ValueError, match="Table name 'row_id_sequence' conflicts with internal SynthDB tables"):
-            self.db.create_table('row_id_sequence')
-    
     def test_protected_table_names_case_insensitive(self):
         """Test that protected table names are case insensitive."""
         # Test different cases for a core table

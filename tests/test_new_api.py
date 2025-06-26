@@ -75,8 +75,9 @@ class TestNewAPI:
             'age': 28
         })
         
-        assert isinstance(row_id, int)
-        assert row_id >= 0
+        assert isinstance(row_id, str)
+        assert len(row_id) == 36  # UUID4 length
+        assert row_id.count('-') == 4  # UUID4 format
 
     def test_insert_explicit_id(self):
         """Test insert with explicit row ID."""
@@ -86,7 +87,7 @@ class TestNewAPI:
         })
         
         # Insert with explicit ID
-        explicit_id = 100
+        explicit_id = "custom-100"
         result_id = self.db.insert('users', {
             'name': 'Bob'
         }, row_id=explicit_id)
@@ -99,11 +100,12 @@ class TestNewAPI:
         self.db.add_columns('users', {'name': 'text'})
         
         # Insert first row
-        self.db.insert('users', {'name': 'Alice'}, row_id=10)
+        test_id = "test-10"
+        self.db.insert('users', {'name': 'Alice'}, row_id=test_id)
         
         # Try to insert with same ID and column
-        with pytest.raises(ValueError, match="Row ID 10 already has a value for column 'name'"):
-            self.db.insert('users', {'name': 'Bob'}, row_id=10)
+        with pytest.raises(ValueError, match="Row ID test-10 already has a value for column 'name'"):
+            self.db.insert('users', {'name': 'Bob'}, row_id=test_id)
 
     def test_insert_invalid_column(self):
         """Test error handling for invalid column names."""

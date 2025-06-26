@@ -203,8 +203,7 @@ class SQLValidator:
         'boolean_values', 'json_values', 'timestamp_values',
         'text_value_history', 'integer_value_history',
         'real_value_history', 'boolean_value_history',
-        'json_value_history', 'timestamp_value_history',
-        'row_id_sequence'
+        'json_value_history', 'timestamp_value_history'
     }
     
     def validate_query(self, sql: str) -> ValidationResult:

@@ -172,7 +172,7 @@ class Connection:
         return column_ids
     
     def insert(self, table_name: str, data: Union[Dict[str, Any], str], 
-               value: Any = None, force_type: str = None, row_id: int = None) -> int:
+               value: Any = None, force_type: str = None, row_id: Union[str, int] = None) -> str:
         """
         Insert data into a table with automatic or explicit ID management.
         
@@ -223,7 +223,7 @@ class Connection:
         """
         return query_view(table_name, where, self.connection_info, self.backend_name)
     
-    def upsert(self, table_name: str, data: Dict[str, Any], row_id: int) -> int:
+    def upsert(self, table_name: str, data: Dict[str, Any], row_id: Union[str, int]) -> str:
         """
         Insert or update data for a specific row_id.
         

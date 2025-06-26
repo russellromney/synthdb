@@ -86,8 +86,9 @@ class TestSynthDBConnection:
             'email': 'john@example.com'
         })
         
-        assert isinstance(user_id, int)
-        assert user_id > 0
+        assert isinstance(user_id, str)
+        assert len(user_id) == 36  # UUID4 length
+        assert user_id.count('-') == 4  # UUID4 format
         
         # Verify data was inserted
         users = self.db.query('users')
@@ -103,13 +104,14 @@ class TestSynthDBConnection:
         self.db.add_columns('users', {'name': 'text'})
         
         # Insert with explicit ID
-        result_id = self.db.insert('users', {'name': 'Jane Doe'}, row_id=100)
-        assert result_id == 100
+        explicit_id = "custom-uuid-100"
+        result_id = self.db.insert('users', {'name': 'Jane Doe'}, row_id=explicit_id)
+        assert result_id == explicit_id
         
         # Verify data was inserted
         users = self.db.query('users')
         assert len(users) == 1
-        assert users[0]['row_id'] == 100
+        assert users[0]['row_id'] == explicit_id
         assert users[0]['name'] == 'Jane Doe'
     
     def test_insert_single_column(self):

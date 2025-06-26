@@ -9,8 +9,7 @@ PROTECTED_COLUMN_NAMES = {
 PROTECTED_TABLE_NAMES = {
     # Core metadata tables
     'table_definitions',
-    'column_definitions', 
-    'row_id_sequence',
+    'column_definitions',
     
     # Value storage tables
     'text_values',
@@ -59,4 +58,25 @@ def validate_table_name(table_name: str) -> None:
         raise ValueError(
             f"Table name '{table_name}' conflicts with internal SynthDB tables and cannot be used. "
             f"Please choose a different name."
+        )
+
+
+def validate_row_id(row_id: str) -> None:
+    """
+    Validate that a row_id is a valid UUID format.
+    
+    Args:
+        row_id: The row ID to validate
+        
+    Raises:
+        ValueError: If the row_id is not a valid UUID format
+    """
+    import uuid
+    try:
+        # Try to parse as UUID - this will raise ValueError if invalid
+        uuid.UUID(row_id)
+    except (ValueError, AttributeError):
+        raise ValueError(
+            f"Row ID '{row_id}' is not a valid UUID format. "
+            f"Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         )

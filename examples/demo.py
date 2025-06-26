@@ -183,7 +183,7 @@ def main_demo():
     print(f"\n📈 Final user count: {len(final_users)}")
     
     print("\n📋 Complete User Database:")
-    print("-" * 60)
+    print("-" * 80)
     for user in final_users:
         name = user.get('name') or 'N/A'
         email = user.get('email') or 'N/A'
@@ -192,7 +192,8 @@ def main_demo():
         active = '✅' if user.get('active') == 'true' else '❌'
         age_str = str(age) if age is not None else 'N/A'
         salary_str = str(salary) if salary is not None else 'N/A'
-        print(f"   {user['row_id']:3d} | {name:20} | {email:20} | {age_str:3} | ${salary_str:8} | {active}")
+        row_id_short = user['row_id'][:8] + "..." if len(user['row_id']) > 8 else user['row_id']
+        print(f"   {row_id_short:12} | {name:20} | {email:20} | {age_str:3} | ${salary_str:8} | {active}")
     
     print("\n8️⃣ Column Copying Operations")
     print("-" * 31)

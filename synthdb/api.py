@@ -13,7 +13,7 @@ from .constants import validate_column_name
 
 
 
-def _column_value_exists(backend, connection, table_id: int, row_id: int, column_id: int) -> bool:
+def _column_value_exists(backend, connection, table_id: int, row_id: Union[str, int], column_id: int) -> bool:
     """Check if a specific (row_id, column_id) combination already has a value."""
     type_tables = ['text_values', 'integer_values', 'real_values', 
                    'boolean_values', 'json_values', 'timestamp_values']
@@ -22,7 +22,7 @@ def _column_value_exists(backend, connection, table_id: int, row_id: int, column
         try:
             cur = backend.execute(connection, 
                 f"SELECT 1 FROM {type_table} WHERE table_id = ? AND row_id = ? AND column_id = ? AND deleted_at IS NULL LIMIT 1", 
-                (table_id, row_id, column_id))
+                (table_id, str(row_id), column_id))
             result = backend.fetchone(cur)
             if result:
                 return True
@@ -33,24 +33,15 @@ def _column_value_exists(backend, connection, table_id: int, row_id: int, column
     return False
 
 
-def _get_next_row_id(backend, connection) -> int:
-    """Generate a new globally unique row ID using autoincrement."""
-    # Use RETURNING clause if supported for optimal performance
-    if backend.supports_returning():
-        cur = backend.execute(connection,
-            "INSERT INTO row_id_sequence (table_id) VALUES (NULL) RETURNING id")
-        result = backend.fetchone(cur)
-        return result['id']
-    else:
-        # Fallback to INSERT + lastrowid
-        cur = backend.execute(connection, 
-            "INSERT INTO row_id_sequence (table_id) VALUES (NULL)")
-        return cur.lastrowid
+def _get_next_row_id() -> str:
+    """Generate a new globally unique row ID using UUID4."""
+    import uuid
+    return str(uuid.uuid4())
 
 
 def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None, 
           connection_info: str = 'db.db', backend_name: str = None, 
-          force_type: str = None, row_id: int = None) -> int:
+          force_type: str = None, row_id: Union[str, int] = None) -> str:
     """
     Insert data into a table with automatic or explicit ID management and type inference.
     
@@ -105,10 +96,10 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
     # Handle row ID - explicit or auto-generated
     with transaction_context(connection_info, backend_name) as (backend, connection):
         if row_id is not None:
-            final_row_id = row_id
+            final_row_id = str(row_id)  # Convert to string for consistency
         else:
             # Auto-generate next available row ID
-            final_row_id = _get_next_row_id(backend, connection)
+            final_row_id = _get_next_row_id()
         
         # Insert each column value with enhanced error handling
         for col_name, col_value in column_data.items():
@@ -231,8 +222,8 @@ def add_columns(table_name: str, columns: Dict[str, Union[str, Any]],
     return column_ids
 
 
-def upsert(table_name: str, data: Dict[str, Any], row_id: int,
-          connection_info: str = 'db.db', backend_name: str = None) -> int:
+def upsert(table_name: str, data: Dict[str, Any], row_id: Union[str, int],
+          connection_info: str = 'db.db', backend_name: str = None) -> str:
     """
     Insert or update data for a specific row_id.
     
@@ -257,7 +248,8 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: int,
         upsert("users", {"name": "John Updated", "email": "john.new@example.com"}, row_id=1)
     """
     # Check if the specific row_id exists
-    existing_rows = query(table_name, f"row_id = {row_id}", connection_info, backend_name)
+    row_id_str = str(row_id)  # Convert to string for consistency
+    existing_rows = query(table_name, f"row_id = '{row_id_str}'", connection_info, backend_name)
     
     if existing_rows:
         # Update existing row with specified row_id
@@ -277,11 +269,11 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: int,
                     
                     from .core import upsert_typed_value
                     upsert_typed_value(
-                        row_id, table_id, column_id, col_value, data_type,
+                        row_id_str, table_id, column_id, col_value, data_type,
                         backend=backend, connection=connection
                     )
         
-        return row_id
+        return row_id_str
     else:
         # Insert new row with the specified row_id
         return insert(table_name, data, connection_info=connection_info, backend_name=backend_name, row_id=row_id)
