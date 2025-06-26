@@ -35,7 +35,7 @@ def get_data_types(incomplete: str) -> List[str]:
 
 def get_backends(incomplete: str) -> List[str]:
     """Get available backends for auto-completion."""
-    backends = ["limbo", "sqlite", "postgresql", "mysql"]
+    backends = ["limbo", "sqlite"]
     return [b for b in backends if b.startswith(incomplete)]
 
 

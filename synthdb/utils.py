@@ -28,55 +28,6 @@ def query_view(view_name, where_clause=None, db_path: str = 'db.db', backend_nam
         raise e
 
 
-def export_table_structure(table_name, db_path: str = 'db.db', backend_name: str = None):
-    """Export the structure of a table in SQLite CREATE TABLE format"""
-    # Get the appropriate backend
-    backend_to_use = backend_name or config.get_backend_for_path(db_path)
-    backend = get_backend(backend_to_use)
-    
-    db = backend.connect(db_path)
-    
-    try:
-        # Get table ID
-        cur = backend.execute(db, "SELECT id FROM table_definitions WHERE name = ? AND deleted_at IS NULL", (table_name,))
-        result = backend.fetchone(cur)
-        if not result:
-            raise ValueError(f"Table '{table_name}' not found")
-        table_id = result['id']
-        
-        # Get columns for this table
-        cur = backend.execute(db, """
-            SELECT name, data_type FROM column_definitions 
-            WHERE table_id = ? AND deleted_at IS NULL
-            ORDER BY id
-        """, (table_id,))
-        columns = backend.fetchall(cur)
-        
-    finally:
-        backend.close(db)
-    
-    if not columns:
-        return f"-- Table '{table_name}' has no columns"
-    
-    # Build CREATE TABLE statement
-    column_defs = []
-    for col in columns:
-        col_name = col['name']
-        data_type = col['data_type']
-        # Map our internal types to SQLite types
-        sqlite_type = {
-            'text': 'TEXT',
-            'integer': 'INTEGER', 
-            'real': 'REAL',
-            'boolean': 'INTEGER',  # SQLite doesn't have native boolean
-            'json': 'TEXT',
-            'timestamp': 'TIMESTAMP'
-        }.get(data_type, 'TEXT')
-        
-        column_defs.append(f"    {col_name} {sqlite_type}")
-    
-    create_statement = f"CREATE TABLE {table_name} (\n" + ",\n".join(column_defs) + "\n);"
-    return create_statement
 
 
 def list_tables(db_path: str = 'db.db', backend_name: str = None):

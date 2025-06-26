@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 from pathlib import Path
 from .inference import create_table_from_data, suggest_column_types
 from .utils import list_tables, list_columns
-from . import add_column, insert_typed_value
+from .core import add_column, insert_typed_value
 
 
 def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]], 

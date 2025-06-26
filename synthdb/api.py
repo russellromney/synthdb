@@ -1,7 +1,7 @@
 """
 Modern, intuitive API for SynthDB operations.
 
-This module provides the new, user-friendly API while maintaining backward compatibility.
+This module provides the core API functions used by the Connection class.
 """
 
 from typing import Dict, Any, Union, Optional, List
@@ -32,24 +32,20 @@ def _row_id_exists(backend, connection, table_id: int, row_id: int) -> bool:
 
 
 def _get_next_row_id(backend, connection, table_id: int) -> int:
-    """Get the next available row ID for a table."""
-    max_row_id = 0
-    type_tables = ['text_values', 'integer_values', 'real_values', 
-                   'boolean_values', 'json_values', 'timestamp_values']
-    
-    for type_table in type_tables:
-        try:
-            cur = backend.execute(connection, 
-                f"SELECT MAX(row_id) as max_id FROM {type_table} WHERE table_id = ?", 
-                (table_id,))
-            result = backend.fetchone(cur)
-            if result and result['max_id'] is not None:
-                max_row_id = max(max_row_id, result['max_id'])
-        except Exception:
-            # Table might not exist yet, ignore
-            continue
-    
-    return max_row_id + 1
+    """Generate a new row ID using the database sequence table."""
+    # Use RETURNING clause if supported for optimal performance
+    if backend.supports_returning():
+        cur = backend.execute(connection,
+            "INSERT INTO row_id_sequence (table_id) VALUES (?) RETURNING id",
+            (table_id,))
+        result = backend.fetchone(cur)
+        return result['id']
+    else:
+        # Fallback to INSERT + lastrowid
+        cur = backend.execute(connection, 
+            "INSERT INTO row_id_sequence (table_id) VALUES (?)", 
+            (table_id,))
+        return cur.lastrowid
 
 
 def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None, 
@@ -109,7 +105,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
     # Handle row ID - explicit or auto-generated
     with transaction_context(connection_info, backend_name) as (backend, connection):
         if row_id is not None:
-            # Validate explicit row ID doesn't already exist
+            # Validate explicit row ID doesn't already exist (for new row creation)
             if _row_id_exists(backend, connection, table_id, row_id):
                 raise ValueError(f"Row ID {row_id} already exists in table '{table_name}'")
             final_row_id = row_id
@@ -300,19 +296,3 @@ def upsert(table_name: str, data: Dict[str, Any], key_columns: List[str],
         return insert(table_name, data, connection_info=connection_info, backend_name=backend_name, row_id=row_id)
 
 
-# Backward compatibility aliases
-def insert_typed_value(*args, **kwargs):
-    """Backward compatibility alias for insert_typed_value."""
-    from .core import insert_typed_value as _insert_typed_value
-    return _insert_typed_value(*args, **kwargs)
-
-
-def query_view(*args, **kwargs):
-    """Backward compatibility alias for query_view."""
-    from .utils import query_view as _query_view
-    return _query_view(*args, **kwargs)
-
-
-def add_column(*args, **kwargs):
-    """Backward compatibility alias for add_column."""
-    return _add_column(*args, **kwargs)

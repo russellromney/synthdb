@@ -192,20 +192,12 @@ class ConfigManager:
                 'path': './local.db'
             },
             'development': {
-                'backend': 'postgresql',
-                'host': 'localhost',
-                'port': 5432,
-                'database': 'synthdb_dev',
-                'user': 'developer',
-                'password': '${DEV_DB_PASSWORD}'  # Environment variable
+                'backend': 'sqlite',
+                'path': './development.db'
             },
             'production': {
-                'backend': 'postgresql',
-                'host': 'production-db.example.com',  # Replace with your production host
-                'port': 5432,
-                'database': 'synthdb_prod',
-                'user': 'app_user',
-                'password': '${SYNTHDB_PASSWORD}'  # Environment variable
+                'backend': 'sqlite',
+                'path': './production.db'
             }
         }
         

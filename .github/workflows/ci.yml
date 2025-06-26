@@ -70,33 +70,6 @@ jobs:
   integration-test:
     runs-on: ubuntu-latest
     needs: test
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: synthdb_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: mysql
-          MYSQL_DATABASE: synthdb_test
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-        ports:
-          - 3306:3306
 
     steps:
     - uses: actions/checkout@v4
@@ -104,32 +77,25 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v3
     
-    - name: Install dependencies with all extras
+    - name: Install dependencies
       run: |
-        uv sync --all-extras
+        uv sync
     
     - name: Test SQLite backend
       run: |
         uv run python -c "
         import synthdb
-        synthdb.make_db('test.db', backend_name='sqlite')
+        db = synthdb.connect('test.db', backend='sqlite')
         print('✅ SQLite backend works')
         "
     
-    - name: Test PostgreSQL backend
-      env:
-        PGPASSWORD: postgres
+    - name: Test Limbo backend (if available)
       run: |
         uv run python -c "
         import synthdb
-        synthdb.make_db('postgresql://postgres:postgres@localhost:5432/synthdb_test', backend_name='postgresql')
-        print('✅ PostgreSQL backend works')
-        "
-    
-    - name: Test MySQL backend
-      run: |
-        uv run python -c "
-        import synthdb
-        synthdb.make_db('mysql://root:mysql@localhost:3306/synthdb_test', backend_name='mysql')
-        print('✅ MySQL backend works')
+        try:
+            db = synthdb.connect('test.limbo', backend='limbo')
+            print('✅ Limbo backend works')
+        except ImportError:
+            print('⚠️ Limbo backend not available, skipping')
         "

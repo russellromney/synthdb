@@ -3,7 +3,7 @@
 import os
 import tempfile
 import pytest
-from synthdb import make_db
+import synthdb
 
 
 @pytest.fixture
@@ -12,8 +12,8 @@ def temp_db():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = tmp.name
     
-    # Initialize the database
-    make_db(db_path)
+    # Initialize the database using connection API
+    db = synthdb.connect(db_path)
     
     yield db_path
     

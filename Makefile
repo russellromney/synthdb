@@ -32,15 +32,9 @@ clean: ## Clean build artifacts
 ci: ## Run full CI workflow (lint + typecheck + test + build)
 	python scripts/dev.py ci
 
-# Database-specific targets
-install-postgresql: ## Install with PostgreSQL support
-	uv sync --extra postgresql
-
-install-mysql: ## Install with MySQL support  
-	uv sync --extra mysql
-
-install-all: ## Install with all database backends
-	uv sync --extra all
+# Database-specific targets  
+install-config: ## Install with configuration file support
+	uv sync --extra config
 
 # Quick development workflow
 quick-test: ## Run tests quickly (no coverage)

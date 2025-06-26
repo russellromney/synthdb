@@ -1,14 +1,17 @@
 """Tests for SynthDB view creation."""
 
 import sqlite3
-from synthdb import create_table, add_column, insert_typed_value
+import tempfile
+import os
+import synthdb
 from synthdb.views import create_table_views
 
 
 def test_create_empty_table_view(temp_db):
     """Test that views are created for tables with no columns"""
-    # Create table with no columns
-    create_table("empty_table", temp_db)
+    # Create table with no columns using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("empty_table")
     
     # Verify view was created
     db = sqlite3.connect(temp_db)
@@ -29,20 +32,27 @@ def test_create_empty_table_view(temp_db):
 
 def test_create_table_view_with_data(temp_db):
     """Test that views work correctly with actual data"""
-    # Setup table with columns and data
-    table_id = create_table("products", temp_db)
-    name_col = add_column("products", "name", "text", temp_db)
-    price_col = add_column("products", "price", "real", temp_db)
-    active_col = add_column("products", "active", "boolean", temp_db)
+    # Setup table with columns and data using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("products")
+    db.add_columns("products", {
+        "name": "text",
+        "price": "real", 
+        "active": "boolean"
+    })
     
     # Insert test data
-    insert_typed_value(0, table_id, name_col, "Widget", "text", temp_db)
-    insert_typed_value(0, table_id, price_col, 19.99, "real", temp_db)
-    insert_typed_value(0, table_id, active_col, True, "boolean", temp_db)
+    db.insert("products", {
+        "name": "Widget",
+        "price": 19.99,
+        "active": True
+    }, row_id=0)
     
-    insert_typed_value(1, table_id, name_col, "Gadget", "text", temp_db)
-    insert_typed_value(1, table_id, price_col, 29.99, "real", temp_db)
-    insert_typed_value(1, table_id, active_col, False, "boolean", temp_db)
+    db.insert("products", {
+        "name": "Gadget", 
+        "price": 29.99,
+        "active": False
+    }, row_id=1)
     
     # Query the view
     db = sqlite3.connect(temp_db)
@@ -81,12 +91,13 @@ def test_create_table_view_with_data(temp_db):
 
 def test_view_recreated_after_column_addition(temp_db):
     """Test that views are updated when columns are added"""
-    # Create table and initial column
-    table_id = create_table("products", temp_db)
-    name_col = add_column("products", "name", "text", temp_db)
+    # Create table and initial column using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("products")
+    db.add_columns("products", {"name": "text"})
     
     # Insert some data
-    insert_typed_value(0, table_id, name_col, "Widget", "text", temp_db)
+    db.insert("products", {"name": "Widget"}, row_id=0)
     
     # Query initial view
     db = sqlite3.connect(temp_db)
@@ -95,9 +106,10 @@ def test_view_recreated_after_column_addition(temp_db):
     initial_columns = [row[1] for row in cur.fetchall()]
     db.close()
     
-    # Add new column
-    price_col = add_column("products", "price", "real", temp_db)
-    insert_typed_value(0, table_id, price_col, 19.99, "real", temp_db)
+    # Add new column using connection API
+    synthdb_conn = synthdb.connect(temp_db, backend='sqlite')
+    synthdb_conn.add_columns("products", {"price": "real"})
+    synthdb_conn.insert("products", {"price": 19.99})
     
     # Query updated view
     db = sqlite3.connect(temp_db)

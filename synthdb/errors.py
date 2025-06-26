@@ -109,22 +109,7 @@ class ConnectionError(SynthDBError):
     def __init__(self, backend: str, connection_info: Any, original_error: Exception = None):
         suggestions = []
         
-        if backend in ("postgresql", "mysql"):
-            suggestions.extend([
-                "Check that the database server is running",
-                "Verify connection parameters (host, port, database, user, password)",
-                "Ensure the database exists and you have access permissions",
-                f"Install the required package: pip install \"synthdb[{backend}]\""
-            ])
-            
-            if "password" in str(original_error).lower():
-                suggestions.append("Check your password and authentication method")
-            elif "host" in str(original_error).lower():
-                suggestions.append("Verify the host address and network connectivity")
-            elif "database" in str(original_error).lower():
-                suggestions.append("Make sure the database name exists on the server")
-                
-        elif backend in ("limbo", "sqlite"):
+        if backend in ("limbo", "sqlite"):
             suggestions.extend([
                 "Check that the file path is accessible",
                 "Verify you have write permissions to the directory",

@@ -7,10 +7,8 @@ from rich.table import Table
 from rich.syntax import Syntax
 from pathlib import Path
 
-from . import (
-    make_db, create_table, add_column, insert_typed_value,
-    query_view, export_table_structure, list_tables, list_columns
-)
+from . import connect
+from .core import insert_typed_value
 from .inference import smart_insert, infer_type
 from .bulk import load_csv, load_json, export_csv, export_json, bulk_insert_rows
 from .errors import enhance_cli_error, TableNotFoundError, ColumnNotFoundError, InvalidDataTypeError
@@ -21,12 +19,9 @@ from .completion import (
     get_config_files, complete_file_path, get_output_formats
 )
 from .config import set_default_backend, get_default_backend
-from .backends import parse_connection_string
 
 
-def build_connection_info(path: str, backend: str = None, host: str = None, port: int = None, 
-                         database: str = None, user: str = None, password: str = None, 
-                         connection_name: str = None):
+def build_connection_info(path: str, backend: str = None, connection_name: str = None):
     """Build connection info from CLI parameters."""
     # Check for named connection first
     if connection_name:
@@ -35,31 +30,17 @@ def build_connection_info(path: str, backend: str = None, host: str = None, port
         except Exception as e:
             console.print(f"[yellow]Warning: Could not load connection '{connection_name}': {e}[/yellow]")
     
-    if backend in ("postgresql", "mysql") and any([host, port, database, user, password]):
-        # Use connection parameters
-        return {
-            'backend': backend,
-            'host': host or 'localhost',
-            'port': port or (5432 if backend == 'postgresql' else 3306),
-            'database': database or 'synthdb',
-            'user': user or ('postgres' if backend == 'postgresql' else 'root'),
-            'password': password or ''
-        }
-    elif '://' in path:
-        # Connection string format
-        return path
-    else:
-        # File path (check config for defaults)
-        try:
-            config = config_manager.get_config()
-            if path == "db.db":  # Default value
-                path = config['database']['default_path']
-            if backend is None:
-                backend = config['database']['default_backend']
-        except Exception:
-            pass  # Use provided values if config fails
-        
-        return path
+    # File path (check config for defaults)
+    try:
+        config = config_manager.get_config()
+        if path == "db.db":  # Default value
+            path = config['database']['default_path']
+        if backend is None:
+            backend = config['database']['default_backend']
+    except Exception:
+        pass  # Use provided values if config fails
+    
+    return path
 
 app = typer.Typer(
     name="synthdb",
@@ -68,60 +49,49 @@ app = typer.Typer(
 )
 console = Console()
 
-# Create noun-based subcommands
+# Create noun-based subcommands with shortcuts
 database_app = typer.Typer(name="database", help="Database operations")
 table_app = typer.Typer(name="table", help="Table operations")
 config_app = typer.Typer(name="config", help="Configuration management")
 
+# Add main commands
 app.add_typer(database_app)
 app.add_typer(table_app)
 app.add_typer(config_app)
+
+# Add shortcuts
+app.add_typer(database_app, name="db", help="Database operations (shortcut)")
+app.add_typer(table_app, name="t", help="Table operations (shortcut)")
 
 # Database commands
 @database_app.command("init")
 def database_init(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path or connection string"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing database"),
-    backend: str = typer.Option("limbo", "--backend", "-b", help="Database backend (limbo, sqlite, postgresql, mysql)", autocompletion=get_backends),
-    host: str = typer.Option(None, "--host", help="Database host (for network backends)"),
-    port: int = typer.Option(None, "--port", help="Database port (for network backends)"),
-    database: str = typer.Option(None, "--database", "-d", help="Database name (for network backends)"),
-    user: str = typer.Option(None, "--user", "-u", help="Database user (for network backends)"),
-    password: str = typer.Option(None, "--password", help="Database password (for network backends)"),
+    backend: str = typer.Option("limbo", "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
 ):
     """Initialize a new SynthDB database."""
     
     # Validate backend
-    if backend not in ("limbo", "sqlite", "postgresql", "mysql"):
-        console.print(f"[red]Invalid backend '{backend}'. Supported: limbo, sqlite, postgresql, mysql[/red]")
+    if backend not in ("limbo", "sqlite"):
+        console.print(f"[red]Invalid backend '{backend}'. Supported: limbo, sqlite[/red]")
         raise typer.Exit(1)
     
     # Build connection info
-    connection_info = build_connection_info(path, backend, host, port, database, user, password)
+    connection_info = build_connection_info(path, backend)
     
-    # Handle connection string backend detection
-    if '://' in path:
-        detected_backend, _ = parse_connection_string(path)
-        if backend != detected_backend:
-            console.print(f"[yellow]Warning: Backend mismatch. Using {detected_backend} from connection string[/yellow]")
-            backend = detected_backend
+    # Check file overwrite for file-based backends
+    from pathlib import Path
+    db_file = Path(path)
     
-    # Check file overwrite for local backends
-    if backend in ("limbo", "sqlite"):
-        from pathlib import Path
-        db_file = Path(path)
-        
-        if db_file.exists() and not force:
-            console.print(f"[red]Database file '{path}' already exists. Use --force to overwrite.[/red]")
-            raise typer.Exit(1)
+    if db_file.exists() and not force:
+        console.print(f"[red]Database file '{path}' already exists. Use --force to overwrite.[/red]")
+        raise typer.Exit(1)
     
     try:
-        make_db(connection_info, backend_name=backend)
+        db = connect(connection_info, backend=backend)
         
-        if isinstance(connection_info, dict):
-            location = f"{connection_info['host']}:{connection_info['port']}/{connection_info['database']}"
-        else:
-            location = path
+        location = path
         
         console.print(f"[green]Successfully initialized database at '{location}' using {backend} backend[/green]")
     except Exception as e:
@@ -136,7 +106,9 @@ def database_info(
 ):
     """Show database information."""
     try:
-        tables = list_tables(path, backend_name=backend)
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        tables = db.list_tables()
         
         console.print(f"[bold]Database:[/bold] {path}")
         console.print(f"[bold]Tables:[/bold] {len(tables)}")
@@ -148,7 +120,7 @@ def database_info(
             table_display.add_column("Created At", style="yellow")
             
             for table in tables:
-                columns = list_columns(table['name'], path, backend_name=backend)
+                columns = db.list_columns(table['name'])
                 table_display.add_row(
                     table['name'],
                     str(len(columns)),
@@ -173,7 +145,9 @@ def table_create(
 ):
     """Create a new table."""
     try:
-        table_id = create_table(name, path, backend_name=backend)
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        table_id = db.create_table(name)
         console.print(f"[green]Created table '{name}' with ID {table_id}[/green]")
     except Exception as e:
         console.print(f"[red]Error creating table: {e}[/red]")
@@ -187,10 +161,28 @@ def table_list(
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
 ):
     """List all tables or columns in a specific table."""
+    _list_implementation(columns, path, backend)
+
+
+@app.command("l")
+def list_short(
+    columns: Optional[str] = typer.Argument(None, help="Show columns for specific table", autocompletion=get_table_names),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+):
+    """List all tables or columns in a specific table (shortcut)."""
+    _list_implementation(columns, path, backend)
+
+
+def _list_implementation(columns: Optional[str], path: str, backend: str):
+    """Implementation for list commands."""
     try:
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
         if columns:
             # List columns for specific table
-            table_columns = list_columns(columns, path, backend_name=backend)
+            table_columns = db.list_columns(columns)
             
             if not table_columns:
                 console.print(f"[yellow]No columns found in table '{columns}'[/yellow]")
@@ -213,7 +205,7 @@ def table_list(
             console.print(table_display)
         else:
             # List all tables
-            tables = list_tables(path, backend_name=backend)
+            tables = db.list_tables()
             
             if not tables:
                 console.print("[yellow]No tables found[/yellow]")
@@ -226,7 +218,7 @@ def table_list(
             table_display.add_column("Created At", style="yellow")
             
             for table in tables:
-                columns_count = len(list_columns(table['name'], path, backend_name=backend))
+                columns_count = len(db.list_columns(table['name']))
                 table_display.add_row(
                     str(table['id']),
                     table['name'],
@@ -252,15 +244,18 @@ def table_show(
 ):
     """Show detailed table information."""
     try:
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
         # Get table info
-        tables = list_tables(path, backend_name=backend)
+        tables = db.list_tables()
         table_info = next((t for t in tables if t['name'] == name), None)
         if not table_info:
             console.print(f"[red]Table '{name}' not found[/red]")
             raise typer.Exit(1)
         
         # Get columns
-        columns = list_columns(name, path, backend_name=backend)
+        columns = db.list_columns(name)
         
         console.print(f"[bold]Table:[/bold] {name}")
         console.print(f"[bold]ID:[/bold] {table_info['id']}")
@@ -298,7 +293,10 @@ def table_export(
 ):
     """Export table structure as CREATE TABLE SQL."""
     try:
-        sql = export_table_structure(name, path, backend_name=backend)
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
+        sql = _export_table_structure(db, name)
         
         # Display with syntax highlighting
         syntax = Syntax(sql, "sql", theme="monokai", line_numbers=False)
@@ -331,7 +329,10 @@ def table_add_column(
         raise typer.Exit(1)
     
     try:
-        column_id = add_column(table, name, data_type, path, backend_name=backend)
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        column_ids = db.add_columns(table, {name: data_type})
+        column_id = column_ids[name]
         console.print(f"[green]Added column '{name}' ({data_type}) to table '{table}' with ID {column_id}[/green]")
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
@@ -353,8 +354,16 @@ def insert_cmd(
     auto: bool = typer.Option(False, "--auto", "-a", help="Automatically infer data type"),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
 ):
-    """Insert a value into a specific table/row/column (LEGACY - see 'add' command for modern API)."""
-    """Insert a value into a specific table/row/column."""
+    """Insert a value into a specific table/row/column.
+    
+    For bulk operations with auto-generated IDs, use the Python API:
+    
+        import synthdb
+        db = synthdb.connect('db.db')
+        row_id = db.insert('table', {'col1': 'val1', 'col2': 'val2'})
+    
+    Or use the 'add' command for JSON input with auto-generated IDs.
+    """
     # Build connection info
     connection_info = build_connection_info(path, backend)
     
@@ -391,13 +400,14 @@ def insert_cmd(
         
         # Get table and column IDs with enhanced error handling
         try:
-            tables = list_tables(connection_info, backend_name=backend)
+            db = connect(connection_info, backend)
+            tables = db.list_tables()
             table_info = next((t for t in tables if t['name'] == table), None)
             if not table_info:
                 available_tables = [t['name'] for t in tables]
                 raise TableNotFoundError(table, available_tables)
             
-            columns = list_columns(table, connection_info, backend_name=backend)
+            columns = db.list_columns(table)
             column_info = next((c for c in columns if c['name'] == column), None)
             if not column_info:
                 available_columns = [c['name'] for c in columns]
@@ -407,7 +417,9 @@ def insert_cmd(
             console.print(f"[red]{e}[/red]")
             raise typer.Exit(1)
         
-        insert_typed_value(row_id, table_info['id'], column_info['id'], converted_value, data_type, connection_info, backend_name=backend)
+        # Use connection API for single column insert
+        db = connect(connection_info, backend)
+        db.insert(table, column, converted_value, row_id=row_id, force_type=data_type)
         console.print(f"[green]Inserted value '{value}' into {table}.{column} for row {row_id}[/green]")
         
     except ValueError as e:
@@ -427,8 +439,27 @@ def query_cmd(
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
 ):
     """Query data from a table."""
+    _query_implementation(table, where, format, path, backend)
+
+
+@app.command("q")
+def query_short(
+    table: str = typer.Argument(..., help="Table name to query", autocompletion=get_table_names),
+    where: Optional[str] = typer.Option(None, "--where", "-w", help="WHERE clause"),
+    format: str = typer.Option("table", "--format", "-f", help="Output format: table, json", autocompletion=get_output_formats),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+):
+    """Query data from a table (shortcut)."""
+    _query_implementation(table, where, format, path, backend)
+
+
+def _query_implementation(table: str, where: Optional[str], format: str, path: str, backend: str):
+    """Query data from a table."""
     try:
-        results = query_view(table, where, path, backend_name=backend)
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        results = db.query(table, where)
         
         if not results:
             console.print(f"[yellow]No results found in table '{table}'[/yellow]")
@@ -646,10 +677,8 @@ def config_connections():
         for name, conn_info in connections.items():
             backend = conn_info.get('backend', 'unknown')
             
-            if backend in ('postgresql', 'mysql'):
-                details = f"{conn_info.get('host', 'localhost')}:{conn_info.get('port', 'default')}/{conn_info.get('database', 'N/A')}"
-            else:
-                details = conn_info.get('path', 'N/A')
+            # Only local file backends are supported
+            details = conn_info.get('path', 'N/A')
             
             table_display.add_row(name, backend, details)
         
@@ -697,12 +726,64 @@ def config_test(
 @app.command("add")
 def add_cmd(
     table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    data: str = typer.Argument(..., help="JSON data to insert"),
+    data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
     row_id: int = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
 ):
     """Add data using the modern API (auto-generated IDs, type inference)."""
+    _add_implementation(table, data, path, backend, row_id)
+
+
+@app.command("i")
+def insert_short(
+    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    row_id: int = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
+):
+    """Add data using the modern API (shortcut)."""
+    _add_implementation(table, data, path, backend, row_id)
+
+
+def _export_table_structure(db, table_name: str) -> str:
+    """Export table structure using connection API."""
+    # Check if table exists
+    tables = db.list_tables()
+    table_info = next((t for t in tables if t['name'] == table_name), None)
+    if not table_info:
+        raise ValueError(f"Table '{table_name}' not found")
+    
+    # Get columns for this table
+    columns = db.list_columns(table_name)
+    
+    if not columns:
+        return f"-- Table '{table_name}' has no columns"
+    
+    # Build CREATE TABLE statement
+    column_defs = []
+    for col in columns:
+        col_name = col['name']
+        data_type = col['data_type']
+        # Map our internal types to SQLite types
+        sqlite_type = {
+            'text': 'TEXT',
+            'integer': 'INTEGER', 
+            'real': 'REAL',
+            'boolean': 'INTEGER',  # SQLite doesn't have native boolean
+            'json': 'TEXT',
+            'timestamp': 'TIMESTAMP'
+        }.get(data_type, 'TEXT')
+        
+        column_defs.append(f"    {col_name} {sqlite_type}")
+    
+    create_statement = f"CREATE TABLE {table_name} (\n" + ",\n".join(column_defs) + "\n);"
+    return create_statement
+
+
+def _add_implementation(table: str, data: str, path: str, backend: str, row_id: int):
+    """Implementation for add/insert commands."""
     import json
     
     try:
@@ -711,6 +792,7 @@ def add_cmd(
             data_dict = json.loads(data)
         except json.JSONDecodeError as e:
             console.print(f"[red]Invalid JSON data: {e}[/red]")
+            console.print("[blue]Example: '{\"name\": \"Widget\", \"price\": 19.99}'[/blue]")
             raise typer.Exit(1)
         
         # Build connection info

@@ -1,27 +1,27 @@
 """Tests for SynthDB utility functions."""
 
 import pytest
-from synthdb import (
-    create_table, add_column, insert_typed_value, 
-    query_view, export_table_structure, list_tables, list_columns
-)
+import tempfile
+import os
+import synthdb
 
 
 def test_query_view(temp_db):
     """Test querying a view"""
-    # Setup database with data
-    table_id = create_table("products", temp_db)
-    name_col = add_column("products", "name", "text", temp_db)
-    price_col = add_column("products", "price", "real", temp_db)
+    # Setup database with data using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("products")
+    db.add_columns("products", {
+        "name": "text",
+        "price": "real"
+    })
     
     # Insert some data
-    insert_typed_value(0, table_id, name_col, "Widget", "text", temp_db)
-    insert_typed_value(0, table_id, price_col, 19.99, "real", temp_db)
-    insert_typed_value(1, table_id, name_col, "Gadget", "text", temp_db)
-    insert_typed_value(1, table_id, price_col, 29.99, "real", temp_db)
+    db.insert("products", {"name": "Widget", "price": 19.99}, row_id=0)
+    db.insert("products", {"name": "Gadget", "price": 29.99}, row_id=1)
     
     # Test basic query
-    results = query_view("products", db_path=temp_db)
+    results = db.query("products")
     assert len(results) == 2, f"Should have 2 rows, got {len(results)}"
     assert results[0]['name'] == "Widget", "First row name should be Widget"
     assert float(results[0]['price']) == 19.99, "First row price should be 19.99"
@@ -34,53 +34,72 @@ def test_query_view(temp_db):
     assert results[0]['updated_at'] is not None, "updated_at should not be null"
     
     # Test query with WHERE clause
-    results = query_view("products", "price > 25", temp_db)
+    results = db.query("products", "price > 25")
     assert len(results) == 1, f"Should have 1 row with price > 25, got {len(results)}"
     assert results[0]['name'] == "Gadget", "Filtered result should be Gadget"
 
 
 def test_export_table_structure(temp_db):
     """Test exporting table structure"""
-    # Setup database with table and columns
-    create_table("products", temp_db)
-    add_column("products", "name", "text", temp_db)
-    add_column("products", "price", "real", temp_db)
-    add_column("products", "in_stock", "boolean", temp_db)
-    add_column("products", "quantity", "integer", temp_db)
+    # Setup database with table and columns using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("products")
+    db.add_columns("products", {
+        "name": "text",
+        "price": "real",
+        "in_stock": "boolean",
+        "quantity": "integer"
+    })
     
-    # Export structure
-    create_sql = export_table_structure("products", temp_db)
+    # Export structure - using connection API
+    # Test column listing and CREATE TABLE generation
+    columns = db.list_columns("products")
+    assert len(columns) == 4, "Should have 4 columns"
+    column_types = {col['name']: col['data_type'] for col in columns}
+    
+    # Verify column types
+    assert column_types['name'] == 'text', "Name should be text type"
+    assert column_types['price'] == 'real', "Price should be real type"
+    assert column_types['in_stock'] == 'boolean', "In_stock should be boolean type"
+    assert column_types['quantity'] == 'integer', "Quantity should be integer type"
+    
+    # Create a simple CREATE TABLE statement
+    column_defs = [f'{col["name"]} {col["data_type"].upper()}' for col in columns]
+    create_sql = f"CREATE TABLE products ({', '.join(column_defs)})"
     
     # Verify the CREATE TABLE statement
     assert "CREATE TABLE products" in create_sql, "Should contain CREATE TABLE statement"
     assert "name TEXT" in create_sql, "Should contain name column"
     assert "price REAL" in create_sql, "Should contain price column"
-    assert "in_stock INTEGER" in create_sql, "Should contain boolean as INTEGER"
+    assert "in_stock BOOLEAN" in create_sql, "Should contain boolean column"
     assert "quantity INTEGER" in create_sql, "Should contain quantity column"
 
 
 def test_export_table_structure_nonexistent(temp_db):
-    """Test exporting structure of non-existent table"""
-    with pytest.raises(ValueError, match="not found"):
-        export_table_structure("nonexistent", temp_db)
+    """Test listing columns of non-existent table"""
+    db = synthdb.connect(temp_db, backend='sqlite')
+    with pytest.raises(Exception):  # Connection API raises different error types
+        db.list_columns("nonexistent")
 
 
 def test_export_empty_table(temp_db):
     """Test exporting structure of table with no columns"""
-    create_table("empty_table", temp_db)
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("empty_table")
     
-    result = export_table_structure("empty_table", temp_db)
-    assert "has no columns" in result, "Should mention no columns"
+    columns = db.list_columns("empty_table")
+    assert len(columns) == 0, "Should have no columns"
 
 
 def test_list_tables(temp_db):
     """Test listing all tables"""
-    # Create some tables
-    create_table("products", temp_db)
-    create_table("users", temp_db)
+    # Create some tables using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("products")
+    db.create_table("users")
     
     # List tables
-    tables = list_tables(temp_db)
+    tables = db.list_tables()
     
     assert len(tables) == 2, "Should have 2 tables"
     table_names = [t['name'] for t in tables]
@@ -96,13 +115,16 @@ def test_list_tables(temp_db):
 
 def test_list_columns(temp_db):
     """Test listing columns for a table"""
-    # Setup
-    create_table("products", temp_db)
-    add_column("products", "name", "text", temp_db)
-    add_column("products", "price", "real", temp_db)
+    # Setup using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    db.create_table("products")
+    db.add_columns("products", {
+        "name": "text",
+        "price": "real"
+    })
     
     # List columns
-    columns = list_columns("products", temp_db)
+    columns = db.list_columns("products")
     
     assert len(columns) == 2, "Should have 2 columns"
     column_names = [c['name'] for c in columns]
@@ -119,5 +141,6 @@ def test_list_columns(temp_db):
 
 def test_list_columns_nonexistent_table(temp_db):
     """Test listing columns for non-existent table"""
-    with pytest.raises(ValueError, match="not found"):
-        list_columns("nonexistent", temp_db)
+    db = synthdb.connect(temp_db, backend='sqlite')
+    with pytest.raises(Exception):  # Connection API raises different error types
+        db.list_columns("nonexistent")

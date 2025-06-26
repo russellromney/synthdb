@@ -82,7 +82,7 @@ def dev_setup():
     
     steps = [
         (install_deps, "Installing base dependencies"),
-        (lambda: install_with_extras("all"), "Installing all extras"),
+        (lambda: install_with_extras("config"), "Installing config extras"),
         (lambda: install_with_extras("dev"), "Installing dev dependencies"),
     ]
     
@@ -122,7 +122,7 @@ def main():
         "build", "clean", "ci", "dev"
     ], help="Command to run")
     
-    parser.add_argument("--extras", help="Extras to install (e.g., 'postgresql,mysql')")
+    parser.add_argument("--extras", help="Extras to install (e.g., 'config,dev')")
     
     args = parser.parse_args()
     

@@ -2,13 +2,16 @@
 
 import pytest
 import sqlite3
-from synthdb import create_table, add_column, insert_typed_value
+import tempfile
+import os
+import synthdb
 
 
 def test_create_table(temp_db):
     """Test creating a new table"""
-    # Create a new table
-    table_id = create_table("products", temp_db)
+    # Create a new table using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    table_id = db.create_table("products")
     
     # Verify table was created
     db = sqlite3.connect(temp_db)
@@ -25,11 +28,13 @@ def test_create_table(temp_db):
 
 def test_add_column(temp_db):
     """Test adding a column to an existing table"""
-    # Setup: create table first
-    table_id = create_table("products", temp_db)
+    # Setup: create table first using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    table_id = db.create_table("products")
     
     # Add a column
-    column_id = add_column("products", "price", "real", temp_db)
+    column_ids = db.add_columns("products", {"price": "real"})
+    column_id = column_ids["price"]
     
     # Verify column was added
     db = sqlite3.connect(temp_db)
@@ -48,18 +53,21 @@ def test_add_column(temp_db):
 
 def test_add_column_nonexistent_table(temp_db):
     """Test adding a column to a non-existent table"""
+    db = synthdb.connect(temp_db, backend='sqlite')
     with pytest.raises(ValueError, match="not found"):
-        add_column("nonexistent", "col", "text", temp_db)
+        db.add_columns("nonexistent", {"col": "text"})
 
 
 def test_insert_typed_value(temp_db):
     """Test inserting typed values"""
-    # Setup: create table and column
-    table_id = create_table("products", temp_db)
-    column_id = add_column("products", "name", "text", temp_db)
+    # Setup: create table and column using connection API
+    db = synthdb.connect(temp_db, backend='sqlite')
+    table_id = db.create_table("products")
+    column_ids = db.add_columns("products", {"name": "text"})
+    column_id = column_ids["name"]
     
     # Insert a value
-    insert_typed_value(0, table_id, column_id, "Widget", "text", temp_db)
+    db.insert("products", {"name": "Widget"}, row_id=0)
     
     # Verify value was inserted in both tables
     db = sqlite3.connect(temp_db)
@@ -87,11 +95,13 @@ def test_insert_typed_value(temp_db):
 
 def test_insert_boolean_value(temp_db):
     """Test inserting boolean values (converted to integers)"""
-    table_id = create_table("products", temp_db)
-    column_id = add_column("products", "active", "boolean", temp_db)
+    db = synthdb.connect(temp_db, backend='sqlite')
+    table_id = db.create_table("products")
+    column_ids = db.add_columns("products", {"active": "boolean"})
+    column_id = column_ids["active"]
     
     # Insert True value
-    insert_typed_value(0, table_id, column_id, True, "boolean", temp_db)
+    db.insert("products", {"active": True}, row_id=0)
     
     # Verify value was converted to 1
     db = sqlite3.connect(temp_db)

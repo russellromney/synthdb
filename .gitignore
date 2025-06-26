@@ -82,3 +82,7 @@ htmlcov/
 .pytest_cache/
 
 db.db
+.db
+tasks
+.limbo
+.limbo-wal

@@ -1,6 +1,6 @@
 # SynthDB
 
-A flexible database system with schema-on-write capabilities and automatic view generation. SynthDB makes it easy to work with evolving data structures while maintaining familiar SQL-like interfaces.
+A flexible database system with schema-on-write capabilities. SynthDB makes it easy to work with evolving data structures while maintaining familiar SQL-like interfaces.
 
 ## Features
 
@@ -11,9 +11,9 @@ A flexible database system with schema-on-write capabilities and automatic view 
 - **History Tracking**: Built-in audit trail with creation and update timestamps
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
-- **Multiple Backends**: Supports Limbo, SQLite, PostgreSQL, and MySQL backends
-- **Production Ready**: PostgreSQL and MySQL for high-concurrency production deployments
-- **Configurable**: Choose your backend based on performance, stability, and scalability needs
+- **Multiple Backends**: Supports Limbo and SQLite backends
+- **Production Ready**: SQLite for stable production deployments
+- **Configurable**: Choose your backend based on performance and stability needs
 
 ## Installation
 
@@ -35,24 +35,7 @@ pip install synthdb
 
 **Backend Options:**
 - **Limbo** (default): Fast, modern SQLite-compatible database written in Rust
-- **SQLite**: Traditional SQLite for maximum stability  
-- **PostgreSQL**: Production-grade with JSONB, concurrent access, replication
-- **MySQL**: Enterprise database with JSON support and high performance
-
-**Installation Options:**
-```bash
-# With uv (recommended - much faster!)
-uv add synthdb
-uv add "synthdb[postgresql]"  # PostgreSQL support
-uv add "synthdb[mysql]"       # MySQL support  
-uv add "synthdb[all]"         # All backends
-
-# With pip (traditional)
-pip install synthdb
-pip install "synthdb[postgresql]"
-pip install "synthdb[mysql]"
-pip install "synthdb[all]"
-```
+- **SQLite**: Traditional SQLite for maximum stability and compatibility
 
 ### **Development Setup**
 
@@ -82,18 +65,10 @@ sdb database init
 
 # Use different backends
 sdb database init --backend sqlite
-sdb database init --backend postgresql
-sdb database init --backend mysql
-
-# PostgreSQL with connection details
-sdb database init --backend postgresql --host localhost --port 5432 \
-  --database myapp --user myuser --password mypass
-
-# MySQL with connection string
-sdb database init mysql://user:pass@localhost:3306/myapp
+sdb database init --backend limbo
 
 # Environment variable
-export SYNTHDB_BACKEND=postgresql
+export SYNTHDB_BACKEND=sqlite
 sdb database init
 
 # Create a table
@@ -127,89 +102,74 @@ sdb table export products
 
 ### Python API
 
-#### 🚀 **New Modern API (Recommended)**
+#### 🔗 **Connection API (Recommended - Clean & Modern)**
 
 ```python
 import synthdb
 
-# Initialize database
-synthdb.make_db("app.db", backend_name="sqlite")
-synthdb.create_table("products", "app.db", backend_name="sqlite")
+# Create a connection - handles everything automatically
+db = synthdb.connect('app.db', backend='sqlite')
 
-# Add multiple columns with type inference
-synthdb.add_columns("products", {
-    "name": "text",                  # Explicit type
-    "description": "A great product", # Infers text
-    "price": 19.99,                  # Infers real
-    "stock": 100,                    # Infers integer
-    "active": True,                  # Infers boolean
-    "metadata": {"category": "tech"}, # Infers json
-    "created": "2023-12-25"          # Infers timestamp
-}, "app.db", "sqlite")
+# Create table and add columns in one go
+db.create_table('products')
+db.add_columns('products', {
+    'name': 'text',                  # Explicit type
+    'description': 'A great product', # Infers text
+    'price': 19.99,                  # Infers real
+    'stock': 100,                    # Infers integer
+    'active': True,                  # Infers boolean
+    'metadata': {'category': 'tech'}, # Infers json
+    'created': '2023-12-25'          # Infers timestamp
+})
 
 # Insert data with auto-generated IDs
-product_id = synthdb.insert("products", {
-    "name": "Awesome Widget",
-    "description": "The best widget you'll ever use",
-    "price": 29.99,
-    "stock": 50,
-    "active": True,
-    "metadata": {"category": "widgets", "featured": True}
+product_id = db.insert('products', {
+    'name': 'Awesome Widget',
+    'description': 'The best widget you\'ll ever use',
+    'price': 29.99,
+    'stock': 50,
+    'active': True,
+    'metadata': {'category': 'widgets', 'featured': True}
 })
 
 # Insert with explicit ID
-synthdb.insert("products", {
-    "name": "Special Item"
-}, connection_info="app.db", backend_name="sqlite", row_id=1000)
+db.insert('products', {'name': 'Special Item'}, row_id=1000)
 
 # Single column inserts
-synthdb.insert("products", "name", "Quick Add", "app.db", "sqlite")
+db.insert('products', 'name', 'Quick Add')
 
-# Query data (simple!)
-all_products = synthdb.query("products", connection_info="app.db", backend_name="sqlite")
-expensive = synthdb.query("products", "price > 25", "app.db", "sqlite")
+# Query data - super simple!
+all_products = db.query('products')
+expensive = db.query('products', 'price > 25')
 
 # Upsert (insert or update)
-synthdb.upsert("products", {
-    "name": "Updated Widget",
-    "sku": "WIDGET-001",
-    "price": 24.99
-}, key_columns=["sku"], connection_info="app.db", backend_name="sqlite")
+db.upsert('products', {
+    'name': 'Updated Widget',
+    'sku': 'WIDGET-001',
+    'price': 24.99
+}, key_columns=['sku'])
+
+# Database inspection
+tables = db.list_tables()
+columns = db.list_columns('products')
 ```
 
-#### 📚 **Legacy API (Backward Compatibility)**
+#### 🔧 **Alternative Connection Methods**
 
 ```python
-import synthdb
+# Different backends
+db = synthdb.connect('app.db', backend='sqlite')
+db = synthdb.connect('app.limbo', backend='limbo')
 
-# Old verbose approach (still supported)
-synthdb.make_db()
-table_id = synthdb.create_table("products")
-name_col = synthdb.add_column("products", "name", "text") 
-price_col = synthdb.add_column("products", "price", "real")
-
-# Manual ID management
-synthdb.insert_typed_value(0, table_id, name_col, "Widget", "text")
-synthdb.insert_typed_value(0, table_id, price_col, 19.99, "real")
-
-# Verbose querying
-results = synthdb.query_view("products")
+# Auto-detection by file extension
+db = synthdb.connect('app.db')     # Uses SQLite
+db = synthdb.connect('app.limbo')  # Uses Limbo
 ```
 
-#### 🔄 **Key Improvements**
-
-| Feature | Old API | New API |
-|---------|---------|---------|
-| **Column Creation** | One at a time | Bulk with type inference |
-| **Row IDs** | Manual management | Auto-generated or explicit |
-| **Type Specification** | Always required | Automatic from column/sample |
-| **Function Names** | `insert_typed_value()` | `insert()` |
-| **Error Messages** | Basic | Enhanced with suggestions |
-| **Code Reduction** | Verbose | 90% less code |
 
 ## Backend Selection
 
-SynthDB supports four database backends optimized for different use cases:
+SynthDB supports two database backends optimized for different use cases:
 
 ### Limbo (Default)
 - **Pros**: Fastest performance, modern Rust implementation, SQLite-compatible
@@ -220,35 +180,17 @@ SynthDB supports four database backends optimized for different use cases:
 ### SQLite (Stable)
 - **Pros**: Battle-tested, maximum compatibility, stable, embedded
 - **Cons**: Limited concurrent writes
-- **Best for**: Desktop apps, small web apps, embedded systems
+- **Best for**: Production apps, desktop apps, small web apps, embedded systems
 - **Concurrency**: Single writer, multiple readers
-
-### PostgreSQL (Production)
-- **Pros**: JSONB support, excellent concurrency, ACID compliance, replication
-- **Cons**: Requires server setup, more complex deployment
-- **Best for**: Production web apps, analytics, multi-user systems
-- **Concurrency**: Excellent (MVCC)
-- **Query Optimizations**: JSONB indexes, materialized views, partial indexes
-
-### MySQL (Enterprise)
-- **Pros**: JSON support, horizontal scaling, enterprise features
-- **Cons**: Requires server setup, licensing considerations
-- **Best for**: Enterprise applications, high-scale web services
-- **Concurrency**: Very good (row-level locking)
-- **Query Optimizations**: JSON columns, InnoDB indexes, partitioning
 
 ### Configuration
 
 ```python
 # Set backend globally
-synthdb.set_default_backend("postgresql")
+synthdb.set_default_backend("sqlite")
 
 # Environment variable
-SYNTHDB_BACKEND=postgresql
-
-# Connection strings
-postgresql://user:pass@host:port/database
-mysql://user:pass@host:port/database
+SYNTHDB_BACKEND=sqlite
 
 # File extension hints
 # .limbo files use Limbo
@@ -261,8 +203,6 @@ mysql://user:pass@host:port/database
 |---------|-------------|------------|-----------------|------------------|
 | Limbo | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | SQLite | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
-| PostgreSQL | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| MySQL | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 
 ## Architecture
 
@@ -297,15 +237,19 @@ SynthDB automatically creates SQL views for each table that:
 See the `examples/` directory for comprehensive usage examples:
 
 ```bash
+# Modern connection API demo (recommended)
 python examples/demo.py
 ```
 
-This demonstrates:
-- Database initialization
-- Table and column creation
-- Data insertion and querying
-- Schema evolution
-- Export functionality
+**Modern Demo** demonstrates:
+- Clean connection-based interface (`synthdb.connect()`)
+- Automatic database initialization
+- Bulk column creation with type inference
+- Auto-generated and explicit row IDs
+- Simple querying and upsert operations
+- Database inspection and error handling
+- Different connection methods
+- API benefits and best practices
 
 ## Development
 
@@ -335,68 +279,79 @@ synthdb/
 
 ## API Reference
 
-### Core Functions
+### 🔗 **Connection API (Recommended)**
 
-- `make_db(db_path)` - Initialize database
-- `create_table(name, db_path)` - Create new table
-- `add_column(table, column, data_type, db_path)` - Add column
-- `insert_typed_value(row_id, table_id, column_id, value, data_type, db_path)` - Insert value
+#### Connection
+- `synthdb.connect(connection_info, backend=None)` - Create database connection
 
-### Query Functions
+#### Core Methods
+- `db.create_table(name)` - Create new table
+- `db.add_columns(table, columns_dict)` - Add multiple columns with type inference
+- `db.insert(table, data, value=None, row_id=None, force_type=None)` - Insert with auto-generated or explicit IDs
 
-- `query_view(table, where_clause, db_path)` - Query table view
-- `list_tables(db_path)` - List all tables
-- `list_columns(table, db_path)` - List columns in table
+#### Query Methods
+- `db.query(table, where_clause=None)` - Query table data
+- `db.upsert(table, data, key_columns, row_id=None)` - Insert or update based on key columns
 
-### Utility Functions
+#### Inspection Methods
+- `db.list_tables()` - List all tables with metadata
+- `db.list_columns(table)` - List columns in table with types and IDs
 
-- `export_table_structure(table, db_path)` - Export CREATE TABLE SQL
-- `create_table_views(db_path)` - Regenerate all views
+#### Utility Methods
+- `db.refresh_views()` - Regenerate all views
+
 
 ## CLI Commands
 
 > **Note:** You can use `sdb` as a shorter alias for `synthdb` in all commands.
 
+### 🚀 **Quick Commands (Shortcuts)**
+- `sdb db init` - Initialize database (shortcut for `database init`)
+- `sdb t create <name>` - Create table (shortcut for `table create`)
+- `sdb l [table]` - List tables/columns (shortcut for `table list`)
+- `sdb q <table>` - Query data (shortcut for `query`)
+- `sdb i <table> '<json>'` - Insert data (shortcut for `add`)
+
 ### Database Operations
 - `sdb database init [--path <path>] [--backend <backend>] [connection options]` - Initialize database
+- `sdb db init` - Shortcut for database init
 - `sdb database info [--path <path>] [--backend <backend>] [connection options]` - Show database information
 
-**Connection Options (for PostgreSQL/MySQL):**
-- `--host <host>` - Database host (default: localhost)
-- `--port <port>` - Database port (default: 5432/3306)
-- `--database <name>` - Database name (default: synthdb)
-- `--user <user>` - Database user (default: postgres/root)
-- `--password <pass>` - Database password
 
 ### Table Operations
 - `sdb table create <name> [--backend <backend>]` - Create table
+- `sdb t create <name>` - Shortcut for table create
 - `sdb table list [<table>] [--backend <backend>]` - List tables or columns in specific table
+- `sdb l [table]` - Shortcut for table list
 - `sdb table show <name> [--backend <backend>]` - Show detailed table information
 - `sdb table export <name> [--backend <backend>]` - Export table structure
 - `sdb table add column <table> <column> <type> [--backend <backend>]` - Add column
 
 ### Data Operations
-- `sdb insert <table> <row_id> <column> <value> <type> [--backend <backend>]` - Insert value
+- `sdb add <table> '<json_data>' [--id <row_id>] [--backend <backend>]` - Add data using modern API (auto-generated IDs, type inference)
+- `sdb i <table> '<json_data>'` - Shortcut for add
 - `sdb query <table> [--where <clause>] [--backend <backend>]` - Query table data
+- `sdb q <table>` - Shortcut for query
+- `sdb insert <table> <row_id> <column> <value> <type> [--backend <backend>]` - Insert value into specific row/column
+
+> 💡 **Tip**: Use shortcuts for faster development: `sdb db init`, `sdb t create users`, `sdb i users '{"name":"John"}'`, `sdb q users`
+
+> 🔗 **Best Practice**: For complex operations, use the Connection class in Python: `db = synthdb.connect('app.db'); db.insert('users', {...})`
 
 All commands support:
-- `--path <path>` to specify database file/connection string (defaults to `db.db`)
-- `--backend <backend>` to specify backend (`limbo`, `sqlite`, `postgresql`, `mysql`)
-- Network connection options for PostgreSQL and MySQL
+- `--path <path>` to specify database file (defaults to `db.db`)
+- `--backend <backend>` to specify backend (`limbo`, `sqlite`)
 
 **Connection Examples:**
 ```bash
 # Local file
 sdb query products --path myapp.db
 
-# PostgreSQL connection string
-sdb query products --path "postgresql://user:pass@localhost/myapp"
-
-# MySQL with individual options
-sdb query products --backend mysql --host localhost --database myapp --user root
+# Specific backend
+sdb query products --path myapp.db --backend sqlite
 
 # Environment variable
-export SYNTHDB_CONNECTION="postgresql://user:pass@localhost/myapp"
+export SYNTHDB_BACKEND="sqlite"
 sdb query products
 ```
 
@@ -440,5 +395,3 @@ SynthDB is ideal for:
 ### Backend-Specific
 - **SQLite/Limbo**: Limited concurrent write performance
 - **Limbo**: Alpha software, potential compatibility issues
-- **PostgreSQL/MySQL**: Require server setup and configuration
-- **Network backends**: Network latency affects performance
