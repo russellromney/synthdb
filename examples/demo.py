@@ -68,7 +68,7 @@ def main_demo():
         'age': 35,
         'salary': 92000.0,
         'bio': 'DevOps engineer and automation enthusiast'
-    }, row_id=100)
+    }, row_id="100")
     print(f"✅ Inserted Bob with explicit ID: {bob_id}")
     
     # Partial data insert
@@ -78,7 +78,7 @@ def main_demo():
         'age': 32,
         'active': True,
         'salary': 68000.0
-    }, row_id=200)
+    }, row_id="200")
     print(f"✅ Inserted Carol with explicit ID: {carol_id}")
     
     print("\n3️⃣ Query Data (Simple & Powerful)")
@@ -110,7 +110,7 @@ def main_demo():
     print("-" * 22)
     
     # Insert new user via upsert
-    david_id = 500  # Specific ID for David
+    david_id = "500"  # Specific ID for David
     result_id = db.upsert('users', {
         'name': 'David Wilson',
         'email': 'david@example.com',

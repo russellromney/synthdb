@@ -48,7 +48,7 @@ db.insert('users', {
     'email': 'carol@example.com',
     'age': 28,
     'active': False
-}, row_id=1000)
+}, row_id="1000")
 
 print("✅ Inserted user with explicit ID: 1000")
 ```
@@ -218,7 +218,7 @@ SynthDB provides helpful error messages:
 ```python
 try:
     # Try to insert duplicate ID
-    db.insert('users', {'name': 'Test'}, row_id=1000)
+    db.insert('users', {'name': 'Test'}, row_id="1000")
 except ValueError as e:
     print(f"Expected error: {e}")
 

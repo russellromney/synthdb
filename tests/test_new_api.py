@@ -158,7 +158,7 @@ class TestNewAPI:
         })
         
         # Upsert new row with specific ID
-        target_id = 100
+        target_id = "100"
         row_id = self.db.upsert('users', {
             'name': 'Diana',
             'email': 'diana@example.com',
@@ -199,7 +199,7 @@ class TestNewAPI:
         })
         
         # Upsert with explicit ID (row doesn't exist)
-        explicit_id = 500
+        explicit_id = "500"
         result_id = self.db.upsert('users', {
             'name': 'Frank',
             'email': 'frank@example.com'
@@ -231,7 +231,7 @@ class TestNewAPI:
         assert result_id == initial_id
         
         # Verify the row was updated
-        users = self.db.query('users', f'row_id = {initial_id}')
+        users = self.db.query('users', f'row_id = "{initial_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Alice Updated'
         assert users[0]['age'] == 30
@@ -244,7 +244,7 @@ class TestNewAPI:
         })
         
         # Upsert with specific row_id that doesn't exist
-        target_id = 999
+        target_id = "999"
         result_id = self.db.upsert('users', {
             'name': 'Bob',
             'email': 'bob@example.com'
@@ -253,7 +253,7 @@ class TestNewAPI:
         assert result_id == target_id
         
         # Verify the row was inserted with correct ID
-        users = self.db.query('users', f'row_id = {target_id}')
+        users = self.db.query('users', f'row_id = "{target_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Bob'
         assert users[0]['email'] == 'bob@example.com'
@@ -278,12 +278,12 @@ class TestNewAPI:
         assert result_id == id1
         
         # Verify id1 was updated
-        user1 = self.db.query('users', f'row_id = {id1}')[0]
+        user1 = self.db.query('users', f'row_id = "{id1}"')[0]
         assert user1['name'] == 'Updated User1'
         assert user1['email'] == 'updated@example.com'
         
         # Verify id2 was not affected
-        user2 = self.db.query('users', f'row_id = {id2}')[0]
+        user2 = self.db.query('users', f'row_id = "{id2}"')[0]
         assert user2['name'] == 'User2'
         assert user2['email'] == 'user2@example.com'
 
@@ -379,7 +379,7 @@ class TestAPIIntegration:
             'name': 'Laptop',
             'price': 1299.99,
             'stock': 25
-        }, row_id=1000)  # Explicit ID
+        }, row_id="1000")  # Explicit ID
         
         # Query and verify
         all_products = self.db.query('products')

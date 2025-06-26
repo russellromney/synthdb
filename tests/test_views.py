@@ -46,13 +46,13 @@ def test_create_table_view_with_data(temp_db):
         "name": "Widget",
         "price": 19.99,
         "quantity": 100
-    }, row_id=0)
+    }, row_id="0")
     
     db.insert("products", {
         "name": "Gadget", 
         "price": 29.99,
         "active": False
-    }, row_id=1)
+    }, row_id="1")
     
     # Query the view
     db = sqlite3.connect(temp_db)
@@ -97,7 +97,7 @@ def test_view_recreated_after_column_addition(temp_db):
     db.add_columns("products", {"name": "text"})
     
     # Insert some data
-    db.insert("products", {"name": "Widget"}, row_id=0)
+    db.insert("products", {"name": "Widget"}, row_id="0")
     
     # Query initial view
     db = sqlite3.connect(temp_db)

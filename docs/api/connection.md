@@ -161,10 +161,10 @@ expensive = db.query('products', 'price > 25 AND active = "true"')
 ```python
 try:
     # Insert with explicit ID
-    db.insert('products', {'name': 'Test'}, row_id=1000)
+    db.insert('products', {'name': 'Test'}, row_id="1000")
     
     # Try duplicate ID
-    db.insert('products', {'name': 'Test2'}, row_id=1000)
+    db.insert('products', {'name': 'Test2'}, row_id="1000")
     
 except ValueError as e:
     print(f"Duplicate ID error: {e}")

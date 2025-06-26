@@ -17,8 +17,8 @@ def test_query_view(temp_db):
     })
     
     # Insert some data
-    db.insert("products", {"name": "Widget", "price": 19.99}, row_id=0)
-    db.insert("products", {"name": "Gadget", "price": 29.99}, row_id=1)
+    db.insert("products", {"name": "Widget", "price": 19.99}, row_id="0")
+    db.insert("products", {"name": "Gadget", "price": 29.99}, row_id="1")
     
     # Test basic query
     results = db.query("products")

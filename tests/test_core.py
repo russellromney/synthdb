@@ -67,7 +67,7 @@ def test_insert_typed_value(temp_db):
     column_id = column_ids["name"]
     
     # Insert a value
-    db.insert("products", {"name": "Widget"}, row_id=0)
+    db.insert("products", {"name": "Widget"}, row_id="0")
     
     # Verify value was inserted in both tables
     db = sqlite3.connect(temp_db)

@@ -12,7 +12,7 @@ dev: ## Setup development environment
 	python scripts/dev.py setup
 
 test: ## Run tests
-	uv run pytest -v --cov=synthdb
+	uv run pytest -vv --cov=synthdb
 
 lint: ## Run linting
 	uv run ruff check synthdb/

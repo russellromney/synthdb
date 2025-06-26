@@ -14,7 +14,8 @@ def infer_type(value: Any) -> Tuple[str, Any]:
         Tuple of (synthdb_type, converted_value)
     """
     if value is None:
-        return "text", None
+        raise ValueError("Cannot infer a type from a null value")
+
     
     # Handle explicit types first
     if isinstance(value, int):
@@ -24,58 +25,10 @@ def infer_type(value: Any) -> Tuple[str, Any]:
     elif isinstance(value, datetime):
         return "timestamp", value
     elif isinstance(value, str):
-        return infer_string_type(value)
-    else:
-        # Fallback to string representation
-        return "text", str(value)
-
-
-def infer_string_type(value: str) -> Tuple[str, Any]:
-    """
-    Infer type from string value by trying different parsers.
-    
-    Priority order:
-    1. Integer
-    2. Real/Float
-    3. Timestamp/Date
-    4. Text (fallback)
-    """
-    if not value or not isinstance(value, str):
         return "text", value
-    
-    value_lower = value.lower().strip()
-    
-    # Integer detection
-    try:
-        # Handle common integer formats
-        if value.isdigit() or (value.startswith('-') and value[1:].isdigit()):
-            return "integer", int(value)
-    except ValueError:
-        pass
-    
-    # Float detection
-    try:
-        # Handle scientific notation, decimals
-        if '.' in value or 'e' in value_lower or 'E' in value:
-            float_val = float(value)
-            # If it's actually a whole number, keep as integer
-            if float_val.is_integer() and '.' not in value and 'e' not in value_lower:
-                return "integer", int(float_val)
-            return "real", float_val
-    except ValueError:
-        pass
-    
-    # Timestamp detection
-    try:
-        # Try to parse various date/time formats
-        if re.match(r'\d{4}-\d{2}-\d{2}', value) or re.match(r'\d{2}/\d{2}/\d{4}', value):
-            parsed_date = date_parser.parse(value)
-            return "timestamp", parsed_date
-    except (ValueError, date_parser.ParserError):
-        pass
-    
-    # Fallback to text
-    return "text", value
+    else:
+        # only those types are valid, raise an error otherwise
+        raise ValueError("Only allowed types are integer, real (float), timestamp, and text")
 
 
 def infer_column_type(values: List[Any]) -> str:
@@ -136,11 +89,9 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
         existing_column = next((c for c in columns if c['name'] == column_name), None)
         
         if existing_column:
-            # Use existing column type if it exists
+            # Use existing column type
             column_type = existing_column['data_type']
-            # Convert value to match existing column type
-            if column_type != inferred_type:
-                converted_value = convert_value_to_type(value, column_type)
+            converted_value = converted_value
         else:
             # Create new column with inferred type
             from .core import add_column
@@ -162,8 +113,20 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
             raise ValueError(f"Column '{column_name}' not found in table '{table_name}'")
         
         # Insert the value
-        insert_typed_value(row_id, table_info['id'], column_info['id'], 
-                          converted_value, column_type, connection_info, backend_name)
+        try:
+            insert_typed_value(row_id, table_info['id'], column_info['id'], 
+                              converted_value, column_type, connection_info, backend_name)
+        except (ValueError, TypeError) as insert_error:
+            # Provide helpful error message for type mismatches
+            if existing_column and inferred_type != column_type:
+                raise TypeError(
+                    f"Type mismatch: Cannot insert {inferred_type} value '{value}' "
+                    f"into {column_type} column '{column_name}'. "
+                    f"Expected {column_type}, got {inferred_type}. "
+                    f"Suggestion: Convert the value to {column_type} before inserting."
+                ) from insert_error
+            else:
+                raise TypeError(f"Failed to insert value '{value}' into column '{column_name}': {insert_error}") from insert_error
         
         return column_type, converted_value
         
@@ -172,7 +135,13 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
 
 
 def convert_value_to_type(value: Any, target_type: str) -> Any:
-    """Convert a value to match a target SynthDB type."""
+    """
+    Convert a value to match a target SynthDB type.
+    
+    WARNING: This function performs aggressive type conversion and should be used 
+    sparingly. Consider letting users explicitly convert values instead of doing 
+    automatic conversions that may lead to unexpected behavior.
+    """
     if target_type == "text":
         return str(value) if value is not None else None
     elif target_type == "integer":

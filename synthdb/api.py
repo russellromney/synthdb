@@ -5,7 +5,7 @@ This module provides the core API functions used by the Connection class.
 """
 
 from typing import Dict, Any, Union, List
-from .core import insert_typed_value, add_column as _add_column, get_table_id, get_column_info, get_table_columns, delete_row_metadata, get_row_metadata
+from .core import insert_typed_value, add_column as _add_column, get_table_id, get_column_info, get_table_columns, delete_row_metadata, get_row_metadata, _validate_row_id
 from .utils import list_tables, list_columns, query_view
 from .inference import infer_type
 from .transactions import transaction_context
@@ -41,7 +41,7 @@ def _get_next_row_id() -> str:
 
 def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None, 
           connection_info: str = 'db.db', backend_name: str = None, 
-          force_type: str = None, row_id: Union[str, int] = None) -> str:
+          force_type: str = None, row_id: str = None) -> str:
     """
     Insert data into a table with automatic or explicit ID management and type inference.
     
@@ -66,7 +66,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
         row_id = insert("users", {"name": "John", "age": 25})
         
         # Explicit ID
-        insert("users", {"name": "Jane"}, row_id=100)
+        insert("users", {"name": "Jane"}, row_id="100")
         
         # Single column
         insert("users", "email", "john@example.com")
@@ -96,7 +96,10 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
     # Handle row ID - explicit or auto-generated
     with transaction_context(connection_info, backend_name) as (backend, connection):
         if row_id is not None:
-            final_row_id = str(row_id)  # Convert to string for consistency
+            # Validate that row_id is a string
+            if not isinstance(row_id, str):
+                raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+            final_row_id = row_id
         else:
             # Auto-generate next available row ID
             final_row_id = _get_next_row_id()
@@ -222,7 +225,7 @@ def add_columns(table_name: str, columns: Dict[str, Union[str, Any]],
     return column_ids
 
 
-def upsert(table_name: str, data: Dict[str, Any], row_id: Union[str, int],
+def upsert(table_name: str, data: Dict[str, Any], row_id: str,
           connection_info: str = 'db.db', backend_name: str = None) -> str:
     """
     Insert or update data for a specific row_id.
@@ -242,13 +245,17 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: Union[str, int],
         
     Examples:
         # Update existing row or create new row with ID 100
-        upsert("users", {"name": "Jane", "age": 30}, row_id=100)
+        upsert("users", {"name": "Jane", "age": 30}, row_id="100")
         
         # Update row 1 with new data
-        upsert("users", {"name": "John Updated", "email": "john.new@example.com"}, row_id=1)
+        upsert("users", {"name": "John Updated", "email": "john.new@example.com"}, row_id="1")
     """
+    # Validate that row_id is a string
+    if not isinstance(row_id, str):
+        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    
     # Check if the specific row_id exists
-    row_id_str = str(row_id)  # Convert to string for consistency
+    row_id_str = row_id
     existing_rows = query(table_name, f"row_id = '{row_id_str}'", connection_info, backend_name)
     
     if existing_rows:
@@ -338,7 +345,7 @@ def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
     )
 
 
-def delete_row(table_name: str, row_id: Union[str, int],
+def delete_row(table_name: str, row_id: str,
               connection_info: str = 'db.db', backend_name: str = None) -> bool:
     """
     Soft delete an entire row by updating row metadata.
@@ -358,15 +365,18 @@ def delete_row(table_name: str, row_id: Union[str, int],
     """
     from .transactions import transaction_context
     
+    # Validate that row_id is a string
+    if not isinstance(row_id, str):
+        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
-    row_id = str(row_id)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
         # Simply delete the row metadata - much more efficient
         return delete_row_metadata(row_id, backend, connection)
 
 
-def undelete_row(table_name: str, row_id: Union[str, int],
+def undelete_row(table_name: str, row_id: str,
                 connection_info: str = 'db.db', backend_name: str = None) -> bool:
     """
     Un-delete (resurrect) a previously deleted row.
@@ -387,14 +397,17 @@ def undelete_row(table_name: str, row_id: Union[str, int],
     from .transactions import transaction_context
     from .core import resurrect_row_metadata
     
+    # Validate that row_id is a string
+    if not isinstance(row_id, str):
+        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
-    row_id = str(row_id)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
         return resurrect_row_metadata(row_id, backend, connection)
 
 
-def get_row_status(table_name: str, row_id: Union[str, int],
+def get_row_status(table_name: str, row_id: str,
                   connection_info: str = 'db.db', backend_name: str = None) -> Dict:
     """
     Get row metadata including deletion status.
@@ -416,8 +429,11 @@ def get_row_status(table_name: str, row_id: Union[str, int],
     """
     from .transactions import transaction_context
     
+    # Validate that row_id is a string
+    if not isinstance(row_id, str):
+        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
-    row_id = str(row_id)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
         return get_row_metadata(row_id, backend, connection)

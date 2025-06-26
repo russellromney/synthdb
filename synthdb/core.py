@@ -7,6 +7,17 @@ from .config import config
 from .constants import validate_column_name, validate_table_name
 
 
+def _validate_row_id(row_id):
+    """
+    Validate that row_id is a string.
+    
+    Raises ValueError if row_id is not a string.
+    """
+    if not isinstance(row_id, str):
+        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+
+
+
 def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: str = 'db.db', 
                       backend_name: str = None, backend=None, connection=None):
     """
@@ -15,7 +26,7 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
     This is a convenience wrapper around upsert_typed_value for new insertions.
     
     Args:
-        row_id: Row identifier
+        row_id: Row identifier (must be string)
         table_id: Table identifier  
         column_id: Column identifier
         value: Value to insert
@@ -25,6 +36,8 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
         backend: Optional backend instance for transaction reuse
         connection: Optional connection for transaction reuse
     """
+    # Validate row_id is a string
+    _validate_row_id(row_id)
     # Use upsert for consistency - it handles both insert and update cases
     if backend and connection:
         return upsert_typed_value(row_id, table_id, column_id, value, data_type, backend, connection)
@@ -47,7 +60,7 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
     This function MUST be called within a transaction context.
     
     Args:
-        row_id: Row identifier
+        row_id: Row identifier (must be string)
         table_id: Table identifier  
         column_id: Column identifier
         value: Value to insert/update
@@ -58,6 +71,9 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
     Returns:
         version: Version number of the new value
     """
+    # Validate row_id is a string
+    _validate_row_id(row_id)
+    
     if not backend or not connection:
         raise ValueError("upsert_typed_value requires existing transaction context")
     

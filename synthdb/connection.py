@@ -191,7 +191,7 @@ class Connection:
             user_id = db.insert('users', {'name': 'John', 'age': 25})
             
             # Explicit ID
-            db.insert('users', {'name': 'Jane'}, row_id=100)
+            db.insert('users', {'name': 'Jane'}, row_id="100")
             
             # Single column
             db.insert('users', 'email', 'john@example.com')
@@ -240,10 +240,10 @@ class Connection:
             
         Examples:
             # Update existing row or create new row with ID 100
-            db.upsert('users', {'name': 'Jane', 'age': 30}, row_id=100)
+            db.upsert('users', {'name': 'Jane', 'age': 30}, row_id="100")
             
             # Update row 1 with new data
-            db.upsert('users', {'name': 'John Updated', 'email': 'john.new@example.com'}, row_id=1)
+            db.upsert('users', {'name': 'John Updated', 'email': 'john.new@example.com'}, row_id="1")
         """
         from .api import upsert
         return upsert(table_name, data, row_id, self.connection_info, self.backend_name)

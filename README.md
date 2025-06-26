@@ -130,7 +130,7 @@ product_id = db.insert('products', {
 })
 
 # Insert with explicit ID
-db.insert('products', {'name': 'Special Item'}, row_id=1000)
+db.insert('products', {'name': 'Special Item'}, row_id="1000")
 
 # Single column inserts
 db.insert('products', 'name', 'Quick Add')

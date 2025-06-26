@@ -1,7 +1,7 @@
 """
 Tests for autosequencing row ID generation in SynthDB.
 
-Tests that the simplified row ID generation using built-in autoincrement
+Tests that the simplified row ID generation using UUIDs
 works correctly and efficiently.
 """
 
@@ -11,8 +11,8 @@ import os
 import synthdb
 
 
-class TestAutosequencing:
-    """Test autosequencing row ID generation."""
+class TestRowIdGeneration:
+    """Test row ID generation."""
     
     def setup_method(self):
         """Setup test database."""
