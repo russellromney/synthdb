@@ -25,7 +25,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             """
             CREATE TABLE IF NOT EXISTS row_id_sequence (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                table_id INTEGER NOT NULL,
+                table_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """,

@@ -33,20 +33,18 @@ def _column_value_exists(backend, connection, table_id: int, row_id: int, column
     return False
 
 
-def _get_next_row_id(backend, connection, table_id: int) -> int:
-    """Generate a new row ID using the database sequence table."""
+def _get_next_row_id(backend, connection) -> int:
+    """Generate a new globally unique row ID using autoincrement."""
     # Use RETURNING clause if supported for optimal performance
     if backend.supports_returning():
         cur = backend.execute(connection,
-            "INSERT INTO row_id_sequence (table_id) VALUES (?) RETURNING id",
-            (table_id,))
+            "INSERT INTO row_id_sequence (table_id) VALUES (NULL) RETURNING id")
         result = backend.fetchone(cur)
         return result['id']
     else:
         # Fallback to INSERT + lastrowid
         cur = backend.execute(connection, 
-            "INSERT INTO row_id_sequence (table_id) VALUES (?)", 
-            (table_id,))
+            "INSERT INTO row_id_sequence (table_id) VALUES (NULL)")
         return cur.lastrowid
 
 
@@ -110,7 +108,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
             final_row_id = row_id
         else:
             # Auto-generate next available row ID
-            final_row_id = _get_next_row_id(backend, connection, table_id)
+            final_row_id = _get_next_row_id(backend, connection)
         
         # Insert each column value with enhanced error handling
         for col_name, col_value in column_data.items():
