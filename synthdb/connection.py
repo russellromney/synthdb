@@ -298,6 +298,71 @@ class Connection:
         """
         return list_columns(table_name, self.connection_info, self.backend_name)
     
+    def delete_value(self, table_name: str, row_id: Union[str, int], column_name: str) -> bool:
+        """
+        Soft delete a specific cell value.
+        
+        Args:
+            table_name: Name of the table
+            row_id: Row identifier
+            column_name: Name of the column
+            
+        Returns:
+            bool: True if a value was deleted, False if no current value existed
+            
+        Examples:
+            # Delete a specific cell value
+            db.delete_value("users", "user-123", "email")
+        """
+        from .api import delete_value
+        return delete_value(table_name, row_id, column_name, self.connection_info, self.backend_name)
+    
+    def delete_row(self, table_name: str, row_id: Union[str, int]) -> int:
+        """
+        Soft delete all values in a row.
+        
+        Args:
+            table_name: Name of the table
+            row_id: Row identifier
+            
+        Returns:
+            int: Number of values that were deleted
+            
+        Examples:
+            # Delete all values for a row
+            deleted_count = db.delete_row("users", "user-123")
+        """
+        from .api import delete_row
+        return delete_row(table_name, row_id, self.connection_info, self.backend_name)
+    
+    def get_table_history(self, table_name: str, row_id: str = None, column_name: str = None,
+                         include_deleted: bool = True) -> List[Dict]:
+        """
+        Get complete history for a table, row, or specific cell.
+        
+        Args:
+            table_name: Name of the table
+            row_id: Optional row identifier to filter by
+            column_name: Optional column name to filter by
+            include_deleted: Whether to include soft-deleted values
+            
+        Returns:
+            List[Dict]: History entries sorted by timestamp (newest first)
+            
+        Examples:
+            # Get all history for a table
+            history = db.get_table_history("users")
+            
+            # Get history for a specific row
+            user_history = db.get_table_history("users", row_id="user-123")
+            
+            # Get history for a specific cell
+            email_history = db.get_table_history("users", row_id="user-123", column_name="email")
+        """
+        from .api import get_table_history
+        return get_table_history(table_name, row_id, column_name, include_deleted, 
+                                self.connection_info, self.backend_name)
+    
     def refresh_views(self) -> None:
         """
         Refresh all table views in the database.

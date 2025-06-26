@@ -2,7 +2,11 @@
 
 
 def get_type_table_name(data_type, is_history=False):
-    """Get the appropriate table name for a given data type"""
+    """Get the appropriate table name for a given data type.
+    
+    Note: is_history parameter is deprecated but kept for backward compatibility.
+    All data (current and historical) is now stored in the same versioned tables.
+    """
     type_map = {
         'text': 'text_values',
         'boolean': 'boolean_values', 
@@ -12,6 +16,5 @@ def get_type_table_name(data_type, is_history=False):
         'timestamp': 'timestamp_values'
     }
     
-    if is_history:
-        return type_map[data_type].replace('_values', '_value_history')
+    # Always return the main table name since we use versioned storage
     return type_map[data_type]

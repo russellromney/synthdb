@@ -11,7 +11,9 @@ from .constants import validate_column_name, validate_table_name
 def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: str = 'db.db', 
                       backend_name: str = None, backend=None, connection=None):
     """
-    Insert a value into the appropriate type-specific table with ACID guarantees.
+    Insert a value into the appropriate type-specific table with versioned storage.
+    
+    This is a convenience wrapper around upsert_typed_value for new insertions.
     
     Args:
         row_id: Row identifier
@@ -24,20 +26,9 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
         backend: Optional backend instance for transaction reuse
         connection: Optional connection for transaction reuse
     """
-    table_name = get_type_table_name(data_type)
-    history_table_name = get_type_table_name(data_type, is_history=True)
-    
-    # Convert value to appropriate type
-    if data_type == 'boolean':
-        value = 1 if value else 0
-    elif data_type == 'json':
-        value = json.dumps(value) if not isinstance(value, str) else value
-    
-    # Use provided backend/connection or create new transaction context
+    # Use upsert for consistency - it handles both insert and update cases
     if backend and connection:
-        # Use existing transaction context
-        _insert_with_connection(backend, connection, table_name, history_table_name, 
-                              row_id, table_id, column_id, value)
+        return upsert_typed_value(row_id, table_id, column_id, value, data_type, backend, connection)
     else:
         # Create new transaction context
         from .transactions import transaction_context
@@ -46,41 +37,15 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
         connection_info = db_path
         
         with transaction_context(connection_info, backend_to_use) as (txn_backend, txn_connection):
-            _insert_with_connection(txn_backend, txn_connection, table_name, history_table_name,
-                                  row_id, table_id, column_id, value)
-
-
-def _insert_with_connection(backend, connection, table_name, history_table_name, 
-                          row_id, table_id, column_id, value):
-    """
-    Perform atomic insert into both main and history tables using shared connection.
-    
-    This ensures ACID guarantees - both inserts succeed or both fail.
-    """
-    # Insert into main table
-    statement = f"""
-        INSERT INTO {table_name} (row_id, table_id, column_id, value)
-        VALUES (?, ?, ?, ?)
-    """
-    backend.execute(connection, statement, (row_id, table_id, column_id, value))
-    
-    # Insert into history table (same transaction)
-    history_statement = f"""
-        INSERT INTO {history_table_name} (row_id, table_id, column_id, value)
-        VALUES (?, ?, ?, ?)
-    """
-    backend.execute(connection, history_statement, (row_id, table_id, column_id, value))
-    
-    # Note: No commit here - handled by transaction context manager
+            return upsert_typed_value(row_id, table_id, column_id, value, data_type, txn_backend, txn_connection)
 
 
 def upsert_typed_value(row_id, table_id, column_id, value, data_type, 
                       backend=None, connection=None):
     """
-    Insert or update a value in the appropriate type-specific table.
+    Atomic upsert with versioning and soft delete support.
     
-    This function handles both inserts and updates by soft-deleting existing values
-    before inserting the new value.
+    This function MUST be called within a transaction context.
     
     Args:
         row_id: Row identifier
@@ -90,9 +55,14 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
         data_type: Data type for value storage
         backend: Backend instance for transaction reuse
         connection: Connection for transaction reuse
+    
+    Returns:
+        version: Version number of the new value
     """
+    if not backend or not connection:
+        raise ValueError("upsert_typed_value requires existing transaction context")
+    
     table_name = get_type_table_name(data_type)
-    history_table_name = get_type_table_name(data_type, is_history=True)
     
     # Convert value to appropriate type
     if data_type == 'boolean':
@@ -100,27 +70,149 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
     elif data_type == 'json':
         value = json.dumps(value) if not isinstance(value, str) else value
     
-    # Soft delete existing values for this cell
-    soft_delete_statement = f"""
-        UPDATE {table_name} 
-        SET deleted_at = CURRENT_TIMESTAMP 
-        WHERE row_id = ? AND table_id = ? AND column_id = ? AND deleted_at IS NULL
+    try:
+        # Step 1: Mark current value as historical (atomic)
+        backend.execute(connection, f"""
+            UPDATE {table_name} 
+            SET is_current = 0 
+            WHERE row_id = ? AND table_id = ? AND column_id = ? 
+            AND is_current = 1 AND is_deleted = 0
+        """, (row_id, table_id, column_id))
+        
+        # Step 2: Get next version number (within same transaction)
+        cur = backend.execute(connection, f"""
+            SELECT COALESCE(MAX(version), -1) + 1 as next_version
+            FROM {table_name} 
+            WHERE row_id = ? AND table_id = ? AND column_id = ?
+        """, (row_id, table_id, column_id))
+        
+        result = backend.fetchone(cur)
+        next_version = result['next_version'] if result else 0
+        
+        # Step 3: Insert new current value (atomic)
+        backend.execute(connection, f"""
+            INSERT INTO {table_name} (row_id, table_id, column_id, version, value, is_current, is_deleted)
+            VALUES (?, ?, ?, ?, ?, 1, 0)
+        """, (row_id, table_id, column_id, next_version, value))
+        
+        # Transaction will be committed by caller
+        return next_version
+        
+    except Exception as e:
+        # Transaction will be rolled back by caller
+        raise ValueError(f"Failed to upsert value: {e}")
+
+
+def soft_delete_typed_value(row_id, table_id, column_id, data_type, 
+                           backend=None, connection=None):
     """
-    backend.execute(connection, soft_delete_statement, (row_id, table_id, column_id))
+    Soft delete a value while preserving audit trail.
     
-    # Insert the new value
-    insert_statement = f"""
-        INSERT INTO {table_name} (row_id, table_id, column_id, value)
-        VALUES (?, ?, ?, ?)
-    """
-    backend.execute(connection, insert_statement, (row_id, table_id, column_id, value))
+    This function MUST be called within a transaction context.
     
-    # Insert into history table (same transaction)
-    history_statement = f"""
-        INSERT INTO {history_table_name} (row_id, table_id, column_id, value)
-        VALUES (?, ?, ?, ?)
+    Args:
+        row_id: Row identifier
+        table_id: Table identifier  
+        column_id: Column identifier
+        data_type: Data type for value storage
+        backend: Backend instance for transaction reuse
+        connection: Connection for transaction reuse
+    
+    Returns:
+        bool: True if a value was deleted, False if no current value existed
     """
-    backend.execute(connection, history_statement, (row_id, table_id, column_id, value))
+    if not backend or not connection:
+        raise ValueError("soft_delete_typed_value requires existing transaction context")
+    
+    table_name = get_type_table_name(data_type)
+    
+    try:
+        # Get the count of changes before the operation
+        changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
+        
+        # Mark current value as deleted but keep it current for audit
+        backend.execute(connection, f"""
+            UPDATE {table_name} 
+            SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
+            WHERE row_id = ? AND table_id = ? AND column_id = ? 
+            AND is_current = 1 AND is_deleted = 0
+        """, (row_id, table_id, column_id))
+        
+        # Check if any row was actually updated
+        changes_after = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
+        return changes_after > changes_before
+            
+    except Exception as e:
+        raise ValueError(f"Failed to soft delete value: {e}")
+
+
+def get_typed_value(row_id, table_id, column_id, data_type, 
+                   include_deleted=False, backend=None, connection=None):
+    """
+    Get current value with option to include soft-deleted values.
+    
+    Args:
+        row_id: Row identifier
+        table_id: Table identifier  
+        column_id: Column identifier
+        data_type: Data type for value storage
+        include_deleted: Whether to include soft-deleted values
+        backend: Backend instance for transaction reuse
+        connection: Connection for transaction reuse
+    
+    Returns:
+        dict: Value record or None if not found
+    """
+    if not backend or not connection:
+        raise ValueError("get_typed_value requires existing transaction context")
+    
+    table_name = get_type_table_name(data_type)
+    
+    # Build WHERE clause based on deleted flag
+    deleted_condition = "" if include_deleted else "AND is_deleted = 0"
+    
+    cur = backend.execute(connection, f"""
+        SELECT value, is_deleted, deleted_at, created_at, version
+        FROM {table_name}
+        WHERE row_id = ? AND table_id = ? AND column_id = ? 
+        AND is_current = 1 {deleted_condition}
+    """, (row_id, table_id, column_id))
+    
+    return backend.fetchone(cur)
+
+
+def get_table_id(table_name: str, backend, connection) -> int:
+    """Get table ID from table name."""
+    cur = backend.execute(connection, "SELECT id FROM table_definitions WHERE name = ? AND deleted_at IS NULL", (table_name,))
+    result = backend.fetchone(cur)
+    if not result:
+        raise ValueError(f"Table '{table_name}' not found")
+    return result['id']
+
+
+def get_column_info(table_name: str, column_name: str, backend, connection) -> dict:
+    """Get column information including ID and data type."""
+    cur = backend.execute(connection, """
+        SELECT cd.id, cd.data_type, cd.name
+        FROM column_definitions cd
+        JOIN table_definitions td ON cd.table_id = td.id
+        WHERE td.name = ? AND cd.name = ? 
+        AND td.deleted_at IS NULL AND cd.deleted_at IS NULL
+    """, (table_name, column_name))
+    return backend.fetchone(cur)
+
+
+def get_table_columns(table_name: str, backend, connection) -> list:
+    """Get all columns for a table."""
+    cur = backend.execute(connection, """
+        SELECT cd.id, cd.name, cd.data_type
+        FROM column_definitions cd
+        JOIN table_definitions td ON cd.table_id = td.id
+        WHERE td.name = ? 
+        AND td.deleted_at IS NULL AND cd.deleted_at IS NULL
+        ORDER BY cd.id
+    """, (table_name,))
+    return backend.fetchall(cur)
 
 
 def create_table(table_name, db_path: str = 'db.db', backend_name: str = None):
