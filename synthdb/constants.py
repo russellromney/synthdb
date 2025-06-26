@@ -15,17 +15,10 @@ PROTECTED_TABLE_NAMES = {
     'text_values',
     'integer_values', 
     'real_values',
-    'boolean_values',
-    'json_values',
     'timestamp_values',
     
-    # History/audit tables
-    'text_value_history',
-    'integer_value_history',
-    'real_value_history', 
-    'boolean_value_history',
-    'json_value_history',
-    'timestamp_value_history',
+    # Row metadata table
+    'row_metadata',
 }
 
 def validate_column_name(column_name: str) -> None:

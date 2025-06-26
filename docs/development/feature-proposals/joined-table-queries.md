@@ -223,7 +223,7 @@ def build_table_query(table_name, alias, columns=None):
         FROM table_definitions td
         JOIN ({' UNION ALL '.join([
             f"SELECT table_id, column_id, row_id, value FROM {dt}_values"
-            for dt in ['text', 'integer', 'real', 'boolean', 'json', 'timestamp']
+            for dt in ['text', 'integer', 'real', 'timestamp']
         ])}) vals ON td.id = vals.table_id
         JOIN column_definitions cd ON vals.column_id = cd.id
         WHERE td.name = '{table_name}'

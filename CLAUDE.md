@@ -7,3 +7,5 @@ never make any changes to the "tasks" file in the root directory.
 remember that this is an alpha project with nothing actually in production, so don't worry about migration planning or backward compatibility when planning or making changes.
 
 don't add implementation time to plans - you (the model) will be making these changes. 
+
+never read files in the venv folder, in pycache, or pytest_cache.

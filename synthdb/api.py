@@ -5,7 +5,7 @@ This module provides the core API functions used by the Connection class.
 """
 
 from typing import Dict, Any, Union, List
-from .core import insert_typed_value, add_column as _add_column, get_table_id, get_column_info, get_table_columns, soft_delete_typed_value
+from .core import insert_typed_value, add_column as _add_column, get_table_id, get_column_info, get_table_columns, delete_row_metadata, get_row_metadata
 from .utils import list_tables, list_columns, query_view
 from .inference import infer_type
 from .transactions import transaction_context
@@ -16,8 +16,7 @@ from .config import config
 
 def _column_value_exists(backend, connection, table_id: int, row_id: Union[str, int], column_id: int) -> bool:
     """Check if a specific (row_id, column_id) combination already has a value."""
-    type_tables = ['text_values', 'integer_values', 'real_values', 
-                   'boolean_values', 'json_values', 'timestamp_values']
+    type_tables = ['text_values', 'integer_values', 'real_values', 'timestamp_values']
     
     for type_table in type_tables:
         try:
@@ -184,19 +183,19 @@ def add_columns(table_name: str, columns: Dict[str, Union[str, Any]],
         # Explicit types
         ids = add_columns("users", {
             "email": "text",
-            "created_at": "timestamp",
-            "metadata": "json"
+            "age": "integer", 
+            "created_at": "timestamp"
         })
         
         # Inferred types from sample values
         ids = add_columns("users", {
             "email": "user@example.com",      # -> text
             "age": 25,                        # -> integer
-            "active": True,                   # -> boolean
+            "score": 98.5,                    # -> real
             "created_at": "2023-12-25"        # -> timestamp
         })
     """
-    valid_types = {"text", "integer", "real", "boolean", "json", "timestamp"}
+    valid_types = {"text", "integer", "real", "timestamp"}
     column_ids = {}
     
     with transaction_context(connection_info, backend_name) as (backend, connection):
@@ -320,7 +319,9 @@ def copy_column(source_table: str, source_column: str, target_table: str, target
 def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
                 connection_info: str = 'db.db', backend_name: str = None) -> bool:
     """
-    Soft delete a specific cell value.
+    DEPRECATED: Cell-level deletes no longer supported.
+    
+    Use delete_row() instead for row-level deletion.
     
     Args:
         table_name: Name of the table
@@ -330,43 +331,17 @@ def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
         backend_name: Backend to use
         
     Returns:
-        bool: True if a value was deleted, False if no current value existed
-        
-    Examples:
-        # Delete a specific cell value
-        delete_value("users", "user-123", "email")
-        
-        # Delete returns False if no current value exists
-        was_deleted = delete_value("users", "user-456", "nonexistent_col")  # False
+        bool: Always raises NotImplementedError
     """
-    from .transactions import transaction_context
-    from .core import get_table_id, get_column_info, soft_delete_typed_value
-    
-    backend_to_use = backend_name or config.get_backend_for_path(connection_info)
-    row_id = str(row_id)
-    
-    with transaction_context(connection_info, backend_to_use) as (backend, connection):
-        table_id = get_table_id(table_name, backend, connection)
-        column_info = get_column_info(table_name, column_name, backend, connection)
-        
-        if not column_info:
-            raise ValueError(f"Column '{column_name}' does not exist in table '{table_name}'")
-        
-        # Soft delete within transaction
-        return soft_delete_typed_value(
-            row_id=row_id,
-            table_id=table_id,
-            column_id=column_info['id'],
-            data_type=column_info['data_type'],
-            backend=backend,
-            connection=connection
-        )
+    raise NotImplementedError(
+        "Cell-level deletes are no longer supported. Use delete_row() for row-level deletion instead."
+    )
 
 
 def delete_row(table_name: str, row_id: Union[str, int],
-              connection_info: str = 'db.db', backend_name: str = None) -> int:
+              connection_info: str = 'db.db', backend_name: str = None) -> bool:
     """
-    Soft delete all values in a row.
+    Soft delete an entire row by updating row metadata.
     
     Args:
         table_name: Name of the table
@@ -375,41 +350,77 @@ def delete_row(table_name: str, row_id: Union[str, int],
         backend_name: Backend to use
         
     Returns:
-        int: Number of values that were deleted
+        bool: True if the row was deleted, False if row didn't exist or was already deleted
         
     Examples:
-        # Delete all values for a row
-        deleted_count = delete_row("users", "user-123")  # Returns number of columns deleted
+        # Delete entire row efficiently
+        was_deleted = delete_row("users", "user-123")
     """
     from .transactions import transaction_context
-    from .core import get_table_id, get_table_columns, soft_delete_typed_value
     
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
     row_id = str(row_id)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
-        table_id = get_table_id(table_name, backend, connection)
-        columns = get_table_columns(table_name, backend, connection)
-        
-        deleted_count = 0
-        # Delete all columns in same transaction
-        for column in columns:
-            try:
-                was_deleted = soft_delete_typed_value(
-                    row_id=row_id,
-                    table_id=table_id,
-                    column_id=column['id'],
-                    data_type=column['data_type'],
-                    backend=backend,
-                    connection=connection
-                )
-                if was_deleted:
-                    deleted_count += 1
-            except ValueError:
-                # Column might not have a value for this row - that's fine
-                continue
+        # Simply delete the row metadata - much more efficient
+        return delete_row_metadata(row_id, backend, connection)
+
+
+def undelete_row(table_name: str, row_id: Union[str, int],
+                connection_info: str = 'db.db', backend_name: str = None) -> bool:
+    """
+    Un-delete (resurrect) a previously deleted row.
     
-    return deleted_count
+    Args:
+        table_name: Name of the table
+        row_id: Row identifier
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Returns:
+        bool: True if the row was resurrected, False if row didn't exist or wasn't deleted
+        
+    Examples:
+        # Manually resurrect a deleted row
+        was_resurrected = undelete_row("users", "user-123")
+    """
+    from .transactions import transaction_context
+    from .core import resurrect_row_metadata
+    
+    backend_to_use = backend_name or config.get_backend_for_path(connection_info)
+    row_id = str(row_id)
+    
+    with transaction_context(connection_info, backend_to_use) as (backend, connection):
+        return resurrect_row_metadata(row_id, backend, connection)
+
+
+def get_row_status(table_name: str, row_id: Union[str, int],
+                  connection_info: str = 'db.db', backend_name: str = None) -> Dict:
+    """
+    Get row metadata including deletion status.
+    
+    Args:
+        table_name: Name of the table
+        row_id: Row identifier
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Returns:
+        Dict: Row metadata or None if row doesn't exist
+        
+    Examples:
+        # Check if row exists and its status
+        status = get_row_status("users", "user-123")
+        if status:
+            print(f"Row exists, deleted: {status['is_deleted']}")
+    """
+    from .transactions import transaction_context
+    
+    backend_to_use = backend_name or config.get_backend_for_path(connection_info)
+    row_id = str(row_id)
+    
+    with transaction_context(connection_info, backend_to_use) as (backend, connection):
+        return get_row_metadata(row_id, backend, connection)
 
 
 def get_table_history(table_name: str, row_id: str = None, column_name: str = None,
@@ -422,7 +433,7 @@ def get_table_history(table_name: str, row_id: str = None, column_name: str = No
         table_name: Name of the table
         row_id: Optional row identifier to filter by
         column_name: Optional column name to filter by
-        include_deleted: Whether to include soft-deleted values
+        include_deleted: Whether to include values from deleted rows
         connection_info: Database connection
         backend_name: Backend to use
         
@@ -439,7 +450,7 @@ def get_table_history(table_name: str, row_id: str = None, column_name: str = No
         # Get history for a specific cell
         email_history = get_table_history("users", row_id="user-123", column_name="email")
         
-        # Exclude deleted values
+        # Exclude values from deleted rows
         active_history = get_table_history("users", include_deleted=False)
     """
     from .transactions import transaction_context
@@ -460,30 +471,46 @@ def get_table_history(table_name: str, row_id: str = None, column_name: str = No
                 
             type_table = get_type_table_name(column['data_type'])
             
-            # Build WHERE conditions
-            conditions = [f"table_id = {table_id}", f"column_id = {column['id']}"]
-            if row_id:
-                conditions.append(f"row_id = '{row_id}'")
-            if not include_deleted:
-                conditions.append("is_deleted = 0")
-            
-            where_clause = " AND ".join(conditions)
-            
-            cur = backend.execute(connection, f"""
-                SELECT 
-                    row_id, 
-                    version,
-                    value,
-                    created_at,
-                    is_current,
-                    is_deleted,
-                    deleted_at,
-                    '{column['name']}' as column_name,
-                    '{column['data_type']}' as data_type
-                FROM {type_table}
-                WHERE {where_clause}
-                ORDER BY row_id, version DESC
-            """)
+            # Build query with row metadata JOIN for delete checking
+            if include_deleted:
+                # Include values even from deleted rows
+                cur = backend.execute(connection, f"""
+                    SELECT 
+                        tv.row_id, 
+                        tv.version,
+                        tv.value,
+                        tv.created_at,
+                        tv.is_current,
+                        rm.is_deleted,
+                        rm.deleted_at,
+                        '{column['name']}' as column_name,
+                        '{column['data_type']}' as data_type
+                    FROM {type_table} tv
+                    LEFT JOIN row_metadata rm ON tv.row_id = rm.row_id
+                    WHERE tv.table_id = {table_id} AND tv.column_id = {column['id']}
+                    {f"AND tv.row_id = '{row_id}'" if row_id else ""}
+                    ORDER BY tv.row_id, tv.version DESC
+                """)
+            else:
+                # Only include values from active rows
+                cur = backend.execute(connection, f"""
+                    SELECT 
+                        tv.row_id, 
+                        tv.version,
+                        tv.value,
+                        tv.created_at,
+                        tv.is_current,
+                        rm.is_deleted,
+                        rm.deleted_at,
+                        '{column['name']}' as column_name,
+                        '{column['data_type']}' as data_type
+                    FROM {type_table} tv
+                    JOIN row_metadata rm ON tv.row_id = rm.row_id
+                    WHERE tv.table_id = {table_id} AND tv.column_id = {column['id']}
+                    AND rm.is_deleted = 0
+                    {f"AND tv.row_id = '{row_id}'" if row_id else ""}
+                    ORDER BY tv.row_id, tv.version DESC
+                """)
             
             for row in backend.fetchall(cur):
                 history_entries.append(dict(row))

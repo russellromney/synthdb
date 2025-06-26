@@ -1,6 +1,5 @@
 """Type inference for automatic data type detection in SynthDB."""
 
-import json
 import re
 from datetime import datetime
 from typing import Any, Tuple, Optional, List, Dict
@@ -18,14 +17,10 @@ def infer_type(value: Any) -> Tuple[str, Any]:
         return "text", None
     
     # Handle explicit types first
-    if isinstance(value, bool):
-        return "boolean", value
-    elif isinstance(value, int):
+    if isinstance(value, int):
         return "integer", value
     elif isinstance(value, float):
         return "real", value
-    elif isinstance(value, (dict, list)):
-        return "json", value
     elif isinstance(value, datetime):
         return "timestamp", value
     elif isinstance(value, str):
@@ -40,22 +35,15 @@ def infer_string_type(value: str) -> Tuple[str, Any]:
     Infer type from string value by trying different parsers.
     
     Priority order:
-    1. Boolean (true/false, yes/no, 1/0)
-    2. Integer
-    3. Real/Float
-    4. JSON (objects/arrays)
-    5. Timestamp/Date
-    6. Text (fallback)
+    1. Integer
+    2. Real/Float
+    3. Timestamp/Date
+    4. Text (fallback)
     """
     if not value or not isinstance(value, str):
         return "text", value
     
     value_lower = value.lower().strip()
-    
-    # Boolean detection
-    if value_lower in ("true", "false", "yes", "no", "1", "0", "on", "off"):
-        boolean_value = value_lower in ("true", "yes", "1", "on")
-        return "boolean", boolean_value
     
     # Integer detection
     try:
@@ -77,14 +65,6 @@ def infer_string_type(value: str) -> Tuple[str, Any]:
     except ValueError:
         pass
     
-    # JSON detection
-    try:
-        if (value.startswith(('{', '[')) and value.endswith(('}', ']'))) or value_lower in ('null',):
-            json_val = json.loads(value)
-            return "json", json_val
-    except (json.JSONDecodeError, ValueError):
-        pass
-    
     # Timestamp detection
     try:
         # Try to parse various date/time formats
@@ -103,7 +83,7 @@ def infer_column_type(values: List[Any]) -> str:
     Infer the best column type from a list of values.
     
     Uses majority voting with type hierarchy:
-    timestamp > json > real > integer > boolean > text
+    timestamp > real > integer > text
     """
     if not values:
         return "text"
@@ -120,7 +100,7 @@ def infer_column_type(values: List[Any]) -> str:
         type_counts[inferred_type] = type_counts.get(inferred_type, 0) + 1
     
     # Type hierarchy - more specific types win
-    type_hierarchy = ["timestamp", "json", "real", "integer", "boolean", "text"]
+    type_hierarchy = ["timestamp", "real", "integer", "text"]
     
     # If we have a clear majority (>50%), use that
     total_count = len(non_null_values)
@@ -201,14 +181,6 @@ def convert_value_to_type(value: Any, target_type: str) -> Any:
         return int(value)
     elif target_type == "real":
         return float(value)
-    elif target_type == "boolean":
-        if isinstance(value, str):
-            return value.lower() in ("true", "yes", "1", "on")
-        return bool(value)
-    elif target_type == "json":
-        if isinstance(value, str):
-            return json.loads(value)
-        return value
     elif target_type == "timestamp":
         if isinstance(value, str):
             return date_parser.parse(value)

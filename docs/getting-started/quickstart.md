@@ -20,8 +20,7 @@ db.add_columns('users', {
     'name': 'Alice',           # Infers 'text' type
     'email': 'alice@test.com', # Infers 'text' type
     'age': 25,                 # Infers 'integer' type
-    'active': True,            # Infers 'boolean' type
-    'metadata': {'role': 'admin'}  # Infers 'json' type
+    'salary': 75000.50         # Infers 'real' type
 })
 
 print("✅ Table created with columns!")
@@ -105,8 +104,7 @@ Add new columns without migrations:
 # Add new columns to existing table
 db.add_columns('users', {
     'created_at': '2024-01-01',  # Infers 'timestamp' type
-    'salary': 75000.0,          # Infers 'real' type
-    'skills': ['python', 'sql'] # Infers 'json' type
+    'department': 'Engineering'  # Infers 'text' type
 })
 
 # Insert data with new columns
@@ -182,11 +180,11 @@ sdb table create products
 # Add columns
 sdb table add column products name text
 sdb table add column products price real
-sdb table add column products in_stock boolean
+sdb table add column products quantity integer
 
-# Insert data using JSON
-sdb add products '{"name": "Widget", "price": 19.99, "in_stock": true}'
-sdb add products '{"name": "Gadget", "price": 29.99, "in_stock": false}'
+# Insert data
+sdb add products '{"name": "Widget", "price": 19.99, "quantity": 100}'
+sdb add products '{"name": "Gadget", "price": 29.99, "quantity": 50}'
 
 # Query data
 sdb query products

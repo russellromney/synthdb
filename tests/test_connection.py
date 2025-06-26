@@ -56,18 +56,16 @@ class TestSynthDBConnection:
             'name': 'text',                    # Explicit type
             'price': 19.99,                   # Infer real
             'stock': 100,                     # Infer integer
-            'active': True,                   # Infer boolean
-            'metadata': {'category': 'tech'}, # Infer json
             'created': '2023-12-25'          # Infer timestamp
         })
         
-        assert len(column_ids) == 6
+        assert len(column_ids) == 4
         assert all(isinstance(col_id, int) for col_id in column_ids.values())
         
         # Verify columns exist
         columns = self.db.list_columns('products')
         column_names = [c['name'] for c in columns]
-        for expected_col in ['name', 'price', 'stock', 'active', 'metadata', 'created']:
+        for expected_col in ['name', 'price', 'stock', 'created']:
             assert expected_col in column_names
     
     def test_insert_auto_id(self):
@@ -223,7 +221,7 @@ class TestSynthDBConnection:
         self.db.add_columns('users', {
             'name': 'text',
             'age': 25,
-            'active': True
+            'score': 95.5
         })
         
         columns = self.db.list_columns('users')
@@ -232,16 +230,16 @@ class TestSynthDBConnection:
         column_names = [c['name'] for c in columns]
         assert 'name' in column_names
         assert 'age' in column_names
-        assert 'active' in column_names
+        assert 'score' in column_names
         
         # Check data types
         name_col = next(c for c in columns if c['name'] == 'name')
         age_col = next(c for c in columns if c['name'] == 'age')
-        active_col = next(c for c in columns if c['name'] == 'active')
+        score_col = next(c for c in columns if c['name'] == 'score')
         
         assert name_col['data_type'] == 'text'
         assert age_col['data_type'] == 'integer'
-        assert active_col['data_type'] == 'boolean'
+        assert score_col['data_type'] == 'real'
     
     def test_error_handling(self):
         """Test error handling."""

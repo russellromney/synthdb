@@ -84,7 +84,7 @@ class InvalidDataTypeError(SynthDBError):
     """Exception for invalid data types."""
     
     def __init__(self, data_type: str, valid_types: List[str] = None):
-        valid_types = valid_types or ["text", "integer", "real", "boolean", "json", "timestamp"]
+        valid_types = valid_types or ["text", "integer", "real", "timestamp"]
         
         suggestions = []
         
@@ -147,17 +147,6 @@ class TypeConversionError(SynthDBError):
                 "Use decimal notation (e.g., 3.14)",
                 "Scientific notation is supported (e.g., 1.5e-10)",
                 "Check for non-numeric characters"
-            ])
-        elif target_type == "boolean":
-            suggestions.extend([
-                "Use true/false, yes/no, 1/0, or on/off",
-                "Boolean values are case-insensitive"
-            ])
-        elif target_type == "json":
-            suggestions.extend([
-                "Ensure valid JSON format",
-                "Use double quotes for strings in JSON",
-                "Check for trailing commas or syntax errors"
             ])
         elif target_type == "timestamp":
             suggestions.extend([

@@ -139,8 +139,6 @@ class SqliteBackend(LocalBackend):
             'text': 'TEXT',
             'integer': 'INTEGER',
             'real': 'REAL',
-            'boolean': 'INTEGER',  # SQLite doesn't have native boolean
-            'json': 'TEXT',
             'timestamp': 'TIMESTAMP'
         }
         return type_mapping.get(synthdb_type, 'TEXT')
@@ -221,8 +219,6 @@ class LimboBackend(LocalBackend):
             'text': 'TEXT',
             'integer': 'INTEGER',
             'real': 'REAL',
-            'boolean': 'INTEGER',
-            'json': 'TEXT',
             'timestamp': 'TIMESTAMP'
         }
         return type_mapping.get(synthdb_type, 'TEXT')

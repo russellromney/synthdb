@@ -38,13 +38,13 @@ class TestNewAPI:
         columns = self.db.add_columns('users', {
             'name': 'text',
             'age': 'integer',
-            'active': 'boolean'
+            'score': 'real'
         })
         
         assert len(columns) == 3
         assert 'name' in columns
         assert 'age' in columns
-        assert 'active' in columns
+        assert 'score' in columns
         assert all(isinstance(col_id, int) for col_id in columns.values())
 
     def test_add_columns_with_inference(self):
@@ -53,13 +53,11 @@ class TestNewAPI:
             'name': 'John Doe',           # Should infer text
             'age': 25,                    # Should infer integer
             'salary': 50000.50,           # Should infer real
-            'active': True,               # Should infer boolean
-            'metadata': {'role': 'admin'}, # Should infer json
             'created': '2023-12-25'       # Should infer timestamp
         })
         
-        assert len(columns) == 6
-        assert all(col in columns for col in ['name', 'age', 'salary', 'active', 'metadata', 'created'])
+        assert len(columns) == 4
+        assert all(col in columns for col in ['name', 'age', 'salary', 'created'])
 
     def test_insert_auto_id(self):
         """Test insert with auto-generated row ID."""
@@ -363,12 +361,10 @@ class TestAPIIntegration:
             'description': 'A sample product',  # Infer text
             'price': 19.99,                     # Infer real
             'stock': 100,                       # Infer integer
-            'active': True,                     # Infer boolean
-            'tags': ['electronics', 'gadget'],  # Infer json
             'created': '2023-12-25'             # Infer timestamp
         })
         
-        assert len(columns) == 7
+        assert len(columns) == 4
         
         # Insert products
         product1 = self.db.insert('products', {
@@ -376,16 +372,13 @@ class TestAPIIntegration:
             'description': 'Latest model smartphone',
             'price': 599.99,
             'stock': 50,
-            'active': True,
-            'tags': ['electronics', 'mobile'],
             'created': '2023-12-25 10:00:00'
         })
         
         product2 = self.db.insert('products', {
             'name': 'Laptop',
             'price': 1299.99,
-            'stock': 25,
-            'active': True
+            'stock': 25
         }, row_id=1000)  # Explicit ID
         
         # Query and verify
@@ -429,12 +422,12 @@ class TestColumnCopyAPI:
             'name': 'text',
             'email': 'text', 
             'age': 'integer',
-            'active': 'boolean'
+            'score': 'real'
         })
         
         # Insert test data
-        self.db.insert('users', {'name': 'Alice', 'email': 'alice@example.com', 'age': 25, 'active': True})
-        self.db.insert('users', {'name': 'Bob', 'email': 'bob@example.com', 'age': 30, 'active': False})
+        self.db.insert('users', {'name': 'Alice', 'email': 'alice@example.com', 'age': 25, 'score': 95.5})
+        self.db.insert('users', {'name': 'Bob', 'email': 'bob@example.com', 'age': 30, 'score': 87.2})
         
         # Create target table
         self.db.create_table('customers')
@@ -509,18 +502,18 @@ class TestColumnCopyAPI:
         # Test integer column
         int_column_id = self.db.copy_column('users', 'age', 'customers', 'customer_age', copy_data=True)
         
-        # Test boolean column
-        bool_column_id = self.db.copy_column('users', 'active', 'customers', 'is_active', copy_data=True)
+        # Test real column
+        real_column_id = self.db.copy_column('users', 'score', 'customers', 'customer_score', copy_data=True)
         
         assert isinstance(int_column_id, int)
-        assert isinstance(bool_column_id, int)
+        assert isinstance(real_column_id, int)
         
         # Verify columns and data types
         columns = self.db.list_columns('customers')
         column_info = {col['name']: col['data_type'] for col in columns}
         
         assert column_info['customer_age'] == 'integer'
-        assert column_info['is_active'] == 'boolean'
+        assert column_info['customer_score'] == 'real'
 
     def test_copy_column_error_source_not_found(self):
         """Test error when source column doesn't exist."""

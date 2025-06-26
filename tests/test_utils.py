@@ -47,7 +47,7 @@ def test_export_table_structure(temp_db):
     db.add_columns("products", {
         "name": "text",
         "price": "real",
-        "in_stock": "boolean",
+        "score": "real",
         "quantity": "integer"
     })
     
@@ -60,7 +60,7 @@ def test_export_table_structure(temp_db):
     # Verify column types
     assert column_types['name'] == 'text', "Name should be text type"
     assert column_types['price'] == 'real', "Price should be real type"
-    assert column_types['in_stock'] == 'boolean', "In_stock should be boolean type"
+    assert column_types['score'] == 'real', "Score should be real type"
     assert column_types['quantity'] == 'integer', "Quantity should be integer type"
     
     # Create a simple CREATE TABLE statement
@@ -71,7 +71,7 @@ def test_export_table_structure(temp_db):
     assert "CREATE TABLE products" in create_sql, "Should contain CREATE TABLE statement"
     assert "name TEXT" in create_sql, "Should contain name column"
     assert "price REAL" in create_sql, "Should contain price column"
-    assert "in_stock BOOLEAN" in create_sql, "Should contain boolean column"
+    assert "score REAL" in create_sql, "Should contain score column"
     assert "quantity INTEGER" in create_sql, "Should contain quantity column"
 
 

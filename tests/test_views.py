@@ -38,14 +38,14 @@ def test_create_table_view_with_data(temp_db):
     db.add_columns("products", {
         "name": "text",
         "price": "real", 
-        "active": "boolean"
+        "quantity": "integer"
     })
     
     # Insert test data
     db.insert("products", {
         "name": "Widget",
         "price": 19.99,
-        "active": True
+        "quantity": 100
     }, row_id=0)
     
     db.insert("products", {

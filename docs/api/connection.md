@@ -118,7 +118,7 @@ db.create_table('products')
 db.add_columns('products', {
     'name': 'text',
     'price': 19.99,  # Infers real type
-    'active': True   # Infers boolean type
+    'quantity': 100  # Infers integer type
 })
 
 # Insert data

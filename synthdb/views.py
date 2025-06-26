@@ -56,7 +56,7 @@ def create_table_views(db_path: str = 'db.db', backend_name: str = None):
                 backend.execute(db, create_view_sql)
                 continue
         
-            # Generate optimized view SQL for versioned storage with soft delete support
+            # Generate optimized view SQL with row_metadata JOINs
             column_selects = []
             table_joins = []
             
@@ -64,55 +64,28 @@ def create_table_views(db_path: str = 'db.db', backend_name: str = None):
                 type_table = get_type_table_name(col['data_type'])
                 alias = f"{type_table}_{col['id']}"
                 
-                # Only include non-deleted current values
+                # LEFT JOIN to value tables for current values only (no delete filtering needed)
                 table_joins.append(f"""
                     LEFT JOIN {type_table} {alias} ON 
-                        all_rows.row_id = {alias}.row_id AND 
+                        rm.row_id = {alias}.row_id AND 
                         {alias}.table_id = {table_id} AND 
                         {alias}.column_id = {col['id']} AND
-                        {alias}.is_current = 1 AND 
-                        {alias}.is_deleted = 0
+                        {alias}.is_current = 1
                 """)
                 
-                # Handle boolean display conversion
-                if col['data_type'] == 'boolean':
-                    column_selects.append(f"""
-                        CASE WHEN {alias}.value = 1 THEN 'true' 
-                             WHEN {alias}.value = 0 THEN 'false' 
-                             ELSE NULL END AS \"{col['name']}\"
-                    """)
-                else:
-                    column_selects.append(f'{alias}.value AS \"{col["name"]}\"')
-            
-            # Get all unique row_ids that have any current, non-deleted values
-            union_queries = []
-            for col in columns:
-                type_table = get_type_table_name(col['data_type'])
-                union_queries.append(f"""
-                    SELECT DISTINCT row_id FROM {type_table} 
-                    WHERE table_id = {table_id} AND is_current = 1 AND is_deleted = 0
-                """)
-            
-            # Metadata columns - get earliest created_at and latest updated_at
-            metadata_selects = []
-            for col in columns:
-                type_table = get_type_table_name(col['data_type'])
-                alias = f"{type_table}_{col['id']}"
-                metadata_selects.append(f"{alias}.created_at")
+                # All types are now simplified - no special boolean handling needed
+                column_selects.append(f'{alias}.value AS \"{col["name"]}\"')
             
             create_view_sql = f"""
                 CREATE VIEW {view_name} AS
                 SELECT 
-                    all_rows.row_id,
-                    {', '.join(column_selects)},
-                    MIN({', '.join(metadata_selects)}) as created_at,
-                    MAX({', '.join(metadata_selects)}) as updated_at
-                FROM (
-                    {' UNION '.join(union_queries)}
-                ) all_rows
+                    rm.row_id,
+                    {', '.join(column_selects) if column_selects else 'NULL as placeholder'},
+                    rm.created_at,
+                    rm.updated_at
+                FROM row_metadata rm
                 {' '.join(table_joins)}
-                GROUP BY all_rows.row_id
-                HAVING COUNT(*) > 0
+                WHERE rm.table_id = {table_id} AND rm.is_deleted = 0
             """
             
             print(f"Creating view for table: {table_name}")

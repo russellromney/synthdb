@@ -1,7 +1,6 @@
 """Core database operations for SynthDB."""
 
 import sqlite3
-import json
 from .types import get_type_table_name
 from .backends import get_backend, detect_backend_from_connection, parse_connection_string
 from .config import config
@@ -43,7 +42,7 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
 def upsert_typed_value(row_id, table_id, column_id, value, data_type, 
                       backend=None, connection=None):
     """
-    Atomic upsert with versioning and soft delete support.
+    Smart upsert with automatic row resurrection and versioning.
     
     This function MUST be called within a transaction context.
     
@@ -64,22 +63,25 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
     
     table_name = get_type_table_name(data_type)
     
-    # Convert value to appropriate type
-    if data_type == 'boolean':
-        value = 1 if value else 0
-    elif data_type == 'json':
-        value = json.dumps(value) if not isinstance(value, str) else value
+    # No value conversion needed - simplified types only
     
     try:
-        # Step 1: Mark current value as historical (atomic)
+        # Step 1: Check if row is deleted and resurrect if needed
+        if is_row_deleted(row_id, backend, connection):
+            resurrect_row_metadata(row_id, backend, connection)
+        
+        # Step 2: Ensure row metadata exists
+        ensure_row_metadata_exists(row_id, table_id, backend, connection)
+        
+        # Step 3: Mark current value as historical (atomic)
         backend.execute(connection, f"""
             UPDATE {table_name} 
             SET is_current = 0 
             WHERE row_id = ? AND table_id = ? AND column_id = ? 
-            AND is_current = 1 AND is_deleted = 0
+            AND is_current = 1
         """, (row_id, table_id, column_id))
         
-        # Step 2: Get next version number (within same transaction)
+        # Step 4: Get next version number (within same transaction)
         cur = backend.execute(connection, f"""
             SELECT COALESCE(MAX(version), -1) + 1 as next_version
             FROM {table_name} 
@@ -89,11 +91,14 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
         result = backend.fetchone(cur)
         next_version = result['next_version'] if result else 0
         
-        # Step 3: Insert new current value (atomic)
+        # Step 5: Insert new current value (atomic)
         backend.execute(connection, f"""
-            INSERT INTO {table_name} (row_id, table_id, column_id, version, value, is_current, is_deleted)
-            VALUES (?, ?, ?, ?, ?, 1, 0)
+            INSERT INTO {table_name} (row_id, table_id, column_id, version, value, is_current)
+            VALUES (?, ?, ?, ?, ?, 1)
         """, (row_id, table_id, column_id, next_version, value))
+        
+        # Step 6: Update row metadata timestamp
+        update_row_metadata_timestamp(row_id, backend, connection)
         
         # Transaction will be committed by caller
         return next_version
@@ -103,60 +108,31 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
         raise ValueError(f"Failed to upsert value: {e}")
 
 
+# Cell-level deletes no longer supported - use row-level deletes instead
+# This function is kept for backward compatibility but will raise an error
 def soft_delete_typed_value(row_id, table_id, column_id, data_type, 
                            backend=None, connection=None):
     """
-    Soft delete a value while preserving audit trail.
+    DEPRECATED: Cell-level deletes no longer supported.
     
-    This function MUST be called within a transaction context.
-    
-    Args:
-        row_id: Row identifier
-        table_id: Table identifier  
-        column_id: Column identifier
-        data_type: Data type for value storage
-        backend: Backend instance for transaction reuse
-        connection: Connection for transaction reuse
-    
-    Returns:
-        bool: True if a value was deleted, False if no current value existed
+    Use delete_row_metadata() instead for row-level deletion.
     """
-    if not backend or not connection:
-        raise ValueError("soft_delete_typed_value requires existing transaction context")
-    
-    table_name = get_type_table_name(data_type)
-    
-    try:
-        # Get the count of changes before the operation
-        changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
-        
-        # Mark current value as deleted but keep it current for audit
-        backend.execute(connection, f"""
-            UPDATE {table_name} 
-            SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
-            WHERE row_id = ? AND table_id = ? AND column_id = ? 
-            AND is_current = 1 AND is_deleted = 0
-        """, (row_id, table_id, column_id))
-        
-        # Check if any row was actually updated
-        changes_after = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
-        return changes_after > changes_before
-            
-    except Exception as e:
-        raise ValueError(f"Failed to soft delete value: {e}")
+    raise NotImplementedError(
+        "Cell-level deletes are no longer supported. Use row-level deletion instead."
+    )
 
 
 def get_typed_value(row_id, table_id, column_id, data_type, 
                    include_deleted=False, backend=None, connection=None):
     """
-    Get current value with option to include soft-deleted values.
+    Get current value with option to include deleted rows.
     
     Args:
         row_id: Row identifier
         table_id: Table identifier  
         column_id: Column identifier
         data_type: Data type for value storage
-        include_deleted: Whether to include soft-deleted values
+        include_deleted: Whether to include values from deleted rows
         backend: Backend instance for transaction reuse
         connection: Connection for transaction reuse
     
@@ -168,15 +144,25 @@ def get_typed_value(row_id, table_id, column_id, data_type,
     
     table_name = get_type_table_name(data_type)
     
-    # Build WHERE clause based on deleted flag
-    deleted_condition = "" if include_deleted else "AND is_deleted = 0"
-    
-    cur = backend.execute(connection, f"""
-        SELECT value, is_deleted, deleted_at, created_at, version
-        FROM {table_name}
-        WHERE row_id = ? AND table_id = ? AND column_id = ? 
-        AND is_current = 1 {deleted_condition}
-    """, (row_id, table_id, column_id))
+    # Build query with row metadata JOIN for delete checking
+    if include_deleted:
+        # Include values even from deleted rows
+        cur = backend.execute(connection, f"""
+            SELECT tv.value, rm.is_deleted, rm.deleted_at, tv.created_at, tv.version
+            FROM {table_name} tv
+            LEFT JOIN row_metadata rm ON tv.row_id = rm.row_id
+            WHERE tv.row_id = ? AND tv.table_id = ? AND tv.column_id = ? 
+            AND tv.is_current = 1
+        """, (row_id, table_id, column_id))
+    else:
+        # Only include values from active rows
+        cur = backend.execute(connection, f"""
+            SELECT tv.value, rm.is_deleted, rm.deleted_at, tv.created_at, tv.version
+            FROM {table_name} tv
+            JOIN row_metadata rm ON tv.row_id = rm.row_id
+            WHERE tv.row_id = ? AND tv.table_id = ? AND tv.column_id = ? 
+            AND tv.is_current = 1 AND rm.is_deleted = 0
+        """, (row_id, table_id, column_id))
     
     return backend.fetchone(cur)
 
@@ -213,6 +199,80 @@ def get_table_columns(table_name: str, backend, connection) -> list:
         ORDER BY cd.id
     """, (table_name,))
     return backend.fetchall(cur)
+
+
+def create_row_metadata(row_id: str, table_id: int, backend, connection) -> None:
+    """Create row metadata entry for a new row."""
+    backend.execute(connection, """
+        INSERT INTO row_metadata (row_id, table_id, created_at, updated_at, is_deleted, version)
+        VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 1)
+    """, (row_id, table_id))
+
+
+def ensure_row_metadata_exists(row_id: str, table_id: int, backend, connection) -> None:
+    """Ensure row metadata exists, create if missing."""
+    cur = backend.execute(connection, """
+        SELECT row_id FROM row_metadata WHERE row_id = ?
+    """, (row_id,))
+    
+    if not backend.fetchone(cur):
+        create_row_metadata(row_id, table_id, backend, connection)
+
+
+def get_row_metadata(row_id: str, backend, connection) -> dict:
+    """Get row metadata for a specific row."""
+    cur = backend.execute(connection, """
+        SELECT row_id, table_id, created_at, updated_at, deleted_at, is_deleted, version
+        FROM row_metadata 
+        WHERE row_id = ?
+    """, (row_id,))
+    return backend.fetchone(cur)
+
+
+def is_row_deleted(row_id: str, backend, connection) -> bool:
+    """Check if a row is deleted."""
+    cur = backend.execute(connection, """
+        SELECT is_deleted FROM row_metadata WHERE row_id = ?
+    """, (row_id,))
+    result = backend.fetchone(cur)
+    return result and result['is_deleted']
+
+
+def delete_row_metadata(row_id: str, backend, connection) -> bool:
+    """Soft delete a row by updating metadata only."""
+    changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
+    
+    backend.execute(connection, """
+        UPDATE row_metadata 
+        SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE row_id = ? AND is_deleted = 0
+    """, (row_id,))
+    
+    changes_after = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
+    return changes_after > changes_before
+
+
+def resurrect_row_metadata(row_id: str, backend, connection) -> bool:
+    """Un-delete a row by clearing deleted_at."""
+    changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
+    
+    backend.execute(connection, """
+        UPDATE row_metadata 
+        SET is_deleted = 0, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP, version = version + 1
+        WHERE row_id = ? AND is_deleted = 1
+    """, (row_id,))
+    
+    changes_after = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
+    return changes_after > changes_before
+
+
+def update_row_metadata_timestamp(row_id: str, backend, connection) -> None:
+    """Update the updated_at timestamp for a row."""
+    backend.execute(connection, """
+        UPDATE row_metadata 
+        SET updated_at = CURRENT_TIMESTAMP
+        WHERE row_id = ?
+    """, (row_id,))
 
 
 def create_table(table_name, db_path: str = 'db.db', backend_name: str = None):

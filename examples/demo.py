@@ -39,8 +39,6 @@ def main_demo():
         'email': 'user@example.com',              # Infers 'text'
         'age': 25,                                # Infers 'integer'
         'salary': 75000.50,                       # Infers 'real'
-        'active': True,                           # Infers 'boolean'
-        'preferences': {'theme': 'dark'},         # Infers 'json'
         'last_login': '2023-12-25 10:30:00',     # Infers 'timestamp'
         'bio': 'Software engineer and cat lover' # Explicit text
     })
@@ -58,8 +56,6 @@ def main_demo():
         'email': 'alice@example.com',
         'age': 28,
         'salary': 85000.0,
-        'active': True,
-        'preferences': {'theme': 'light', 'language': 'en'},
         'last_login': '2023-12-25 09:15:30',
         'bio': 'Senior software engineer specializing in database systems'
     })
@@ -71,7 +67,6 @@ def main_demo():
         'email': 'bob@example.com', 
         'age': 35,
         'salary': 92000.0,
-        'active': True,
         'bio': 'DevOps engineer and automation enthusiast'
     }, row_id=100)
     print(f"✅ Inserted Bob with explicit ID: {bob_id}")

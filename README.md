@@ -76,12 +76,12 @@ sdb table create products
 # Add columns
 sdb table add column products name text
 sdb table add column products price real
-sdb table add column products active boolean
+sdb table add column products quantity integer
 
 # Insert data
 sdb insert products 0 name "Widget" text
 sdb insert products 0 price "19.99" real
-sdb insert products 0 active "true" boolean
+sdb insert products 0 quantity "100" integer
 
 # Query data
 sdb query products
@@ -116,8 +116,6 @@ db.add_columns('products', {
     'description': 'A great product', # Infers text
     'price': 19.99,                  # Infers real
     'stock': 100,                    # Infers integer
-    'active': True,                  # Infers boolean
-    'metadata': {'category': 'tech'}, # Infers json
     'created': '2023-12-25'          # Infers timestamp
 })
 
@@ -198,10 +196,10 @@ SYNTHDB_BACKEND=limbo  # Already the default
 
 ### Performance Comparison
 
-| Backend | Single User | Multi User | Complex Queries | JSON Performance |
-|---------|-------------|------------|-----------------|------------------|
-| Limbo | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
-| SQLite | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| Backend | Single User | Multi User | Complex Queries | Overall Performance |
+|---------|-------------|------------|-----------------|---------------------|
+| Limbo | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+| SQLite | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 
 ## Architecture
 
@@ -219,7 +217,7 @@ SynthDB uses a flexible data model with the following components:
 SynthDB automatically creates SQL views for each table that:
 - Present data in familiar columnar format
 - Include row_id, created_at, and updated_at timestamps
-- Handle type conversions (e.g., boolean 1/0 to "true"/"false")
+- Handle type conversions (e.g., integer to text)
 - Update automatically when schema changes
 
 ### Supported Data Types
@@ -227,8 +225,6 @@ SynthDB automatically creates SQL views for each table that:
 - **text**: String values
 - **integer**: Whole numbers
 - **real**: Floating-point numbers
-- **boolean**: True/false values (stored as integers, displayed as strings)
-- **json**: JSON objects and arrays
 - **timestamp**: Date/time values
 
 ## Examples
@@ -334,7 +330,7 @@ synthdb/
 - `sdb t create <name>` - Create table (shortcut for `table create`)
 - `sdb l [table]` - List tables/columns (shortcut for `table list`)
 - `sdb q <table>` - Query data (shortcut for `query`)
-- `sdb i <table> '<json>'` - Insert data (shortcut for `add`)
+- `sdb i <table> '<data>'` - Insert data (shortcut for `add`)
 
 ### Database Operations
 - `sdb database init [--path <path>] [--backend <backend>] [connection options]` - Initialize database
@@ -352,8 +348,8 @@ synthdb/
 - `sdb table add column <table> <column> <type> [--backend <backend>]` - Add column
 
 ### Data Operations
-- `sdb add <table> '<json_data>' [--id <row_id>] [--backend <backend>]` - Add data using modern API (auto-generated IDs, type inference)
-- `sdb i <table> '<json_data>'` - Shortcut for add
+- `sdb add <table> '<data>' [--id <row_id>] [--backend <backend>]` - Add data using modern API (auto-generated IDs, type inference)
+- `sdb i <table> '<data>'` - Shortcut for add
 - `sdb query <table> [--where <clause>] [--backend <backend>]` - Query table data
 - `sdb q <table>` - Shortcut for query
 - `sdb insert <table> <row_id> <column> <value> <type> [--backend <backend>]` - Insert value into specific row/column
@@ -424,10 +420,10 @@ SynthDB prevents creating tables with names that conflict with internal tables:
 - `table_definitions`, `column_definitions`
 
 **Value Storage Tables:**
-- `text_values`, `integer_values`, `real_values`, `boolean_values`, `json_values`, `timestamp_values`
+- `text_values`, `integer_values`, `real_values`, `timestamp_values`
 
-**History Tables:**
-- `text_value_history`, `integer_value_history`, `real_value_history`, `boolean_value_history`, `json_value_history`, `timestamp_value_history`
+**Row Metadata Table:**
+- `row_metadata`
 
 Table names are also case-insensitive for protection purposes.
 

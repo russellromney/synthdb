@@ -34,6 +34,18 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS row_metadata (
+                row_id TEXT PRIMARY KEY,
+                table_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                deleted_at TIMESTAMP,
+                is_deleted BOOLEAN DEFAULT 0,
+                version INTEGER DEFAULT 1,
+                FOREIGN KEY (table_id) REFERENCES table_definitions(id)
+            )
+            """,
+            """
             CREATE TABLE IF NOT EXISTS text_values (
                 row_id TEXT NOT NULL,
                 table_id INTEGER NOT NULL,
@@ -42,8 +54,6 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 value TEXT,
                 is_current BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
-                deleted_at TIMESTAMP,
                 PRIMARY KEY (row_id, table_id, column_id, version)
             )
             """,
@@ -56,8 +66,6 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 value INTEGER,
                 is_current BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
-                deleted_at TIMESTAMP,
                 PRIMARY KEY (row_id, table_id, column_id, version)
             )
             """,
@@ -70,36 +78,6 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 value REAL,
                 is_current BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
-                deleted_at TIMESTAMP,
-                PRIMARY KEY (row_id, table_id, column_id, version)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS boolean_values (
-                row_id TEXT NOT NULL,
-                table_id INTEGER NOT NULL,
-                column_id INTEGER NOT NULL,
-                version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                value INTEGER,
-                is_current BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
-                deleted_at TIMESTAMP,
-                PRIMARY KEY (row_id, table_id, column_id, version)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS json_values (
-                row_id TEXT NOT NULL,
-                table_id INTEGER NOT NULL,
-                column_id INTEGER NOT NULL,
-                version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                value TEXT,
-                is_current BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
-                deleted_at TIMESTAMP,
                 PRIMARY KEY (row_id, table_id, column_id, version)
             )
             """,
@@ -112,31 +90,28 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 value TIMESTAMP,
                 is_current BOOLEAN DEFAULT 1,
-                is_deleted BOOLEAN DEFAULT 0,
-                deleted_at TIMESTAMP,
                 PRIMARY KEY (row_id, table_id, column_id, version)
             )
             """,
         ],
         "indexes": [
-            # Current value lookups (most common queries) - fast performance indexes only
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_text_current ON text_values (row_id, table_id, column_id) WHERE is_current = 1 AND is_deleted = 0",
-            "CREATE INDEX IF NOT EXISTS idx_text_active ON text_values (table_id, column_id, row_id) WHERE is_current = 1 AND is_deleted = 0",
+            # Row metadata indexes for efficient row lookups
+            "CREATE INDEX IF NOT EXISTS idx_row_metadata_active ON row_metadata (table_id) WHERE is_deleted = 0",
+            "CREATE INDEX IF NOT EXISTS idx_row_metadata_table_active ON row_metadata (table_id, row_id) WHERE is_deleted = 0",
+            "CREATE INDEX IF NOT EXISTS idx_row_metadata_deleted ON row_metadata (deleted_at) WHERE is_deleted = 1",
             
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_integer_current ON integer_values (row_id, table_id, column_id) WHERE is_current = 1 AND is_deleted = 0",
-            "CREATE INDEX IF NOT EXISTS idx_integer_active ON integer_values (table_id, column_id, row_id) WHERE is_current = 1 AND is_deleted = 0",
+            # Current value lookups (simplified without delete filtering)
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_text_current ON text_values (row_id, table_id, column_id) WHERE is_current = 1",
+            "CREATE INDEX IF NOT EXISTS idx_text_active ON text_values (table_id, column_id, row_id) WHERE is_current = 1",
             
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_real_current ON real_values (row_id, table_id, column_id) WHERE is_current = 1 AND is_deleted = 0",
-            "CREATE INDEX IF NOT EXISTS idx_real_active ON real_values (table_id, column_id, row_id) WHERE is_current = 1 AND is_deleted = 0",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_integer_current ON integer_values (row_id, table_id, column_id) WHERE is_current = 1",
+            "CREATE INDEX IF NOT EXISTS idx_integer_active ON integer_values (table_id, column_id, row_id) WHERE is_current = 1",
             
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_boolean_current ON boolean_values (row_id, table_id, column_id) WHERE is_current = 1 AND is_deleted = 0",
-            "CREATE INDEX IF NOT EXISTS idx_boolean_active ON boolean_values (table_id, column_id, row_id) WHERE is_current = 1 AND is_deleted = 0",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_real_current ON real_values (row_id, table_id, column_id) WHERE is_current = 1",
+            "CREATE INDEX IF NOT EXISTS idx_real_active ON real_values (table_id, column_id, row_id) WHERE is_current = 1",
             
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_json_current ON json_values (row_id, table_id, column_id) WHERE is_current = 1 AND is_deleted = 0",
-            "CREATE INDEX IF NOT EXISTS idx_json_active ON json_values (table_id, column_id, row_id) WHERE is_current = 1 AND is_deleted = 0",
-            
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_timestamp_current ON timestamp_values (row_id, table_id, column_id) WHERE is_current = 1 AND is_deleted = 0",
-            "CREATE INDEX IF NOT EXISTS idx_timestamp_active ON timestamp_values (table_id, column_id, row_id) WHERE is_current = 1 AND is_deleted = 0",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_timestamp_current ON timestamp_values (row_id, table_id, column_id) WHERE is_current = 1",
+            "CREATE INDEX IF NOT EXISTS idx_timestamp_active ON timestamp_values (table_id, column_id, row_id) WHERE is_current = 1",
             
             # Table and column lookup indexes
             "CREATE INDEX IF NOT EXISTS idx_table_definitions_name ON table_definitions (name)",

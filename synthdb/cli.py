@@ -318,12 +318,12 @@ table_app.add_typer(table_add_app)
 def table_add_column(
     table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
     name: str = typer.Argument(..., help="Column name"),
-    data_type: str = typer.Argument(..., help="Data type (text, integer, real, boolean, json, timestamp)", autocompletion=get_data_types),
+    data_type: str = typer.Argument(..., help="Data type (text, integer, real, timestamp)", autocompletion=get_data_types),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
 ):
     """Add a column to an existing table."""
-    valid_types = ["text", "integer", "real", "boolean", "json", "timestamp"]
+    valid_types = ["text", "integer", "real", "timestamp"]
     if data_type not in valid_types:
         console.print(f"[red]Invalid data type '{data_type}'. Valid types: {', '.join(valid_types)}[/red]")
         raise typer.Exit(1)
@@ -349,7 +349,7 @@ def insert_cmd(
     row_id: str = typer.Argument(..., help="Row ID"),
     column: str = typer.Argument(..., help="Column name", autocompletion=get_column_names),
     value: str = typer.Argument(..., help="Value to insert"),
-    data_type: str = typer.Argument(None, help="Data type (text, integer, real, boolean, json, timestamp). If not provided, type will be inferred.", autocompletion=get_data_types),
+    data_type: str = typer.Argument(None, help="Data type (text, integer, real, timestamp). If not provided, type will be inferred.", autocompletion=get_data_types),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     auto: bool = typer.Option(False, "--auto", "-a", help="Automatically infer data type"),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
@@ -381,7 +381,7 @@ def insert_cmd(
             raise typer.Exit(1)
     
     # Validate explicit data type
-    valid_types = ["text", "integer", "real", "boolean", "json", "timestamp"]
+    valid_types = ["text", "integer", "real", "timestamp"]
     if data_type not in valid_types:
         console.print(f"[red]Invalid data type '{data_type}'. Valid types: {', '.join(valid_types)}[/red]")
         console.print(f"[yellow]Tip: Use --auto to automatically infer the type[/yellow]")
@@ -393,8 +393,6 @@ def insert_cmd(
             converted_value = int(value)
         elif data_type == "real":
             converted_value = float(value)
-        elif data_type == "boolean":
-            converted_value = value.lower() in ("true", "1", "yes", "on")
         else:
             converted_value = value
         
@@ -771,8 +769,6 @@ def _export_table_structure(db, table_name: str) -> str:
             'text': 'TEXT',
             'integer': 'INTEGER', 
             'real': 'REAL',
-            'boolean': 'INTEGER',  # SQLite doesn't have native boolean
-            'json': 'TEXT',
             'timestamp': 'TIMESTAMP'
         }.get(data_type, 'TEXT')
         

@@ -28,12 +28,11 @@ def test_make_db():
         required_tables = [
             'table_definitions',
             'column_definitions',
-            'text_values', 'text_value_history',
-            'boolean_values', 'boolean_value_history',
-            'real_values', 'real_value_history',
-            'integer_values', 'integer_value_history',
-            'json_values', 'json_value_history',
-            'timestamp_values', 'timestamp_value_history'
+            'row_metadata',
+            'text_values',
+            'real_values',
+            'integer_values', 
+            'timestamp_values'
         ]
         
         for table in required_tables:
@@ -56,7 +55,7 @@ def test_make_db():
         # Verify a type-specific table structure (text_values)
         cur.execute("PRAGMA table_info(text_values)")
         columns = [row[1] for row in cur.fetchall()]
-        expected_columns = ['row_id', 'table_id', 'column_id', 'created_at', 'updated_at', 'deleted_at', 'value']
+        expected_columns = ['row_id', 'table_id', 'column_id', 'version', 'created_at', 'value', 'is_current']
         for col in expected_columns:
             assert col in columns, f"Column '{col}' should exist in text_values"
         

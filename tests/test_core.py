@@ -93,24 +93,3 @@ def test_insert_typed_value(temp_db):
     assert history_result[0] == "Widget", "History table value should match"
 
 
-def test_insert_boolean_value(temp_db):
-    """Test inserting boolean values (converted to integers)"""
-    db = synthdb.connect(temp_db, backend='sqlite')
-    table_id = db.create_table("products")
-    column_ids = db.add_columns("products", {"active": "boolean"})
-    column_id = column_ids["active"]
-    
-    # Insert True value
-    db.insert("products", {"active": True}, row_id=0)
-    
-    # Verify value was converted to 1
-    db = sqlite3.connect(temp_db)
-    cur = db.cursor()
-    result = cur.execute(
-        "SELECT value FROM boolean_values WHERE row_id = ? AND table_id = ? AND column_id = ?",
-        (0, table_id, column_id)
-    ).fetchone()
-    db.close()
-    
-    assert result is not None, "Boolean value should be inserted"
-    assert result[0] == 1, "True should be converted to 1"

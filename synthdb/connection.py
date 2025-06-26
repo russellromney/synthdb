@@ -111,7 +111,7 @@ class Connection:
         Args:
             table_name: Name of the table
             column_name: Name of the column
-            data_type: Data type ('text', 'integer', 'real', 'boolean', 'json', 'timestamp')
+            data_type: Data type ('text', 'integer', 'real', 'timestamp')
             
         Returns:
             Column ID
@@ -134,19 +134,19 @@ class Connection:
             # Explicit types
             ids = db.add_columns('users', {
                 'email': 'text',
-                'created_at': 'timestamp',
-                'metadata': 'json'
+                'age': 'integer',
+                'created_at': 'timestamp'
             })
             
             # Inferred types from sample values
             ids = db.add_columns('users', {
                 'email': 'user@example.com',      # -> text
                 'age': 25,                        # -> integer
-                'active': True,                   # -> boolean
+                'score': 98.5,                    # -> real
                 'created_at': '2023-12-25'        # -> timestamp
             })
         """
-        valid_types = {"text", "integer", "real", "boolean", "json", "timestamp"}
+        valid_types = {"text", "integer", "real", "timestamp"}
         column_ids = {}
         
         with transaction_context(self.connection_info, self.backend_name) as (backend, connection):
@@ -300,7 +300,9 @@ class Connection:
     
     def delete_value(self, table_name: str, row_id: Union[str, int], column_name: str) -> bool:
         """
-        Soft delete a specific cell value.
+        DEPRECATED: Cell-level deletes no longer supported.
+        
+        Use delete_row() instead for row-level deletion.
         
         Args:
             table_name: Name of the table
@@ -308,32 +310,66 @@ class Connection:
             column_name: Name of the column
             
         Returns:
-            bool: True if a value was deleted, False if no current value existed
-            
-        Examples:
-            # Delete a specific cell value
-            db.delete_value("users", "user-123", "email")
+            bool: Always raises NotImplementedError
         """
         from .api import delete_value
         return delete_value(table_name, row_id, column_name, self.connection_info, self.backend_name)
     
-    def delete_row(self, table_name: str, row_id: Union[str, int]) -> int:
+    def delete_row(self, table_name: str, row_id: Union[str, int]) -> bool:
         """
-        Soft delete all values in a row.
+        Soft delete an entire row by updating row metadata.
         
         Args:
             table_name: Name of the table
             row_id: Row identifier
             
         Returns:
-            int: Number of values that were deleted
+            bool: True if the row was deleted, False if row didn't exist or was already deleted
             
         Examples:
-            # Delete all values for a row
-            deleted_count = db.delete_row("users", "user-123")
+            # Delete entire row efficiently
+            was_deleted = db.delete_row("users", "user-123")
         """
         from .api import delete_row
         return delete_row(table_name, row_id, self.connection_info, self.backend_name)
+    
+    def undelete_row(self, table_name: str, row_id: Union[str, int]) -> bool:
+        """
+        Un-delete (resurrect) a previously deleted row.
+        
+        Args:
+            table_name: Name of the table
+            row_id: Row identifier
+            
+        Returns:
+            bool: True if the row was resurrected, False if row didn't exist or wasn't deleted
+            
+        Examples:
+            # Manually resurrect a deleted row
+            was_resurrected = db.undelete_row("users", "user-123")
+        """
+        from .api import undelete_row
+        return undelete_row(table_name, row_id, self.connection_info, self.backend_name)
+    
+    def get_row_status(self, table_name: str, row_id: Union[str, int]) -> Dict:
+        """
+        Get row metadata including deletion status.
+        
+        Args:
+            table_name: Name of the table
+            row_id: Row identifier
+            
+        Returns:
+            Dict: Row metadata or None if row doesn't exist
+            
+        Examples:
+            # Check if row exists and its status
+            status = db.get_row_status("users", "user-123")
+            if status:
+                print(f"Row exists, deleted: {status['is_deleted']}")
+        """
+        from .api import get_row_status
+        return get_row_status(table_name, row_id, self.connection_info, self.backend_name)
     
     def get_table_history(self, table_name: str, row_id: str = None, column_name: str = None,
                          include_deleted: bool = True) -> List[Dict]:
@@ -344,7 +380,7 @@ class Connection:
             table_name: Name of the table
             row_id: Optional row identifier to filter by
             column_name: Optional column name to filter by
-            include_deleted: Whether to include soft-deleted values
+            include_deleted: Whether to include values from deleted rows
             
         Returns:
             List[Dict]: History entries sorted by timestamp (newest first)
@@ -358,6 +394,9 @@ class Connection:
             
             # Get history for a specific cell
             email_history = db.get_table_history("users", row_id="user-123", column_name="email")
+            
+            # Exclude values from deleted rows
+            active_history = db.get_table_history("users", include_deleted=False)
         """
         from .api import get_table_history
         return get_table_history(table_name, row_id, column_name, include_deleted, 

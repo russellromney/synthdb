@@ -31,7 +31,7 @@ db.add_columns('users', {
     'name': 'text',
     'email': 'user@example.com',  # Infers text type
     'age': 25,                    # Infers integer type
-    'active': True                # Infers boolean type
+    'score': 95.5                 # Infers real type
 })
 
 # Insert data with auto-generated ID

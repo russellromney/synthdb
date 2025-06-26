@@ -198,12 +198,8 @@ class SQLValidator:
     }
     
     INTERNAL_TABLES = {
-        'table_definitions', 'column_definitions',
-        'text_values', 'integer_values', 'real_values',
-        'boolean_values', 'json_values', 'timestamp_values',
-        'text_value_history', 'integer_value_history',
-        'real_value_history', 'boolean_value_history',
-        'json_value_history', 'timestamp_value_history'
+        'table_definitions', 'column_definitions', 'row_metadata',
+        'text_values', 'integer_values', 'real_values', 'timestamp_values'
     }
     
     def validate_query(self, sql: str) -> ValidationResult:

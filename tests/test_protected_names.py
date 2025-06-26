@@ -77,8 +77,6 @@ class TestProtectedNames:
             'text_values',
             'integer_values', 
             'real_values',
-            'boolean_values',
-            'json_values',
             'timestamp_values'
         ]
         
@@ -86,20 +84,10 @@ class TestProtectedNames:
             with pytest.raises(ValueError, match=f"Table name '{table_name}' conflicts with internal SynthDB tables"):
                 self.db.create_table(table_name)
     
-    def test_protected_table_name_history_tables(self):
-        """Test that history table names are protected."""
-        protected_tables = [
-            'text_value_history',
-            'integer_value_history',
-            'real_value_history', 
-            'boolean_value_history',
-            'json_value_history',
-            'timestamp_value_history'
-        ]
-        
-        for table_name in protected_tables:
-            with pytest.raises(ValueError, match=f"Table name '{table_name}' conflicts with internal SynthDB tables"):
-                self.db.create_table(table_name)
+    def test_protected_table_name_row_metadata(self):
+        """Test that row_metadata table name is protected."""
+        with pytest.raises(ValueError, match="Table name 'row_metadata' conflicts with internal SynthDB tables"):
+            self.db.create_table('row_metadata')
     
     def test_protected_table_names_case_insensitive(self):
         """Test that protected table names are case insensitive."""
@@ -215,8 +203,8 @@ class TestProtectedNamesAPI:
         from synthdb.core import create_table
         
         # Protected table should fail
-        with pytest.raises(ValueError, match="Table name 'text_values' conflicts with internal SynthDB tables"):
-            create_table('text_values', self.db_path, 'sqlite')
+        with pytest.raises(ValueError, match="Table name 'row_metadata' conflicts with internal SynthDB tables"):
+            create_table('row_metadata', self.db_path, 'sqlite')
     
     def test_api_add_columns_protection(self):
         """Test column protection via api.add_columns function."""

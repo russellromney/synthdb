@@ -29,7 +29,7 @@ def get_column_names(incomplete: str) -> List[str]:
 
 def get_data_types(incomplete: str) -> List[str]:
     """Get data types for auto-completion."""
-    types = ["text", "integer", "real", "boolean", "json", "timestamp"]
+    types = ["text", "integer", "real", "timestamp"]
     return [t for t in types if t.startswith(incomplete)]
 
 
