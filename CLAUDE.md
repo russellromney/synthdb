@@ -3,3 +3,7 @@ do not worry about backward compatibility. rather, make the changes that make th
 always update tests, documentation, and examples to reflect changes to the ergonomics and functionality of the code. 
 
 never make any changes to the "tasks" file in the root directory.
+
+remember that this is an alpha project with nothing actually in production, so don't worry about migration planning or backward compatibility when planning or making changes.
+
+don't add implementation time to plans - you (the model) will be making these changes. 
