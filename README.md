@@ -64,11 +64,11 @@ synthdb database init
 sdb database init
 
 # Use different backends
-sdb database init --backend sqlite
-sdb database init --backend limbo
+sdb database init                    # Uses Limbo by default
+sdb database init --backend sqlite   # Use SQLite explicitly
 
-# Environment variable
-export SYNTHDB_BACKEND=sqlite
+# Environment variable (optional)
+export SYNTHDB_BACKEND=limbo  # Already the default
 sdb database init
 
 # Create a table
@@ -108,7 +108,7 @@ sdb table export products
 import synthdb
 
 # Create a connection - handles everything automatically
-db = synthdb.connect('app.db', backend='sqlite')
+db = synthdb.connect('app.limbo')  # Uses Limbo by default
 
 # Create table and add columns in one go
 db.create_table('products')
@@ -158,12 +158,12 @@ columns = db.list_columns('products')
 
 ```python
 # Different backends
-db = synthdb.connect('app.db', backend='sqlite')
-db = synthdb.connect('app.limbo', backend='limbo')
+db = synthdb.connect('app.limbo')                    # Uses Limbo (default)
+db = synthdb.connect('app.db', backend='sqlite')     # Uses SQLite explicitly
 
 # Auto-detection by file extension
+db = synthdb.connect('app.limbo')  # Uses Limbo (recommended)
 db = synthdb.connect('app.db')     # Uses SQLite
-db = synthdb.connect('app.limbo')  # Uses Limbo
 ```
 
 
@@ -186,11 +186,11 @@ SynthDB supports two database backends optimized for different use cases:
 ### Configuration
 
 ```python
-# Set backend globally
-synthdb.set_default_backend("sqlite")
+# Set backend globally (optional - Limbo is default)
+synthdb.set_default_backend("limbo")  # Already the default
 
-# Environment variable
-SYNTHDB_BACKEND=sqlite
+# Environment variable (optional)
+SYNTHDB_BACKEND=limbo  # Already the default
 
 # File extension hints
 # .limbo files use Limbo
@@ -250,6 +250,31 @@ python examples/demo.py
 - Database inspection and error handling
 - Different connection methods
 - API benefits and best practices
+
+## Documentation
+
+SynthDB includes comprehensive documentation built with Sphinx and MkDocs Material:
+
+- **📚 [Full Documentation](https://synthdb.readthedocs.io/)** - Complete guides, tutorials, and API reference
+- **🚀 [Quick Start Guide](docs/getting-started/quickstart.md)** - Get up and running in minutes
+- **🔧 [API Reference](docs/api/connection.md)** - Detailed API documentation
+- **💡 [Examples](docs/examples/basic.md)** - Real-world usage patterns
+- **🛠️ [Development Guide](docs/development/contributing.md)** - Contributing to SynthDB
+
+### Building Documentation Locally
+
+```bash
+# Install documentation dependencies
+uv sync --extra docs
+
+# Serve documentation with live reload
+make docs-serve
+# or
+python scripts/build_docs.py serve
+
+# Build static documentation
+make docs-build
+```
 
 ## Development
 
@@ -344,14 +369,14 @@ All commands support:
 
 **Connection Examples:**
 ```bash
-# Local file
-sdb query products --path myapp.db
+# Local file with Limbo (recommended)
+sdb query products --path myapp.limbo
 
-# Specific backend
+# Local file with SQLite
 sdb query products --path myapp.db --backend sqlite
 
-# Environment variable
-export SYNTHDB_BACKEND="sqlite"
+# Environment variable (optional)
+export SYNTHDB_BACKEND="limbo"  # Already the default
 sdb query products
 ```
 

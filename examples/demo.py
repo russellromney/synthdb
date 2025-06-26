@@ -23,7 +23,7 @@ def main_demo():
     
     # Connect to database - the modern way
     print("\n📦 Connecting to Database...")
-    db = synthdb.connect('demo.db', backend='sqlite')
+    db = synthdb.connect('demo.limbo')  # Uses Limbo by default for best performance
     print(f"✅ Connected: {db}")
     
     print("\n1️⃣ Create Table and Add Columns")
@@ -191,14 +191,13 @@ def connection_examples():
     print("=" * 60)
     
     print("\n💾 Local Database Files:")
-    print("   • SQLite: synthdb.connect('app.db', 'sqlite')")
-    print("   • Default: synthdb.connect('app.db')  # Uses default backend")
+    print("   • Limbo (default): synthdb.connect('app.limbo')")
+    print("   • SQLite: synthdb.connect('app.db', backend='sqlite')")
     
     print("\n🔧 Backend Selection:")
-    print("   • Explicit backend: synthdb.connect('app.db', 'sqlite')")
+    print("   • Auto-detection: synthdb.connect('app.limbo')  # Uses Limbo (recommended)")
     print("   • Auto-detection: synthdb.connect('app.db')  # Uses SQLite")
-    print("   • Limbo backend: synthdb.connect('app.limbo', 'limbo')")
-    print("   • Auto-detection: synthdb.connect('app.limbo')  # Uses Limbo")
+    print("   • Explicit backend: synthdb.connect('app.db', backend='sqlite')")
 
 
 def api_benefits():
@@ -233,7 +232,7 @@ def api_benefits():
 def cleanup():
     """Clean up demo files."""
     try:
-        os.remove('demo.db')
+        os.remove('demo.limbo')
         print("\n🧹 Demo database cleaned up")
     except FileNotFoundError:
         pass

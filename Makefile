@@ -36,6 +36,12 @@ ci: ## Run full CI workflow (lint + typecheck + test + build)
 install-config: ## Install with configuration file support
 	uv sync --extra config
 
+install-docs: ## Install with documentation dependencies
+	uv sync --extra docs
+
+install-all: ## Install with all optional dependencies
+	uv sync --extra config --extra docs
+
 # Quick development workflow
 quick-test: ## Run tests quickly (no coverage)
 	uv run pytest -x
@@ -52,3 +58,25 @@ update: ## Update all dependencies
 
 outdated: ## Check for outdated dependencies  
 	uv tree --outdated
+
+# Documentation targets
+docs-check: ## Check documentation dependencies
+	python scripts/build_docs.py check
+
+docs-build: ## Build all documentation
+	python scripts/build_docs.py build
+
+docs-serve: ## Serve documentation for development
+	python scripts/build_docs.py serve
+
+docs-sphinx: ## Build only Sphinx documentation
+	python scripts/build_docs.py build --no-mkdocs
+
+docs-mkdocs: ## Build only MkDocs documentation
+	python scripts/build_docs.py build --no-sphinx
+
+docs-clean: ## Clean documentation build directories
+	python scripts/build_docs.py clean
+
+docs-deploy: ## Deploy documentation to GitHub Pages
+	python scripts/build_docs.py deploy

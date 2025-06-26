@@ -43,6 +43,17 @@ config = [
     "PyYAML>=6.0",
     "toml>=0.10.0",
 ]
+docs = [
+    "sphinx>=7.0.0",
+    "furo>=2023.9.10",
+    "myst-parser>=2.0.0",
+    "sphinx-copybutton>=0.5.2",
+    "sphinx-design>=0.5.0",
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+    "mkdocstrings[python]>=0.23.0",
+    "mike>=1.1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/russellromney/synthdb"

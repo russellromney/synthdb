@@ -1,0 +1,102 @@
+/* Custom styles for SynthDB documentation */
+
+:root {
+  --md-primary-fg-color:        #336790;
+  --md-primary-fg-color--light: #4A9EE0;
+  --md-primary-fg-color--dark:  #225577;
+  --md-accent-fg-color:         #4A9EE0;
+}
+
+/* Code blocks */
+.highlight .gp { 
+  color: #666; 
+}
+
+/* API documentation improvements */
+.doc-heading {
+  border-bottom: 2px solid var(--md-primary-fg-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Improve table styling */
+.md-typeset table:not([class]) {
+  font-size: 0.9rem;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+}
+
+/* Feature proposal styling */
+.feature-proposal {
+  border-left: 4px solid var(--md-accent-fg-color);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  background-color: rgba(74, 158, 224, 0.1);
+  border-radius: 0 4px 4px 0;
+}
+
+.feature-proposal .title {
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+  margin-bottom: 0.5rem;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-proposed {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-in-progress {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.status-implemented {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+}
+
+/* Code examples with titles */
+.code-example {
+  margin: 1rem 0;
+}
+
+.code-example .title {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  margin: 0;
+  font-weight: bold;
+  border-radius: 4px 4px 0 0;
+}
+
+.code-example .highlight {
+  margin-top: 0;
+  border-radius: 0 0 4px 4px;
+}
+
+/* Responsive improvements */
+@media screen and (max-width: 768px) {
+  .md-typeset table:not([class]) {
+    font-size: 0.8rem;
+  }
+  
+  .feature-proposal {
+    margin: 0.5rem -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

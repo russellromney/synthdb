@@ -1,0 +1,1013 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>Feature Proposal: Safe User Query Execution - SynthDB Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=302659d7" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  --color-brand-primary: #336790;
+  --color-brand-content: #336790;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #4A9EE0;
+  --color-brand-content: #4A9EE0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #4A9EE0;
+  --color-brand-content: #4A9EE0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">SynthDB Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/development/feature-proposals/safe-user-queries.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="feature-proposal-safe-user-query-execution">
+<h1>Feature Proposal: Safe User Query Execution<a class="headerlink" href="#feature-proposal-safe-user-query-execution" title="Link to this heading">¶</a></h1>
+<div class="status-badge status-proposed">Proposed</div>
+<p><strong>Authors</strong>: SynthDB Development Team<br />
+<strong>Created</strong>: 2024-06-26<br />
+<strong>Status</strong>: Proposal<br />
+<strong>Complexity</strong>: Medium</p>
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading">¶</a></h2>
+<p>Add the ability for users to execute custom SQL queries on SynthDB databases with built-in safety mechanisms that prevent modification of database structure or access to internal tables. This would enable advanced users to leverage SQL for complex queries while maintaining data integrity and security.</p>
+</section>
+<section id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Link to this heading">¶</a></h2>
+<section id="use-cases">
+<h3>Use Cases<a class="headerlink" href="#use-cases" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Advanced Analytics</strong>: Complex analytical queries that are difficult to express through the standard API</p></li>
+<li><p><strong>Reporting</strong>: Custom report generation with sophisticated aggregations and calculations</p></li>
+<li><p><strong>Data Exploration</strong>: Ad-hoc queries for data discovery and analysis</p></li>
+<li><p><strong>Migration Support</strong>: Easier transition for SQL-experienced users</p></li>
+<li><p><strong>Performance Optimization</strong>: Direct SQL for performance-critical queries</p></li>
+<li><p><strong>Integration</strong>: Support for SQL-based tools and libraries</p></li>
+</ol>
+</section>
+<section id="current-limitations">
+<h3>Current Limitations<a class="headerlink" href="#current-limitations" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>All queries must use the predefined API methods</p></li>
+<li><p>No way to execute custom analytical SQL</p></li>
+<li><p>Complex aggregations require multiple API calls and client-side processing</p></li>
+<li><p>Advanced SQL features (window functions, CTEs) are not accessible</p></li>
+<li><p>Difficult to integrate with SQL-based reporting tools</p></li>
+</ul>
+</section>
+<section id="example-scenarios">
+<h3>Example Scenarios<a class="headerlink" href="#example-scenarios" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Current approach - complex client-side aggregation</span>
+<span class="n">users</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;users&#39;</span><span class="p">)</span>
+<span class="n">orders</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;orders&#39;</span><span class="p">)</span>
+
+<span class="c1"># Manual aggregation in Python</span>
+<span class="n">user_stats</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">users</span><span class="p">:</span>
+    <span class="n">user_orders</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">orders</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">user</span><span class="p">[</span><span class="s1">&#39;row_id&#39;</span><span class="p">]]</span>
+    <span class="n">user_stats</span><span class="p">[</span><span class="n">user</span><span class="p">[</span><span class="s1">&#39;row_id&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>
+        <span class="s1">&#39;order_count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">user_orders</span><span class="p">),</span>
+        <span class="s1">&#39;total_spent&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">user_orders</span><span class="p">),</span>
+        <span class="s1">&#39;avg_order&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">o</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">user_orders</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">user_orders</span><span class="p">)</span> <span class="k">if</span> <span class="n">user_orders</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="p">}</span>
+
+<span class="c1"># Desired approach - direct SQL execution</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        u.name,</span>
+<span class="s2">        COUNT(o.row_id) as order_count,</span>
+<span class="s2">        SUM(o.total) as total_spent,</span>
+<span class="s2">        AVG(o.total) as avg_order_value</span>
+<span class="s2">    FROM users u</span>
+<span class="s2">    LEFT JOIN orders o ON u.row_id = o.user_id</span>
+<span class="s2">    GROUP BY u.row_id, u.name</span>
+<span class="s2">    HAVING order_count &gt; 0</span>
+<span class="s2">    ORDER BY total_spent DESC</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="detailed-design">
+<h2>Detailed Design<a class="headerlink" href="#detailed-design" title="Link to this heading">¶</a></h2>
+<section id="core-concepts">
+<h3>Core Concepts<a class="headerlink" href="#core-concepts" title="Link to this heading">¶</a></h3>
+<section id="query-types">
+<h4>Query Types<a class="headerlink" href="#query-types" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>Read-Only Queries</strong>: SELECT statements only, no modifications</p></li>
+<li><p><strong>View Queries</strong>: Queries against automatically generated views</p></li>
+<li><p><strong>Analytical Queries</strong>: Complex aggregations, window functions, CTEs</p></li>
+<li><p><strong>Restricted Queries</strong>: Access only to user tables, not internal schema</p></li>
+</ol>
+</section>
+<section id="safety-mechanisms">
+<h4>Safety Mechanisms<a class="headerlink" href="#safety-mechanisms" title="Link to this heading">¶</a></h4>
+<ol class="arabic simple">
+<li><p><strong>SQL Parsing</strong>: Parse and validate SQL before execution</p></li>
+<li><p><strong>Whitelist Operations</strong>: Only allow safe SQL operations</p></li>
+<li><p><strong>Table Access Control</strong>: Restrict access to internal tables</p></li>
+<li><p><strong>Query Transformation</strong>: Automatically transform queries to work with SynthDB’s views</p></li>
+</ol>
+</section>
+</section>
+<section id="api-design">
+<h3>API Design<a class="headerlink" href="#api-design" title="Link to this heading">¶</a></h3>
+<section id="basic-query-execution">
+<h4>Basic Query Execution<a class="headerlink" href="#basic-query-execution" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">synthdb</span>
+
+<span class="n">db</span> <span class="o">=</span> <span class="n">synthdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;app.limbo&#39;</span><span class="p">)</span>  <span class="c1"># Uses Limbo by default</span>
+
+<span class="c1"># Simple read-only query</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM users WHERE age &gt; 25&quot;</span><span class="p">)</span>
+
+<span class="c1"># Complex analytical query</span>
+<span class="n">analytics</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        category,</span>
+<span class="s2">        COUNT(*) as product_count,</span>
+<span class="s2">        AVG(price) as avg_price,</span>
+<span class="s2">        MAX(price) as max_price,</span>
+<span class="s2">        MIN(price) as min_price</span>
+<span class="s2">    FROM products </span>
+<span class="s2">    GROUP BY category</span>
+<span class="s2">    ORDER BY avg_price DESC</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+<span class="c1"># Query with parameters (safe from SQL injection)</span>
+<span class="n">filtered_results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span>
+    <span class="s2">&quot;SELECT * FROM orders WHERE status = ? AND total &gt; ?&quot;</span><span class="p">,</span>
+    <span class="n">params</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;completed&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="query-validation-and-safety">
+<h4>Query Validation and Safety<a class="headerlink" href="#query-validation-and-safety" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Query validation before execution</span>
+<span class="n">validation</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">validate_query</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM users&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">validation</span><span class="o">.</span><span class="n">is_safe</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">query</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsafe query: </span><span class="si">{</span><span class="n">validation</span><span class="o">.</span><span class="n">errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Safe query execution with automatic fixes</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_safe_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    -- This might reference internal tables</span>
+<span class="s2">    SELECT * FROM text_values WHERE table_id = 1</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+<span class="c1"># Automatically transforms to:</span>
+<span class="c1"># SELECT * FROM users  -- if table_id 1 corresponds to &#39;users&#39;</span>
+
+<span class="c1"># Dry run mode</span>
+<span class="n">plan</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">explain_query</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM orders&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated rows: </span><span class="si">{</span><span class="n">plan</span><span class="o">.</span><span class="n">estimated_rows</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Execution time: </span><span class="si">{</span><span class="n">plan</span><span class="o">.</span><span class="n">estimated_time</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="advanced-features">
+<h4>Advanced Features<a class="headerlink" href="#advanced-features" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Query builder with safety</span>
+<span class="n">query</span> <span class="o">=</span> <span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">query_builder</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;COUNT(orders.row_id) as order_count&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">from_table</span><span class="p">(</span><span class="s1">&#39;users&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">left_join</span><span class="p">(</span><span class="s1">&#39;orders&#39;</span><span class="p">,</span> <span class="s1">&#39;users.row_id = orders.user_id&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="s1">&#39;users.active = ?&#39;</span><span class="p">,</span> <span class="p">[</span><span class="kc">True</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="s1">&#39;users.row_id&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">having</span><span class="p">(</span><span class="s1">&#39;order_count &gt; ?&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+    <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s1">&#39;order_count DESC&#39;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+
+<span class="c1"># Query with custom functions</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        name,</span>
+<span class="s2">        email,</span>
+<span class="s2">        DATE(created_at) as signup_date,</span>
+<span class="s2">        JULIANDAY(&#39;now&#39;) - JULIANDAY(created_at) as days_since_signup</span>
+<span class="s2">    FROM users</span>
+<span class="s2">    WHERE signup_date &gt; DATE(&#39;2024-01-01&#39;)</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+<span class="c1"># Window functions</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        name,</span>
+<span class="s2">        total,</span>
+<span class="s2">        ROW_NUMBER() OVER (ORDER BY total DESC) as rank,</span>
+<span class="s2">        PERCENT_RANK() OVER (ORDER BY total) as percentile</span>
+<span class="s2">    FROM orders</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="implementation-architecture">
+<h3>Implementation Architecture<a class="headerlink" href="#implementation-architecture" title="Link to this heading">¶</a></h3>
+<section id="sql-parser-and-validator">
+<h4>SQL Parser and Validator<a class="headerlink" href="#sql-parser-and-validator" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sqlparse</span>
+<span class="kn">from</span> <span class="nn">sqlparse.sql</span> <span class="kn">import</span> <span class="n">Statement</span><span class="p">,</span> <span class="n">TokenList</span>
+<span class="kn">from</span> <span class="nn">sqlparse.tokens</span> <span class="kn">import</span> <span class="n">Keyword</span><span class="p">,</span> <span class="n">Name</span>
+
+<span class="k">class</span> <span class="nc">SQLValidator</span><span class="p">:</span>
+    <span class="n">ALLOWED_KEYWORDS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;SELECT&#39;</span><span class="p">,</span> <span class="s1">&#39;FROM&#39;</span><span class="p">,</span> <span class="s1">&#39;WHERE&#39;</span><span class="p">,</span> <span class="s1">&#39;GROUP BY&#39;</span><span class="p">,</span> <span class="s1">&#39;HAVING&#39;</span><span class="p">,</span> 
+        <span class="s1">&#39;ORDER BY&#39;</span><span class="p">,</span> <span class="s1">&#39;LIMIT&#39;</span><span class="p">,</span> <span class="s1">&#39;OFFSET&#39;</span><span class="p">,</span> <span class="s1">&#39;JOIN&#39;</span><span class="p">,</span> <span class="s1">&#39;LEFT JOIN&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;RIGHT JOIN&#39;</span><span class="p">,</span> <span class="s1">&#39;INNER JOIN&#39;</span><span class="p">,</span> <span class="s1">&#39;OUTER JOIN&#39;</span><span class="p">,</span> <span class="s1">&#39;ON&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;AS&#39;</span><span class="p">,</span> <span class="s1">&#39;AND&#39;</span><span class="p">,</span> <span class="s1">&#39;OR&#39;</span><span class="p">,</span> <span class="s1">&#39;NOT&#39;</span><span class="p">,</span> <span class="s1">&#39;IN&#39;</span><span class="p">,</span> <span class="s1">&#39;EXISTS&#39;</span><span class="p">,</span> <span class="s1">&#39;CASE&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;WHEN&#39;</span><span class="p">,</span> <span class="s1">&#39;THEN&#39;</span><span class="p">,</span> <span class="s1">&#39;ELSE&#39;</span><span class="p">,</span> <span class="s1">&#39;END&#39;</span><span class="p">,</span> <span class="s1">&#39;WITH&#39;</span>
+    <span class="p">}</span>
+    
+    <span class="n">FORBIDDEN_KEYWORDS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;INSERT&#39;</span><span class="p">,</span> <span class="s1">&#39;UPDATE&#39;</span><span class="p">,</span> <span class="s1">&#39;DELETE&#39;</span><span class="p">,</span> <span class="s1">&#39;DROP&#39;</span><span class="p">,</span> <span class="s1">&#39;CREATE&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;ALTER&#39;</span><span class="p">,</span> <span class="s1">&#39;TRUNCATE&#39;</span><span class="p">,</span> <span class="s1">&#39;GRANT&#39;</span><span class="p">,</span> <span class="s1">&#39;REVOKE&#39;</span><span class="p">,</span> <span class="s1">&#39;COMMIT&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;ROLLBACK&#39;</span><span class="p">,</span> <span class="s1">&#39;SAVEPOINT&#39;</span><span class="p">,</span> <span class="s1">&#39;PRAGMA&#39;</span>
+    <span class="p">}</span>
+    
+    <span class="n">INTERNAL_TABLES</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;table_definitions&#39;</span><span class="p">,</span> <span class="s1">&#39;column_definitions&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;text_values&#39;</span><span class="p">,</span> <span class="s1">&#39;integer_values&#39;</span><span class="p">,</span> <span class="s1">&#39;real_values&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;boolean_values&#39;</span><span class="p">,</span> <span class="s1">&#39;json_values&#39;</span><span class="p">,</span> <span class="s1">&#39;timestamp_values&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;text_value_history&#39;</span><span class="p">,</span> <span class="s1">&#39;integer_value_history&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;real_value_history&#39;</span><span class="p">,</span> <span class="s1">&#39;boolean_value_history&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;json_value_history&#39;</span><span class="p">,</span> <span class="s1">&#39;timestamp_value_history&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;row_id_sequence&#39;</span>
+    <span class="p">}</span>
+    
+    <span class="k">def</span> <span class="nf">validate_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValidationResult</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">parsed</span> <span class="o">=</span> <span class="n">sqlparse</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">sql</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_statement</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ValidationResult</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Parse error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
+    
+    <span class="k">def</span> <span class="nf">_validate_statement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">statement</span><span class="p">:</span> <span class="n">Statement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ValidationResult</span><span class="p">:</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="c1"># Check for forbidden keywords</span>
+        <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">statement</span><span class="o">.</span><span class="n">flatten</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">token</span><span class="o">.</span><span class="n">ttype</span> <span class="ow">is</span> <span class="n">Keyword</span> <span class="ow">and</span> <span class="n">token</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">FORBIDDEN_KEYWORDS</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forbidden operation: </span><span class="si">{</span><span class="n">token</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Check for internal table access</span>
+        <span class="n">table_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_table_names</span><span class="p">(</span><span class="n">statement</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">table_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">INTERNAL_TABLES</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Access to internal table not allowed: </span><span class="si">{</span><span class="n">table</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Validate SELECT-only queries</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_select_query</span><span class="p">(</span><span class="n">statement</span><span class="p">):</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Only SELECT queries are allowed&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">ValidationResult</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">errors</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="query-transformation">
+<h4>Query Transformation<a class="headerlink" href="#query-transformation" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">QueryTransformer</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_user_tables</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">transform_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transform user SQL to work with SynthDB views.&quot;&quot;&quot;</span>
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">sqlparse</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">sql</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="c1"># Replace table references with view references</span>
+        <span class="n">transformed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replace_table_references</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span>
+        
+        <span class="c1"># Add row_id, created_at, updated_at columns if needed</span>
+        <span class="n">transformed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_metadata_columns</span><span class="p">(</span><span class="n">transformed</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">transformed</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_replace_table_references</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">statement</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace direct table references with SynthDB views.&quot;&quot;&quot;</span>
+        <span class="c1"># Implementation would traverse the AST and replace</span>
+        <span class="c1"># table names with their corresponding view names</span>
+        <span class="k">pass</span>
+        
+    <span class="k">def</span> <span class="nf">_get_user_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get list of user-created tables (excluding internal tables).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">list_tables</span><span class="p">()]</span>
+</pre></div>
+</div>
+</section>
+<section id="execution-engine">
+<h4>Execution Engine<a class="headerlink" href="#execution-engine" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">SafeQueryExecutor</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validator</span> <span class="o">=</span> <span class="n">SQLValidator</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span> <span class="o">=</span> <span class="n">QueryTransformer</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">execute_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QueryResult</span><span class="p">:</span>
+        <span class="c1"># Validate query safety</span>
+        <span class="n">validation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validator</span><span class="o">.</span><span class="n">validate_query</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">validation</span><span class="o">.</span><span class="n">is_safe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">UnsafeQueryError</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">errors</span><span class="p">)</span>
+        
+        <span class="c1"># Transform query to work with SynthDB schema</span>
+        <span class="n">transformed_sql</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="o">.</span><span class="n">transform_query</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+        
+        <span class="c1"># Execute with parameters</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">transformed_sql</span><span class="p">,</span> <span class="n">params</span> <span class="ow">or</span> <span class="p">[])</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+            
+            <span class="k">return</span> <span class="n">QueryResult</span><span class="p">(</span>
+                <span class="n">rows</span><span class="o">=</span><span class="n">rows</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">desc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">desc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="o">.</span><span class="n">description</span><span class="p">],</span>
+                <span class="n">row_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span>
+                <span class="n">execution_time_ms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_execution_time</span><span class="p">(</span><span class="n">cursor</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">QueryExecutionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Query failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">explain_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QueryPlan</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get execution plan without running the query.&quot;&quot;&quot;</span>
+        <span class="n">validation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validator</span><span class="o">.</span><span class="n">validate_query</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">validation</span><span class="o">.</span><span class="n">is_safe</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">UnsafeQueryError</span><span class="p">(</span><span class="n">validation</span><span class="o">.</span><span class="n">errors</span><span class="p">)</span>
+        
+        <span class="n">transformed_sql</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="o">.</span><span class="n">transform_query</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+        <span class="n">explain_sql</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;EXPLAIN QUERY PLAN </span><span class="si">{</span><span class="n">transformed_sql</span><span class="si">}</span><span class="s2">&quot;</span>
+        
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">explain_sql</span><span class="p">)</span>
+        <span class="n">plan_rows</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+        
+        <span class="k">return</span> <span class="n">QueryPlan</span><span class="p">(</span><span class="n">plan_rows</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="security-considerations">
+<h3>Security Considerations<a class="headerlink" href="#security-considerations" title="Link to this heading">¶</a></h3>
+<section id="sql-injection-prevention">
+<h4>SQL Injection Prevention<a class="headerlink" href="#sql-injection-prevention" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Always use parameterized queries</span>
+<span class="k">def</span> <span class="nf">execute_safe_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># Named parameter binding</span>
+    <span class="k">if</span> <span class="n">params</span><span class="p">:</span>
+        <span class="c1"># Validate parameter names to prevent injection</span>
+        <span class="n">safe_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_parameters</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">safe_params</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_validate_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate parameter names and values.&quot;&quot;&quot;</span>
+    <span class="n">safe_params</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># Only allow alphanumeric parameter names</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^[a-zA-Z_][a-zA-Z0-9_]*$&#39;</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid parameter name: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">safe_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">safe_params</span>
+</pre></div>
+</div>
+</section>
+<section id="access-control">
+<h4>Access Control<a class="headerlink" href="#access-control" title="Link to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TableAccessControl</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connection</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">connection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_tables</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_user_tables</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">internal_tables</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">SQLValidator</span><span class="o">.</span><span class="n">INTERNAL_TABLES</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">can_access_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if user can access the specified table.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">table_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_tables</span>
+    
+    <span class="k">def</span> <span class="nf">filter_accessible_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter list to only include accessible tables.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">table_names</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_access_table</span><span class="p">(</span><span class="n">t</span><span class="p">)]</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="cli-integration">
+<h3>CLI Integration<a class="headerlink" href="#cli-integration" title="Link to this heading">¶</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execute custom queries</span>
+sdb<span class="w"> </span>query-sql<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM users WHERE active = true&quot;</span>
+
+<span class="c1"># Query with parameters</span>
+sdb<span class="w"> </span>query-sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM orders WHERE total &gt; ?&quot;</span><span class="w"> </span>--params<span class="w"> </span><span class="m">100</span>.0
+
+<span class="c1"># Output formats</span>
+sdb<span class="w"> </span>query-sql<span class="w"> </span><span class="s2">&quot;SELECT name, email FROM users&quot;</span><span class="w"> </span>--format<span class="w"> </span>csv
+sdb<span class="w"> </span>query-sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM products&quot;</span><span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--output<span class="w"> </span>products.json
+
+<span class="c1"># Validate query without execution</span>
+sdb<span class="w"> </span>query-sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM users&quot;</span><span class="w"> </span>--validate-only
+
+<span class="c1"># Explain query execution plan</span>
+sdb<span class="w"> </span>query-sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM orders GROUP BY status&quot;</span><span class="w"> </span>--explain
+
+<span class="c1"># Interactive SQL shell</span>
+sdb<span class="w"> </span>sql-shell
+<span class="c1"># SynthDB SQL&gt; SELECT COUNT(*) FROM users;</span>
+<span class="c1"># SynthDB SQL&gt; .tables</span>
+<span class="c1"># SynthDB SQL&gt; .schema users</span>
+<span class="c1"># SynthDB SQL&gt; .exit</span>
+</pre></div>
+</div>
+</section>
+<section id="implementation-plan">
+<h3>Implementation Plan<a class="headerlink" href="#implementation-plan" title="Link to this heading">¶</a></h3>
+<section id="phase-1-basic-sql-execution-3-4-weeks">
+<h4>Phase 1: Basic SQL Execution (3-4 weeks)<a class="headerlink" href="#phase-1-basic-sql-execution-3-4-weeks" title="Link to this heading">¶</a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> SQL parser and validator implementation</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Basic SELECT query support</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Table access control</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Parameter binding for safety</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Connection API integration</p></li>
+</ul>
+</section>
+<section id="phase-2-query-transformation-2-3-weeks">
+<h4>Phase 2: Query Transformation (2-3 weeks)<a class="headerlink" href="#phase-2-query-transformation-2-3-weeks" title="Link to this heading">¶</a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Query transformer for SynthDB views</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Automatic table reference replacement</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Error handling and validation</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Basic testing and validation</p></li>
+</ul>
+</section>
+<section id="phase-3-advanced-features-3-4-weeks">
+<h4>Phase 3: Advanced Features (3-4 weeks)<a class="headerlink" href="#phase-3-advanced-features-3-4-weeks" title="Link to this heading">¶</a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Complex SQL features (JOINs, subqueries, CTEs)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Query explanation and planning</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Performance optimization</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> CLI integration and SQL shell</p></li>
+</ul>
+</section>
+<section id="phase-4-production-features-2-3-weeks">
+<h4>Phase 4: Production Features (2-3 weeks)<a class="headerlink" href="#phase-4-production-features-2-3-weeks" title="Link to this heading">¶</a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Comprehensive security testing</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Performance benchmarking</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Documentation and examples</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Integration with reporting tools</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="api-examples">
+<h2>API Examples<a class="headerlink" href="#api-examples" title="Link to this heading">¶</a></h2>
+<section id="basic-usage">
+<h3>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">synthdb</span>
+
+<span class="c1"># Setup</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">synthdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;analytics.limbo&#39;</span><span class="p">)</span>  <span class="c1"># Uses Limbo by default</span>
+
+<span class="c1"># Simple queries</span>
+<span class="n">user_count</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) as total FROM users&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;total&#39;</span><span class="p">]</span>
+
+<span class="c1"># Analytical queries</span>
+<span class="n">top_customers</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        u.name,</span>
+<span class="s2">        u.email,</span>
+<span class="s2">        COUNT(o.row_id) as order_count,</span>
+<span class="s2">        SUM(o.total) as lifetime_value,</span>
+<span class="s2">        AVG(o.total) as avg_order_value</span>
+<span class="s2">    FROM users u</span>
+<span class="s2">    JOIN orders o ON u.row_id = o.user_id</span>
+<span class="s2">    WHERE o.status = &#39;completed&#39;</span>
+<span class="s2">    GROUP BY u.row_id</span>
+<span class="s2">    ORDER BY lifetime_value DESC</span>
+<span class="s2">    LIMIT 10</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">customer</span> <span class="ow">in</span> <span class="n">top_customers</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: $</span><span class="si">{</span><span class="n">customer</span><span class="p">[</span><span class="s1">&#39;lifetime_value&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="advanced-analytics">
+<h3>Advanced Analytics<a class="headerlink" href="#advanced-analytics" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Time series analysis</span>
+<span class="n">monthly_sales</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        strftime(&#39;%Y-%m&#39;, created_at) as month,</span>
+<span class="s2">        COUNT(*) as order_count,</span>
+<span class="s2">        SUM(total) as revenue,</span>
+<span class="s2">        AVG(total) as avg_order_value</span>
+<span class="s2">    FROM orders</span>
+<span class="s2">    WHERE status = &#39;completed&#39;</span>
+<span class="s2">    GROUP BY month</span>
+<span class="s2">    ORDER BY month</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+<span class="c1"># Cohort analysis</span>
+<span class="n">cohort_data</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    WITH first_purchase AS (</span>
+<span class="s2">        SELECT </span>
+<span class="s2">            user_id,</span>
+<span class="s2">            MIN(DATE(created_at)) as first_purchase_date</span>
+<span class="s2">        FROM orders</span>
+<span class="s2">        GROUP BY user_id</span>
+<span class="s2">    ),</span>
+<span class="s2">    monthly_activity AS (</span>
+<span class="s2">        SELECT </span>
+<span class="s2">            o.user_id,</span>
+<span class="s2">            fp.first_purchase_date,</span>
+<span class="s2">            strftime(&#39;%Y-%m&#39;, o.created_at) as activity_month,</span>
+<span class="s2">            COUNT(*) as orders_in_month</span>
+<span class="s2">        FROM orders o</span>
+<span class="s2">        JOIN first_purchase fp ON o.user_id = fp.user_id</span>
+<span class="s2">        WHERE o.status = &#39;completed&#39;</span>
+<span class="s2">        GROUP BY o.user_id, activity_month</span>
+<span class="s2">    )</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        first_purchase_date,</span>
+<span class="s2">        COUNT(DISTINCT user_id) as cohort_size,</span>
+<span class="s2">        activity_month,</span>
+<span class="s2">        COUNT(DISTINCT user_id) as active_users</span>
+<span class="s2">    FROM monthly_activity</span>
+<span class="s2">    GROUP BY first_purchase_date, activity_month</span>
+<span class="s2">    ORDER BY first_purchase_date, activity_month</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+<span class="c1"># Product performance</span>
+<span class="n">product_stats</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">execute_query</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    SELECT </span>
+<span class="s2">        p.name,</span>
+<span class="s2">        p.category,</span>
+<span class="s2">        COUNT(oi.row_id) as times_ordered,</span>
+<span class="s2">        SUM(oi.quantity) as total_quantity,</span>
+<span class="s2">        AVG(oi.price) as avg_price,</span>
+<span class="s2">        SUM(oi.quantity * oi.price) as total_revenue</span>
+<span class="s2">    FROM products p</span>
+<span class="s2">    JOIN order_items oi ON p.row_id = oi.product_id</span>
+<span class="s2">    JOIN orders o ON oi.order_id = o.row_id</span>
+<span class="s2">    WHERE o.status = &#39;completed&#39;</span>
+<span class="s2">    GROUP BY p.row_id</span>
+<span class="s2">    HAVING times_ordered &gt;= 5</span>
+<span class="s2">    ORDER BY total_revenue DESC</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-considerations">
+<h2>Performance Considerations<a class="headerlink" href="#performance-considerations" title="Link to this heading">¶</a></h2>
+<section id="query-optimization">
+<h3>Query Optimization<a class="headerlink" href="#query-optimization" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>View Caching</strong>: Cache generated views for better performance</p></li>
+<li><p><strong>Index Recommendations</strong>: Suggest indexes for frequently queried columns</p></li>
+<li><p><strong>Query Planning</strong>: Analyze and optimize complex queries</p></li>
+<li><p><strong>Result Caching</strong>: Cache results of expensive analytical queries</p></li>
+</ul>
+</section>
+<section id="resource-management">
+<h3>Resource Management<a class="headerlink" href="#resource-management" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Query Timeouts</strong>: Prevent long-running queries from blocking</p></li>
+<li><p><strong>Memory Limits</strong>: Control memory usage for large result sets</p></li>
+<li><p><strong>Concurrent Access</strong>: Handle multiple concurrent query executions</p></li>
+</ul>
+</section>
+</section>
+<section id="security-model">
+<h2>Security Model<a class="headerlink" href="#security-model" title="Link to this heading">¶</a></h2>
+<section id="threat-prevention">
+<h3>Threat Prevention<a class="headerlink" href="#threat-prevention" title="Link to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>SQL Injection</strong>: Parameterized queries and input validation</p></li>
+<li><p><strong>Data Exfiltration</strong>: Read-only access, no sensitive table exposure</p></li>
+<li><p><strong>Resource Exhaustion</strong>: Query timeouts and memory limits</p></li>
+<li><p><strong>Privilege Escalation</strong>: Strict table access control</p></li>
+</ol>
+</section>
+<section id="audit-trail">
+<h3>Audit Trail<a class="headerlink" href="#audit-trail" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Query execution logging</span>
+<span class="k">class</span> <span class="nc">QueryAuditor</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">log_query_execution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">user</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">result_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">audit_entry</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">(),</span>
+            <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">,</span>
+            <span class="s1">&#39;query&#39;</span><span class="p">:</span> <span class="n">sql</span><span class="p">,</span>
+            <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">,</span>
+            <span class="s1">&#39;result_count&#39;</span><span class="p">:</span> <span class="n">result_count</span><span class="p">,</span>
+            <span class="s1">&#39;execution_time_ms&#39;</span><span class="p">:</span> <span class="n">execution_time</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">audit_log</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">audit_entry</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="alternative-approaches">
+<h2>Alternative Approaches<a class="headerlink" href="#alternative-approaches" title="Link to this heading">¶</a></h2>
+<section id="query-templates">
+<h3>1. Query Templates<a class="headerlink" href="#query-templates" title="Link to this heading">¶</a></h3>
+<p>Provide predefined query templates for common analytical patterns.</p>
+<p><strong>Pros</strong>: Safe, optimized, easy to use
+<strong>Cons</strong>: Limited flexibility, requires template maintenance</p>
+</section>
+<section id="restricted-sql-dialect">
+<h3>2. Restricted SQL Dialect<a class="headerlink" href="#restricted-sql-dialect" title="Link to this heading">¶</a></h3>
+<p>Create a custom SQL-like language with only safe operations.</p>
+<p><strong>Pros</strong>: Complete control over safety, optimized for SynthDB
+<strong>Cons</strong>: Learning curve, limited SQL compatibility</p>
+</section>
+<section id="view-based-access">
+<h3>3. View-Based Access<a class="headerlink" href="#view-based-access" title="Link to this heading">¶</a></h3>
+<p>Only allow queries against predefined analytical views.</p>
+<p><strong>Pros</strong>: Simple implementation, good performance
+<strong>Cons</strong>: Limited to predefined analyses, view management overhead</p>
+</section>
+</section>
+<section id="success-metrics">
+<h2>Success Metrics<a class="headerlink" href="#success-metrics" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Safety</strong>: Zero successful SQL injection or data breach attempts</p></li>
+<li><p><strong>Performance</strong>: 95% of analytical queries complete within 5 seconds</p></li>
+<li><p><strong>Usability</strong>: Users can express 90% of analytical needs through SQL</p></li>
+<li><p><strong>Adoption</strong>: Feature used in &gt;60% of SynthDB projects requiring analytics</p></li>
+</ul>
+</section>
+<section id="future-enhancements">
+<h2>Future Enhancements<a class="headerlink" href="#future-enhancements" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Query Optimization Engine</strong>: Advanced query planning and optimization</p></li>
+<li><p><strong>Cached Analytics</strong>: Automatic caching of expensive analytical queries</p></li>
+<li><p><strong>Real-time Analytics</strong>: Streaming query support for real-time data</p></li>
+<li><p><strong>SQL Extensions</strong>: Custom functions specific to SynthDB’s domain</p></li>
+<li><p><strong>Integration APIs</strong>: Direct integration with BI tools and data visualization</p></li>
+</ul>
+</section>
+<section id="related-work">
+<h2>Related Work<a class="headerlink" href="#related-work" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>SQL Parsing</strong>: sqlparse, SQLAlchemy expression language</p></li>
+<li><p><strong>Query Security</strong>: PostgreSQL RLS, MySQL query rewriting</p></li>
+<li><p><strong>Analytics Databases</strong>: ClickHouse analytical query patterns</p></li>
+<li><p><strong>Sandbox Execution</strong>: Safe code execution patterns</p></li>
+</ul>
+</section>
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading">¶</a></h2>
+<p>Adding safe user query execution to SynthDB would significantly enhance its analytical capabilities while maintaining security and data integrity. The proposed implementation balances flexibility with safety, enabling advanced SQL analytics while preventing harmful operations.</p>
+<p>The security-first design ensures that users can leverage the full power of SQL for analytics without compromising the database or accessing sensitive internal structures. This feature would make SynthDB much more attractive for analytical workloads and data exploration use cases.</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, SynthDB Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Feature Proposal: Safe User Query Execution</a><ul>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+<li><a class="reference internal" href="#motivation">Motivation</a><ul>
+<li><a class="reference internal" href="#use-cases">Use Cases</a></li>
+<li><a class="reference internal" href="#current-limitations">Current Limitations</a></li>
+<li><a class="reference internal" href="#example-scenarios">Example Scenarios</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#detailed-design">Detailed Design</a><ul>
+<li><a class="reference internal" href="#core-concepts">Core Concepts</a><ul>
+<li><a class="reference internal" href="#query-types">Query Types</a></li>
+<li><a class="reference internal" href="#safety-mechanisms">Safety Mechanisms</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#api-design">API Design</a><ul>
+<li><a class="reference internal" href="#basic-query-execution">Basic Query Execution</a></li>
+<li><a class="reference internal" href="#query-validation-and-safety">Query Validation and Safety</a></li>
+<li><a class="reference internal" href="#advanced-features">Advanced Features</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#implementation-architecture">Implementation Architecture</a><ul>
+<li><a class="reference internal" href="#sql-parser-and-validator">SQL Parser and Validator</a></li>
+<li><a class="reference internal" href="#query-transformation">Query Transformation</a></li>
+<li><a class="reference internal" href="#execution-engine">Execution Engine</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#security-considerations">Security Considerations</a><ul>
+<li><a class="reference internal" href="#sql-injection-prevention">SQL Injection Prevention</a></li>
+<li><a class="reference internal" href="#access-control">Access Control</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#cli-integration">CLI Integration</a></li>
+<li><a class="reference internal" href="#implementation-plan">Implementation Plan</a><ul>
+<li><a class="reference internal" href="#phase-1-basic-sql-execution-3-4-weeks">Phase 1: Basic SQL Execution (3-4 weeks)</a></li>
+<li><a class="reference internal" href="#phase-2-query-transformation-2-3-weeks">Phase 2: Query Transformation (2-3 weeks)</a></li>
+<li><a class="reference internal" href="#phase-3-advanced-features-3-4-weeks">Phase 3: Advanced Features (3-4 weeks)</a></li>
+<li><a class="reference internal" href="#phase-4-production-features-2-3-weeks">Phase 4: Production Features (2-3 weeks)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#api-examples">API Examples</a><ul>
+<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li><a class="reference internal" href="#advanced-analytics">Advanced Analytics</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#performance-considerations">Performance Considerations</a><ul>
+<li><a class="reference internal" href="#query-optimization">Query Optimization</a></li>
+<li><a class="reference internal" href="#resource-management">Resource Management</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#security-model">Security Model</a><ul>
+<li><a class="reference internal" href="#threat-prevention">Threat Prevention</a></li>
+<li><a class="reference internal" href="#audit-trail">Audit Trail</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#alternative-approaches">Alternative Approaches</a><ul>
+<li><a class="reference internal" href="#query-templates">1. Query Templates</a></li>
+<li><a class="reference internal" href="#restricted-sql-dialect">2. Restricted SQL Dialect</a></li>
+<li><a class="reference internal" href="#view-based-access">3. View-Based Access</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#success-metrics">Success Metrics</a></li>
+<li><a class="reference internal" href="#future-enhancements">Future Enhancements</a></li>
+<li><a class="reference internal" href="#related-work">Related Work</a></li>
+<li><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    </body>
+</html>
