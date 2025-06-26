@@ -9,7 +9,7 @@ install: ## Install dependencies with uv
 	uv sync
 
 dev: ## Setup development environment
-	python scripts/dev.py setup
+	uv run python scripts/dev.py setup
 
 test: ## Run tests
 	uv run pytest -vv --cov=synthdb
@@ -27,10 +27,10 @@ build: ## Build package
 	uv build
 
 clean: ## Clean build artifacts
-	python scripts/dev.py clean
+	uv run python scripts/dev.py clean
 
 ci: ## Run full CI workflow (lint + typecheck + test + build)
-	python scripts/dev.py ci
+	uv run python scripts/dev.py ci
 
 # Database-specific targets  
 install-config: ## Install with configuration file support
@@ -61,22 +61,22 @@ outdated: ## Check for outdated dependencies
 
 # Documentation targets
 docs-check: ## Check documentation dependencies
-	python scripts/build_docs.py check
+	uv run python scripts/build_docs.py check
 
 docs-build: ## Build all documentation
-	python scripts/build_docs.py build
+	uv run python scripts/build_docs.py build
 
 docs-serve: ## Serve documentation for development
-	python scripts/build_docs.py serve
+	uv run python scripts/build_docs.py serve
 
 docs-sphinx: ## Build only Sphinx documentation
-	python scripts/build_docs.py build --no-mkdocs
+	uv run python scripts/build_docs.py build --no-mkdocs
 
 docs-mkdocs: ## Build only MkDocs documentation
-	python scripts/build_docs.py build --no-sphinx
+	uv run python scripts/build_docs.py build --no-sphinx
 
 docs-clean: ## Clean documentation build directories
-	python scripts/build_docs.py clean
+	uv run python scripts/build_docs.py clean
 
 docs-deploy: ## Deploy documentation to GitHub Pages
-	python scripts/build_docs.py deploy
+	uv run python scripts/build_docs.py deploy

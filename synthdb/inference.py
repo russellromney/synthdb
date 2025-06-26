@@ -23,7 +23,9 @@ def infer_type(value: Any) -> Tuple[str, Any]:
     elif isinstance(value, float):
         return "real", value
     elif isinstance(value, datetime):
-        return "timestamp", value
+        # Format datetime to our standard microsecond precision format
+        from .timestamps import format_timestamp
+        return "timestamp", format_timestamp(value)
     elif isinstance(value, str):
         return "text", value
     else:
@@ -151,8 +153,12 @@ def convert_value_to_type(value: Any, target_type: str) -> Any:
     elif target_type == "real":
         return float(value)
     elif target_type == "timestamp":
+        from .timestamps import format_timestamp
         if isinstance(value, str):
-            return date_parser.parse(value)
+            # Parse and format to our standard microsecond precision
+            return format_timestamp(date_parser.parse(value))
+        elif isinstance(value, datetime):
+            return format_timestamp(value)
         return value
     else:
         return value

@@ -220,8 +220,8 @@ def get_table_columns(table_name: str, backend, connection) -> list:
 def create_row_metadata(row_id: str, table_id: int, backend, connection) -> None:
     """Create row metadata entry for a new row."""
     backend.execute(connection, """
-        INSERT INTO row_metadata (row_id, table_id, created_at, updated_at, is_deleted, version)
-        VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 1)
+        INSERT INTO row_metadata (row_id, table_id, is_deleted, version)
+        VALUES (?, ?, 0, 1)
     """, (row_id, table_id))
 
 
@@ -260,7 +260,7 @@ def delete_row_metadata(row_id: str, backend, connection) -> bool:
     
     backend.execute(connection, """
         UPDATE row_metadata 
-        SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        SET is_deleted = 1, deleted_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
         WHERE row_id = ? AND is_deleted = 0
     """, (row_id,))
     
@@ -274,7 +274,7 @@ def resurrect_row_metadata(row_id: str, backend, connection) -> bool:
     
     backend.execute(connection, """
         UPDATE row_metadata 
-        SET is_deleted = 0, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP, version = version + 1
+        SET is_deleted = 0, deleted_at = NULL, updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), version = version + 1
         WHERE row_id = ? AND is_deleted = 1
     """, (row_id,))
     
@@ -286,7 +286,7 @@ def update_row_metadata_timestamp(row_id: str, backend, connection) -> None:
     """Update the updated_at timestamp for a row."""
     backend.execute(connection, """
         UPDATE row_metadata 
-        SET updated_at = CURRENT_TIMESTAMP
+        SET updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
         WHERE row_id = ?
     """, (row_id,))
 

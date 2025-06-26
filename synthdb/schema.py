@@ -17,8 +17,8 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             CREATE TABLE IF NOT EXISTS table_definitions (
                 id INTEGER PRIMARY KEY,
                 version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                deleted_at TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                deleted_at TEXT,
                 name TEXT NOT NULL
             )
             """,
@@ -27,8 +27,8 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 id INTEGER PRIMARY KEY,
                 table_id INTEGER,
                 version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                deleted_at TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                deleted_at TEXT,
                 name TEXT NOT NULL,
                 data_type TEXT NOT NULL
             )
@@ -37,9 +37,9 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             CREATE TABLE IF NOT EXISTS row_metadata (
                 row_id TEXT PRIMARY KEY,
                 table_id INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                deleted_at TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                deleted_at TEXT,
                 is_deleted BOOLEAN DEFAULT 0,
                 version INTEGER DEFAULT 1,
                 FOREIGN KEY (table_id) REFERENCES table_definitions(id)
@@ -51,7 +51,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 table_id INTEGER NOT NULL,
                 column_id INTEGER NOT NULL,
                 version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
                 value TEXT,
                 is_current BOOLEAN DEFAULT 1,
                 PRIMARY KEY (row_id, table_id, column_id, version)
@@ -63,7 +63,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 table_id INTEGER NOT NULL,
                 column_id INTEGER NOT NULL,
                 version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
                 value INTEGER,
                 is_current BOOLEAN DEFAULT 1,
                 PRIMARY KEY (row_id, table_id, column_id, version)
@@ -75,7 +75,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 table_id INTEGER NOT NULL,
                 column_id INTEGER NOT NULL,
                 version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
                 value REAL,
                 is_current BOOLEAN DEFAULT 1,
                 PRIMARY KEY (row_id, table_id, column_id, version)
@@ -87,8 +87,8 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 table_id INTEGER NOT NULL,
                 column_id INTEGER NOT NULL,
                 version INTEGER NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                value TIMESTAMP,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                value TEXT,
                 is_current BOOLEAN DEFAULT 1,
                 PRIMARY KEY (row_id, table_id, column_id, version)
             )
