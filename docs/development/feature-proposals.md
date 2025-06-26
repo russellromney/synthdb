@@ -53,6 +53,23 @@ Add the ability for users to execute custom SQL queries with built-in safety mec
 
 **Complexity:** Medium | **Timeline:** 10-14 weeks
 
+---
+
+### Column References and Aliasing
+<div class="status-badge status-proposed">Proposed</div>
+
+**[Column References and Aliasing](feature-proposals/column-references.md)**
+
+Add support for column references that allow multiple column definitions to point to the same underlying data without duplicating storage. Enables efficient schema evolution, data migration, and column aliasing.
+
+**Key Features:**
+- Hard, soft, and alias reference modes for different use cases
+- Copy-on-write behavior for flexible data independence
+- Storage-efficient schema evolution and migration support
+- Backward compatibility during column renaming
+
+**Complexity:** Medium | **Timeline:** 8-12 weeks
+
 ## Proposal Process
 
 ### Submitting a Proposal
