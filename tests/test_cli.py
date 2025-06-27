@@ -16,7 +16,7 @@ def test_cli_workflow():
     
     try:
         # Initialize database
-        result = runner.invoke(app, ["database", "init", "--path", db_path])
+        result = runner.invoke(app, ["db", "init", "--path", db_path])
         assert result.exit_code == 0
         assert "Successfully initialized" in result.stdout
         
@@ -61,7 +61,7 @@ def test_cli_workflow():
         assert "CREATE TABLE products" in result.stdout
         
         # Database info
-        result = runner.invoke(app, ["database", "info", "--path", db_path])
+        result = runner.invoke(app, ["db", "info", "--path", db_path])
         assert result.exit_code == 0
         assert "Database:" in result.stdout
         assert "products" in result.stdout
@@ -80,7 +80,7 @@ def test_error_handling():
     
     try:
         # Initialize database
-        result = runner.invoke(app, ["database", "init", "--path", db_path])
+        result = runner.invoke(app, ["db", "init", "--path", db_path])
         assert result.exit_code == 0
         
         # Try to add column to non-existent table

@@ -312,12 +312,12 @@ def create_table(table_name, db_path: str = 'db.db', backend_name: str = None):
             VALUES (?, 0, ?)
         """, (table_id, table_name))
         
-        # Commit the transaction
-        backend.commit(db)
-        
         # Create initial view for the table (even if no columns yet)
         from .views import create_table_views
-        create_table_views(db_path, backend_name=backend_to_use)
+        create_table_views(db_path, backend_name=backend_to_use, backend=backend, connection=db)
+        
+        # Commit the transaction
+        backend.commit(db)
         return table_id
         
     except Exception as e:

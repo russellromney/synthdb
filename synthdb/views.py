@@ -5,13 +5,18 @@ from .backends import get_backend
 from .config import config
 
 
-def create_table_views(db_path: str = 'db.db', backend_name: str = None):
+def create_table_views(db_path: str = 'db.db', backend_name: str = None, backend=None, connection=None):
     """Create SQLite views for each table using versioned storage with soft deletes."""
-    # Get the appropriate backend
-    backend_to_use = backend_name or config.get_backend_for_path(db_path)
-    backend = get_backend(backend_to_use)
-    
-    db = backend.connect(db_path)
+    # Use provided backend and connection, or create new ones
+    if backend is not None and connection is not None:
+        db = connection
+        own_connection = False
+    else:
+        # Get the appropriate backend
+        backend_to_use = backend_name or config.get_backend_for_path(db_path)
+        backend = get_backend(backend_to_use)
+        db = backend.connect(db_path)
+        own_connection = True
     
     try:
         # Get all active tables
@@ -93,4 +98,5 @@ def create_table_views(db_path: str = 'db.db', backend_name: str = None):
         
         backend.commit(db)
     finally:
-        backend.close(db)
+        if own_connection:
+            backend.close(db)

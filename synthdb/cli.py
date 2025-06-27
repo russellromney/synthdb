@@ -44,27 +44,57 @@ app = typer.Typer(
     name="synthdb",
     help="SynthDB - A flexible database system with schema-on-write capabilities",
     add_completion=True,
-    no_args_is_help=True,
+    invoke_without_command=True,
 )
 console = Console()
 
+# Main app callback to show help when no command is provided
+@app.callback()
+def main_callback(ctx: typer.Context):
+    """SynthDB - A flexible database system with schema-on-write capabilities"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
 # Create noun-based subcommands
-# no_args_is_help=True shows help when no command is provided
+# invoke_without_command=True allows showing help without error exit codes
 database_app = typer.Typer(
     name="database", 
     help="Database operations",
-    no_args_is_help=True
+    invoke_without_command=True
 )
 table_app = typer.Typer(
     name="table", 
     help="Table operations",
-    no_args_is_help=True
+    invoke_without_command=True
 )
 config_app = typer.Typer(
     name="config", 
     help="Configuration management",
-    no_args_is_help=True
+    invoke_without_command=True
 )
+
+# Add callback functions to show help when no subcommand is provided
+@database_app.callback()
+def database_callback(ctx: typer.Context):
+    """Database operations"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
+@table_app.callback()
+def table_callback(ctx: typer.Context):
+    """Table operations"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
+@config_app.callback()
+def config_callback(ctx: typer.Context):
+    """Configuration management"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
 
 # Add main commands
 app.add_typer(database_app, name="db", help="Database operations")
@@ -447,8 +477,17 @@ def table_delete(
 table_add_app = typer.Typer(
     name="add", 
     help="Add things to tables",
-    no_args_is_help=True
+    invoke_without_command=True
 )
+
+# Add callback for table add help
+@table_add_app.callback()
+def table_add_callback(ctx: typer.Context):
+    """Add things to tables"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
 table_app.add_typer(table_add_app)
 
 @table_add_app.command("column")
