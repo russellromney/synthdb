@@ -54,24 +54,13 @@ users = db.query('users', 'age > 25')
 
 1. **[Installation](getting-started/installation.md)** - Install SynthDB and its dependencies
 2. **[Quick Start](getting-started/quickstart.md)** - Get up and running in minutes
-3. **[Basic Concepts](getting-started/concepts.md)** - Understand SynthDB's core concepts
-4. **[Connection API](user-guide/connection-api.md)** - Learn the modern Python API
 
 ## Documentation Sections
-
-### 📚 [User Guide](user-guide/connection-api.md)
-Learn how to use SynthDB effectively with step-by-step guides and examples.
 
 ### 🔧 [API Reference](api/connection.md)
 Complete reference for all SynthDB classes, functions, and CLI commands.
 
-### 🚀 [Examples](examples/basic.md)
-Real-world examples and patterns for common use cases.
-
-### ⚙️ [Advanced Topics](advanced/backends.md)
-Deep dive into SynthDB's architecture, performance tuning, and troubleshooting.
-
-### 🛠️ [Development](development/contributing.md)
+### 🛠️ [Development](development/feature-proposals.md)
 Information for contributors and developers working on SynthDB itself.
 
 ## Community and Support

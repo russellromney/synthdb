@@ -159,14 +159,12 @@ uv add libsql-experimental
 
 If you encounter issues:
 
-1. Check the [Troubleshooting Guide](../advanced/troubleshooting.md)
-2. Search [existing issues](https://github.com/russellromney/synthdb/issues)
-3. Create a [new issue](https://github.com/russellromney/synthdb/issues/new)
+1. Search [existing issues](https://github.com/russellromney/synthdb/issues)
+2. Create a [new issue](https://github.com/russellromney/synthdb/issues/new)
 
 ## Next Steps
 
 Now that SynthDB is installed, continue with:
 
 - [Quick Start Guide](quickstart.md) - Get up and running in minutes
-- [Basic Concepts](concepts.md) - Understand how SynthDB works
-- [Connection API](../user-guide/connection-api.md) - Learn the Python API
+- [API Reference](../api/connection.md) - Learn the Python API

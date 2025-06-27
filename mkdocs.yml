@@ -1,6 +1,6 @@
 site_name: SynthDB Documentation
 site_description: A flexible database system with schema-on-write capabilities
-site_url: https://synthdb.readthedocs.io/
+site_url: https://russellromney.github.io/synthdb/
 repo_url: https://github.com/russellromney/synthdb
 repo_name: russellromney/synthdb
 edit_uri: edit/main/docs/

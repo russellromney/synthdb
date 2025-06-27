@@ -58,7 +58,7 @@ Add the ability for users to execute custom SQL queries with built-in safety mec
 ### Column References and Aliasing
 <div class="status-badge status-proposed">Proposed</div>
 
-**[Column References and Aliasing](feature-proposals/column-references.md)**
+**Column References and Aliasing**
 
 Add support for column references that allow multiple column definitions to point to the same underlying data without duplicating storage. Enables efficient schema evolution, data migration, and column aliasing.
 
@@ -75,7 +75,7 @@ Add support for column references that allow multiple column definitions to poin
 ### Submitting a Proposal
 
 1. **Research**: Review existing functionality and similar features in other systems
-2. **Template**: Use the [proposal template](proposal-template.md) for consistency
+2. **Template**: Follow the format used by existing proposals for consistency
 3. **Discussion**: Share with the development team for initial feedback
 4. **Refinement**: Iterate on the design based on feedback
 5. **Documentation**: Submit complete proposal as a pull request
@@ -154,9 +154,7 @@ Features that are nice-to-have but not essential:
 
 ## Related Documentation
 
-- [Contributing Guide](contributing.md) - How to contribute to SynthDB
-- [Architecture Overview](architecture.md) - Understanding SynthDB's design
-- [Development Setup](../getting-started/installation.md#development-installation) - Setting up for development
+- [Installation Guide](../getting-started/installation.md) - Setting up SynthDB for development
 
 ## Questions and Discussion
 

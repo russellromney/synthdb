@@ -262,6 +262,5 @@ results = db.query('users')
 
 ## See Also
 
-- [CLI Reference](cli.md) - Command-line interface
-- [Core Functions](core.md) - Lower-level functions
-- [Examples](../examples/basic.md) - Real-world usage patterns
+- [Getting Started](../getting-started/quickstart.md) - Quick start guide
+- [Installation](../getting-started/installation.md) - Installation instructions

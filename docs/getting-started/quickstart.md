@@ -301,11 +301,8 @@ if __name__ == "__main__":
 
 Now that you've seen the basics, explore more advanced features:
 
-- **[Connection API Guide](../user-guide/connection-api.md)** - Deep dive into the Python API
-- **[CLI Usage](../user-guide/cli.md)** - Master the command-line interface
-- **[Working with Tables](../user-guide/tables.md)** - Advanced table operations
-- **[Data Operations](../user-guide/data-operations.md)** - Complex queries and data manipulation
-- **[Examples](../examples/basic.md)** - Real-world usage patterns
+- **[API Reference](../api/connection.md)** - Complete API documentation
+- **[Feature Proposals](../development/feature-proposals.md)** - Upcoming features and roadmap
 
 ## Clean Up
 

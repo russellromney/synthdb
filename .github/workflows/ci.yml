@@ -89,13 +89,13 @@ jobs:
         print('✅ SQLite backend works')
         "
     
-    - name: Test Limbo backend (if available)
+    - name: Test LibSQL backend (if available)
       run: |
         uv run python -c "
         import synthdb
         try:
-            db = synthdb.connect('test.limbo', backend='limbo')
-            print('✅ Limbo backend works')
+            db = synthdb.connect('test.db', backend='libsql')
+            print('✅ LibSQL backend works')
         except ImportError:
-            print('⚠️ Limbo backend not available, skipping')
+            print('⚠️ LibSQL backend not available, skipping')
         "
