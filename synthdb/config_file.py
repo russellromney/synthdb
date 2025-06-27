@@ -110,7 +110,7 @@ class ConfigManager:
             'database': {
                 'default_backend': 'sqlite',
                 'default_path': 'db.db',
-                'batch_size': 1000,
+                'batch_size': 5000,
                 'timeout': 30
             },
             'connections': {
