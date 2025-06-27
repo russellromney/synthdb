@@ -1,5 +1,5 @@
 """
-Tests for autosequencing row ID generation in SynthDB.
+Tests for UUID row ID generation in SynthDB.
 
 Tests that the simplified row ID generation using UUIDs
 works correctly and efficiently.
@@ -198,8 +198,8 @@ class TestRowIdGeneration:
         assert alice_record['value'] == 15
 
 
-class TestAutosequencingAPI:
-    """Test autosequencing through different API entry points."""
+class TestUUIDsAPI:
+    """Test UUIDs through different API entry points."""
     
     def setup_method(self):
         """Setup test database."""
@@ -217,8 +217,8 @@ class TestAutosequencingAPI:
         except FileNotFoundError:
             pass
     
-    def test_core_api_autosequencing(self):
-        """Test autosequencing via core API functions."""
+    def test_core_api_uuids(self):
+        """Test UUIDs via core API functions."""
         from synthdb.core import create_table
         from synthdb.api import insert
         
@@ -238,8 +238,8 @@ class TestAutosequencingAPI:
         assert isinstance(row_id2, str) and len(row_id2) == 36, f"Expected UUID, got {row_id2}"
         assert row_id1 != row_id2, "UUIDs should be unique"
     
-    def test_connection_api_autosequencing(self):
-        """Test autosequencing via Connection API."""
+    def test_connection_api_uuids(self):
+        """Test UUIDs via Connection API."""
         db = synthdb.connect(self.db_path, 'sqlite')
         
         db.create_table('connection_test')

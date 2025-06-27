@@ -15,7 +15,7 @@ def test_noun_commands_show_help():
     """Test that noun commands without subcommands show help."""
     
     # Test main noun commands
-    nouns = ["database", "table", "config", "db", "t"]
+    nouns = ["db", "table", "config"]
     
     for noun in nouns:
         returncode, stdout, stderr = run_cli_command([noun])
@@ -45,7 +45,7 @@ def test_help_flag_still_works():
     """Test that explicit --help flag still works."""
     
     # Test with explicit help flag
-    nouns = ["database", "table", "config"]
+    nouns = ["db", "table", "config"]
     
     for noun in nouns:
         returncode1, stdout1, _ = run_cli_command([noun])
@@ -69,7 +69,7 @@ def test_main_command_shows_help():
     assert returncode == 0
     assert "Usage:" in stdout
     assert "Commands" in stdout
-    assert "database" in stdout  # Should list the noun commands
+    assert "db" in stdout  # Should list the noun commands
     assert "table" in stdout
 
 

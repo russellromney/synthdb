@@ -175,10 +175,10 @@ SynthDB also provides a powerful CLI for database operations:
 
 ```bash
 # Initialize a local database (uses SQLite by default)
-sdb database init my_cli_app.db
+sdb db init my_cli_app.db
 
 # Initialize with remote LibSQL database
-# sdb database init "libsql://your-database.turso.io"
+# sdb db init "libsql://your-database.turso.io"
 
 # Create a table
 sdb table create products

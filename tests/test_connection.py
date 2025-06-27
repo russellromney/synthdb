@@ -121,7 +121,7 @@ class TestSynthDBConnection:
         user_id = self.db.insert('users', 'name', 'Alice')
         
         # Verify data was inserted
-        users = self.db.query('users', f'row_id = {user_id}')
+        users = self.db.query('users', f'row_id = "{user_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Alice'
         assert users[0]['age'] is None  # Other columns should be null
@@ -151,7 +151,7 @@ class TestSynthDBConnection:
         expensive = self.db.query('products', 'price > 15')
         assert len(expensive) == 2
         
-        active = self.db.query('products', 'active = "true"')
+        active = self.db.query('products', 'active = 1')
         assert len(active) == 2
     
     def test_upsert(self):
@@ -164,7 +164,7 @@ class TestSynthDBConnection:
         })
         
         # Insert new user with specific ID
-        target_id = 100
+        target_id = "100"
         user_id = self.db.upsert('users', {
             'name': 'John Doe',
             'email': 'john@example.com',
@@ -254,10 +254,15 @@ class TestSynthDBConnection:
         with pytest.raises(ValueError, match="Column 'nonexistent' not found"):
             self.db.insert('users', {'nonexistent': 'test'})
         
-        # Try to insert with duplicate explicit ID
+        # Insert with existing ID should update the value (not raise error)
         user_id = self.db.insert('users', {'name': 'John'})
-        with pytest.raises(ValueError, match=f"Row ID {user_id} already has a value for column 'name'"):
-            self.db.insert('users', {'name': 'Jane'}, row_id=user_id)
+        # This should update the existing row, not raise an error
+        self.db.insert('users', {'name': 'Jane'}, row_id=user_id)
+        
+        # Verify the update happened
+        users = self.db.query('users', f'row_id = "{user_id}"')
+        assert len(users) == 1
+        assert users[0]['name'] == 'Jane'  # Should be updated to Jane
     
     def test_repr(self):
         """Test string representation."""

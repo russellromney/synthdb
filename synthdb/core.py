@@ -487,21 +487,12 @@ def copy_column_with_data(source_table, source_column, target_table, target_colu
         
         # Copy all values from source column to target column
         type_table = get_type_table_name(data_type)
-        history_table = get_type_table_name(data_type, is_history=True)
         
-        # Copy main values
+        # Copy values
         backend.execute(connection, f"""
             INSERT INTO {type_table} (row_id, table_id, column_id, value)
             SELECT row_id, ?, ?, value
             FROM {type_table}
-            WHERE table_id = ? AND column_id = ?
-        """, (target_table_id, new_column_id, source_table_id, source_column_id))
-        
-        # Copy history values
-        backend.execute(connection, f"""
-            INSERT INTO {history_table} (row_id, table_id, column_id, value, created_at)
-            SELECT row_id, ?, ?, value, created_at
-            FROM {history_table}
             WHERE table_id = ? AND column_id = ?
         """, (target_table_id, new_column_id, source_table_id, source_column_id))
     

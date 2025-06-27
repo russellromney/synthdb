@@ -523,6 +523,26 @@ class Connection:
         else:
             conn_desc = f"file: {self.connection_info}"
         return f"Connection({conn_desc}, backend={backend})"
+    
+    def close(self):
+        """
+        Close the database connection.
+        
+        Note: This is primarily useful for testing and cleanup.
+        In normal usage, connections are managed automatically.
+        """
+        # Since we don't maintain a persistent connection,
+        # this method is provided for compatibility
+        pass
+    
+    def __enter__(self):
+        """Support context manager protocol."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Support context manager protocol."""
+        self.close()
+        return False
 
 
 # Main connection function
@@ -535,7 +555,7 @@ def connect(connection_info: Union[str, Dict[str, Any]] = 'db.db',
     
     Args:
         connection_info: Database file path or dict
-        backend: Database backend ('limbo', 'sqlite')
+        backend: Database backend ('libsql', 'sqlite')
         auto_init: Automatically initialize database if it doesn't exist
         
     Returns:

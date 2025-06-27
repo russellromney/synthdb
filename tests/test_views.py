@@ -38,19 +38,22 @@ def test_create_table_view_with_data(temp_db):
     db.add_columns("products", {
         "name": "text",
         "price": "real", 
-        "quantity": "integer"
+        "quantity": "integer",
+        "active": "integer"  # Add active column for boolean values
     })
     
     # Insert test data
     db.insert("products", {
         "name": "Widget",
         "price": 19.99,
-        "quantity": 100
+        "quantity": 100,
+        "active": True
     }, row_id="0")
     
     db.insert("products", {
         "name": "Gadget", 
         "price": 29.99,
+        "quantity": 50,
         "active": False
     }, row_id="1")
     
@@ -68,6 +71,7 @@ def test_create_table_view_with_data(temp_db):
     assert 'updated_at' in columns, "View should include updated_at"
     assert 'name' in columns, "View should include name column"
     assert 'price' in columns, "View should include price column"
+    assert 'quantity' in columns, "View should include quantity column"
     assert 'active' in columns, "View should include active column"
     
     # Verify data
@@ -79,12 +83,14 @@ def test_create_table_view_with_data(temp_db):
     # Check first row
     assert results[0]['name'] == "Widget"
     assert float(results[0]['price']) == 19.99
-    assert results[0]['active'] == "true"  # Boolean converted to string
+    assert results[0]['quantity'] == 100
+    assert results[0]['active'] == 1  # True stored as 1
     
     # Check second row
     assert results[1]['name'] == "Gadget"
     assert float(results[1]['price']) == 29.99
-    assert results[1]['active'] == "false"  # Boolean converted to string
+    assert results[1]['quantity'] == 50
+    assert results[1]['active'] == 0  # False stored as 0
     
     db.close()
 
@@ -109,7 +115,9 @@ def test_view_recreated_after_column_addition(temp_db):
     # Add new column using connection API
     synthdb_conn = synthdb.connect(temp_db, backend='sqlite')
     synthdb_conn.add_columns("products", {"price": "real"})
-    synthdb_conn.insert("products", {"price": 19.99})
+    
+    # Update existing row with price
+    synthdb_conn.insert("products", {"name": "Widget", "price": 19.99}, row_id="0")
     
     # Query updated view
     db = sqlite3.connect(temp_db)
@@ -122,9 +130,10 @@ def test_view_recreated_after_column_addition(temp_db):
     assert len(updated_columns) > len(initial_columns), "View should have more columns"
     
     # Verify data is accessible
-    cur.execute("SELECT name, price FROM products WHERE row_id = 0")
+    cur.execute("SELECT name, price FROM products WHERE row_id = '0'")
     result = cur.fetchone()
     assert result[0] == "Widget"
+    assert result[1] is not None, "Price should not be None"
     assert float(result[1]) == 19.99
     
     db.close()

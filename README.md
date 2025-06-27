@@ -63,9 +63,9 @@ uv add -e ".[dev]"
 
 ```bash
 # Initialize a new database
-synthdb database init
+synthdb db init
 # or use the shorter alias:
-sdb database init
+sdb db init
 
 # Create a table
 sdb table create products

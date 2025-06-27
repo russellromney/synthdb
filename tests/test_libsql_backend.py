@@ -27,18 +27,17 @@ class TestLibSQLBackend:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as f:
                 db_path = f.name
             
-            # Connect with LibSQL
-            db = connect(db_path, 'libsql')
-            
-            # Basic operations
-            db.create_table('test')
-            db.add_columns('test', {'data': 'text'})
-            db.insert('test', {'data': 'Hello LibSQL'})
-            
-            # Query
-            results = db.query('test')
-            assert len(results) == 1
-            assert results[0]['data'] == 'Hello LibSQL'
+            # Connect with LibSQL using context manager
+            with connect(db_path, 'libsql') as db:
+                # Basic operations
+                db.create_table('test')
+                db.add_columns('test', {'data': 'text'})
+                db.insert('test', {'data': 'Hello LibSQL'})
+                
+                # Query
+                results = db.query('test')
+                assert len(results) == 1
+                assert results[0]['data'] == 'Hello LibSQL'
             
             # Cleanup
             os.unlink(db_path)
@@ -85,16 +84,16 @@ class TestLibSQLBackend:
                 db_path = f.name
             
             # Create database with LibSQL
-            db1 = connect(db_path, 'libsql')
-            db1.create_table('compat_test')
-            db1.add_columns('compat_test', {'value': 'integer'})
-            db1.insert('compat_test', {'value': 42})
+            with connect(db_path, 'libsql') as db1:
+                db1.create_table('compat_test')
+                db1.add_columns('compat_test', {'value': 'integer'})
+                db1.insert('compat_test', {'value': 42})
             
             # Read with SQLite (should work if compatible)
-            db2 = connect(db_path, 'sqlite')
-            results = db2.query('compat_test')
-            assert len(results) == 1
-            assert results[0]['value'] == 42
+            with connect(db_path, 'sqlite') as db2:
+                results = db2.query('compat_test')
+                assert len(results) == 1
+                assert results[0]['value'] == 42
             
             # Cleanup
             os.unlink(db_path)
@@ -108,31 +107,30 @@ class TestLibSQLBackend:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.db') as f:
                 db_path = f.name
             
-            db = connect(db_path, 'libsql')
-            
-            # Create table
-            db.create_table('transaction_test')
-            db.add_columns('transaction_test', {'count': 'integer'})
-            
-            # Test transaction rollback behavior
-            from synthdb.transactions import transaction_context
-            from synthdb.backends import get_backend
-            
-            backend = get_backend('libsql')
-            
-            # This should be rolled back
-            try:
-                with transaction_context(db_path, 'libsql') as (backend, connection):
-                    backend.execute(connection, 
-                        "INSERT INTO integer_values (row_id, table_id, column_id, value) VALUES ('test', 1, 1, 100)")
-                    # Force an error to trigger rollback
-                    raise Exception("Test rollback")
-            except:
-                pass
-            
-            # Verify nothing was inserted
-            results = db.query('transaction_test')
-            assert len(results) == 0
+            with connect(db_path, 'libsql') as db:
+                # Create table
+                db.create_table('transaction_test')
+                db.add_columns('transaction_test', {'count': 'integer'})
+                
+                # Test transaction rollback behavior
+                from synthdb.transactions import transaction_context
+                from synthdb.backends import get_backend
+                
+                backend = get_backend('libsql')
+                
+                # This should be rolled back
+                try:
+                    with transaction_context(db_path, 'libsql') as (backend, connection):
+                        backend.execute(connection, 
+                            "INSERT INTO integer_values (row_id, table_id, column_id, value) VALUES ('test', 1, 1, 100)")
+                        # Force an error to trigger rollback
+                        raise Exception("Test rollback")
+                except:
+                    pass
+                
+                # Verify nothing was inserted
+                results = db.query('transaction_test')
+                assert len(results) == 0
             
             # Cleanup
             os.unlink(db_path)

@@ -102,3 +102,4 @@ docs/_build/
 # Temporary/test files
 sqlite
 tasks
+docs/build

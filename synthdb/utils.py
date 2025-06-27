@@ -21,11 +21,9 @@ def query_view(view_name, where_clause=None, db_path: str = 'db.db', backend_nam
     try:
         cur = backend.execute(db, query)
         results = backend.fetchall(cur)
-        backend.close(db)
         return results
-    except Exception as e:
+    finally:
         backend.close(db)
-        raise e
 
 
 

@@ -50,7 +50,7 @@ app = typer.Typer(
 )
 console = Console()
 
-# Create noun-based subcommands with shortcuts
+# Create noun-based subcommands
 # no_args_is_help=True shows help when no command is provided
 database_app = typer.Typer(
     name="database", 
@@ -69,13 +69,9 @@ config_app = typer.Typer(
 )
 
 # Add main commands
-app.add_typer(database_app)
-app.add_typer(table_app)
-app.add_typer(config_app)
-
-# Add shortcuts
-app.add_typer(database_app, name="db", help="Database operations (shortcut)")
-app.add_typer(table_app, name="t", help="Table operations (shortcut)")
+app.add_typer(database_app, name="db", help="Database operations")
+app.add_typer(table_app, name="table", help="Table operations")
+app.add_typer(config_app, name="config")
 
 # Database commands
 @database_app.command("init")
@@ -178,16 +174,6 @@ def table_list(
     """List all tables or columns in a specific table."""
     _list_implementation(columns, path, backend, include_deleted)
 
-
-@app.command("l")
-def list_short(
-    columns: Optional[str] = typer.Argument(None, help="Show columns for specific table", autocompletion=get_table_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-    include_deleted: bool = typer.Option(False, "--include-deleted", "-d", help="Include soft-deleted columns"),
-):
-    """List all tables or columns in a specific table (shortcut)."""
-    _list_implementation(columns, path, backend, include_deleted)
 
 
 def _list_implementation(columns: Optional[str], path: str, backend: str, include_deleted: bool = False):
@@ -593,16 +579,6 @@ def query_cmd(
     _query_implementation(table, where, format, path, backend)
 
 
-@app.command("q")
-def query_short(
-    table: str = typer.Argument(..., help="Table name to query", autocompletion=get_table_names),
-    where: Optional[str] = typer.Option(None, "--where", "-w", help="WHERE clause"),
-    format: str = typer.Option("table", "--format", "-f", help="Output format: table, json", autocompletion=get_output_formats),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
-    """Query data from a table (shortcut)."""
-    _query_implementation(table, where, format, path, backend)
 
 
 def _query_implementation(table: str, where: Optional[str], format: str, path: str, backend: str):
@@ -886,16 +862,6 @@ def add_cmd(
     _add_implementation(table, data, path, backend, row_id)
 
 
-@app.command("i")
-def insert_short(
-    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
-    row_id: str = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
-):
-    """Add data using the modern API (shortcut)."""
-    _add_implementation(table, data, path, backend, row_id)
 
 
 def _export_table_structure(db, table_name: str) -> str:
