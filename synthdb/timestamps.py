@@ -5,7 +5,7 @@ Format: YYYY-MM-DD HH:MM:SS.fff
 """
 
 from datetime import datetime, timezone
-from typing import Optional, Union
+from typing import Union
 import re
 
 

@@ -1,8 +1,7 @@
 """Type inference for automatic data type detection in SynthDB."""
 
-import re
 from datetime import datetime
-from typing import Any, Tuple, Optional, List, Dict
+from typing import Any, Tuple, List, Dict
 from dateutil import parser as date_parser
 
 

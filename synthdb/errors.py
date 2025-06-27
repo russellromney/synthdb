@@ -1,7 +1,7 @@
 """Enhanced error handling with helpful suggestions for SynthDB."""
 
 import re
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from difflib import get_close_matches
 
 

@@ -1,8 +1,7 @@
 """Core database operations for SynthDB."""
 
-import sqlite3
 from .types import get_type_table_name
-from .backends import get_backend, detect_backend_from_connection, parse_connection_string
+from .backends import get_backend
 from .config import config
 from .constants import validate_column_name, validate_table_name
 
@@ -879,11 +878,6 @@ def _soft_delete_table(table_id: int, backend, connection) -> None:
 
 def _hard_delete_table(table_id: int, backend, connection) -> None:
     """Permanently delete a table and all associated data."""
-    # Get all column IDs for cleanup
-    cur = backend.execute(connection, 
-        "SELECT id FROM column_definitions WHERE table_id = ?", (table_id,))
-    column_ids = [row['id'] for row in backend.fetchall(cur)]
-    
     # Delete from all value tables
     for type_table in ['text_values', 'integer_values', 'real_values', 'timestamp_values']:
         backend.execute(connection, 

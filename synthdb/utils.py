@@ -1,6 +1,5 @@
 """Utility functions for SynthDB."""
 
-import sqlite3
 from .backends import get_backend
 from .config import config
 

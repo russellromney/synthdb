@@ -1,8 +1,6 @@
 """Database setup and connection management for SynthDB."""
 
-import sqlite3
 from .backends import get_backend, detect_backend_from_connection
-from .config import config
 from .schema import create_schema
 
 

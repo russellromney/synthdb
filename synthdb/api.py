@@ -5,11 +5,10 @@ This module provides the core API functions used by the Connection class.
 """
 
 from typing import Dict, Any, Union, List
-from .core import insert_typed_value, add_column as _add_column, get_table_id, get_column_info, get_table_columns, delete_row_metadata, get_row_metadata, _validate_row_id
+from .core import insert_typed_value, add_column as _add_column, get_table_id, get_table_columns, delete_row_metadata, get_row_metadata
 from .utils import list_tables, list_columns, query_view
 from .inference import infer_type
 from .transactions import transaction_context
-from .constants import validate_column_name
 from .config import config
 
 
@@ -592,7 +591,6 @@ def get_table_history(table_name: str, row_id: str = None, column_name: str = No
         active_history = get_table_history("users", include_deleted=False)
     """
     from .transactions import transaction_context
-    from .core import get_table_id, get_table_columns
     from .types import get_type_table_name
     
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)

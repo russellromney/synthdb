@@ -8,17 +8,15 @@ from rich.syntax import Syntax
 from pathlib import Path
 
 from . import connect
-from .core import insert_typed_value
-from .inference import smart_insert, infer_type
-from .bulk import load_csv, load_json, export_csv, export_json, bulk_insert_rows
-from .errors import enhance_cli_error, TableNotFoundError, ColumnNotFoundError, InvalidDataTypeError
+from .inference import smart_insert
+from .bulk import load_csv, load_json, export_csv, export_json
+from .errors import TableNotFoundError, ColumnNotFoundError
 from .config_file import config_manager, get_connection_info
 from .completion import (
     get_table_names, get_column_names, get_data_types, get_backends,
     get_config_formats, get_connection_names, get_csv_files, get_json_files,
     get_config_files, complete_file_path, get_output_formats
 )
-from .config import set_default_backend, get_default_backend
 
 
 def build_connection_info(path: str, backend: str = None, connection_name: str = None):
@@ -99,7 +97,7 @@ def database_init(
         raise typer.Exit(1)
     
     try:
-        db = connect(connection_info, backend=backend)
+        connect(connection_info, backend=backend)
         
         location = path
         
@@ -523,7 +521,7 @@ def insert_cmd(
     valid_types = ["text", "integer", "real", "timestamp"]
     if data_type not in valid_types:
         console.print(f"[red]Invalid data type '{data_type}'. Valid types: {', '.join(valid_types)}[/red]")
-        console.print(f"[yellow]Tip: Use --auto to automatically infer the type[/yellow]")
+        console.print("[yellow]Tip: Use --auto to automatically infer the type[/yellow]")
         raise typer.Exit(1)
     
     try:
@@ -628,13 +626,13 @@ def load_csv_cmd(
     try:
         connection_info = build_connection_info(path, backend)
         
-        with console.status(f"[bold green]Loading CSV file..."):
+        with console.status("[bold green]Loading CSV file..."):
             stats = load_csv(
                 file_path, table, connection_info, backend, 
                 create_table, delimiter
             )
         
-        console.print(f"[green]Successfully loaded CSV file![/green]")
+        console.print("[green]Successfully loaded CSV file![/green]")
         console.print(f"[blue]Table: {stats['table_name']}[/blue]")
         console.print(f"[blue]Rows processed: {stats['rows_processed']}[/blue]")
         console.print(f"[blue]Rows inserted: {stats['inserted']}[/blue]")
@@ -659,13 +657,13 @@ def load_json_cmd(
     try:
         connection_info = build_connection_info(path, backend)
         
-        with console.status(f"[bold green]Loading JSON file..."):
+        with console.status("[bold green]Loading JSON file..."):
             stats = load_json(
                 file_path, table, connection_info, backend, 
                 create_table, json_key
             )
         
-        console.print(f"[green]Successfully loaded JSON file![/green]")
+        console.print("[green]Successfully loaded JSON file![/green]")
         console.print(f"[blue]Table: {stats['table_name']}[/blue]")
         console.print(f"[blue]Rows processed: {stats['rows_processed']}[/blue]")
         console.print(f"[blue]Rows inserted: {stats['inserted']}[/blue]")
@@ -690,12 +688,12 @@ def export_csv_cmd(
     try:
         connection_info = build_connection_info(path, backend)
         
-        with console.status(f"[bold green]Exporting to CSV..."):
+        with console.status("[bold green]Exporting to CSV..."):
             stats = export_csv(
                 table, file_path, connection_info, backend, where, delimiter
             )
         
-        console.print(f"[green]Successfully exported to CSV![/green]")
+        console.print("[green]Successfully exported to CSV![/green]")
         console.print(f"[blue]Table: {stats['table_name']}[/blue]")
         console.print(f"[blue]File: {stats['file_path']}[/blue]")
         console.print(f"[blue]Rows exported: {stats['rows_exported']}[/blue]")
@@ -718,12 +716,12 @@ def export_json_cmd(
     try:
         connection_info = build_connection_info(path, backend)
         
-        with console.status(f"[bold green]Exporting to JSON..."):
+        with console.status("[bold green]Exporting to JSON..."):
             stats = export_json(
                 table, file_path, connection_info, backend, where, indent
             )
         
-        console.print(f"[green]Successfully exported to JSON![/green]")
+        console.print("[green]Successfully exported to JSON![/green]")
         console.print(f"[blue]Table: {stats['table_name']}[/blue]")
         console.print(f"[blue]File: {stats['file_path']}[/blue]")
         console.print(f"[blue]Rows exported: {stats['rows_exported']}[/blue]")
@@ -749,7 +747,7 @@ def config_init(
         
         config_manager.create_sample_config(config_path, format)
         console.print(f"[green]Created sample config file: {config_path}[/green]")
-        console.print(f"[blue]Edit the file to customize your settings[/blue]")
+        console.print("[blue]Edit the file to customize your settings[/blue]")
         
     except Exception as e:
         console.print(f"[red]Error creating config: {e}[/red]")
@@ -842,7 +840,7 @@ def config_test(
             connection_obj = backend.connect(connection_info)
             backend.close(connection_obj)
         
-        console.print(f"[green]✓ Connection successful![/green]")
+        console.print("[green]✓ Connection successful![/green]")
         console.print(f"[blue]Backend: {backend_name}[/blue]")
         
     except Exception as e:

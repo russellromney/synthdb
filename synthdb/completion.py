@@ -1,7 +1,7 @@
 """Auto-completion support for SynthDB CLI."""
 
 import os
-from typing import List, Optional
+from typing import List
 from pathlib import Path
 
 
@@ -145,7 +145,6 @@ def complete_file_path(incomplete: str) -> List[str]:
 
 def setup_completion():
     """Setup shell completion for SynthDB."""
-    import typer
     
     completion_script = """
 # SynthDB completion setup
@@ -167,7 +166,6 @@ eval (env _SDB_COMPLETE=fish_source sdb)
 def install_completion(shell: str = None):
     """Install shell completion for SynthDB."""
     import subprocess
-    import sys
     
     if not shell:
         # Try to detect shell
@@ -196,14 +194,12 @@ def install_completion(shell: str = None):
             shell=True, 
             capture_output=True, 
             text=True,
-            env={**os.environ, f'_SDB_COMPLETE': f'{shell}_source'}
+            env={**os.environ, '_SDB_COMPLETE': f'{shell}_source'}
         )
         
         if result.returncode != 0:
             print(f"Error generating completion: {result.stderr}")
             return False
-        
-        completion_script = result.stdout
         
         # Check if already installed
         if config_file.exists():
@@ -216,7 +212,7 @@ def install_completion(shell: str = None):
         config_file.parent.mkdir(parents=True, exist_ok=True)
         
         with open(config_file, 'a') as f:
-            f.write(f"\n# SynthDB completion\n")
+            f.write("\n# SynthDB completion\n")
             f.write(f"eval \"$({completion_cmd})\"\n")
         
         print(f"Completion installed in {config_file}")

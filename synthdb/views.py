@@ -1,6 +1,5 @@
 """View creation and management for SynthDB."""
 
-import sqlite3
 from .types import get_type_table_name
 from .backends import get_backend
 from .config import config

@@ -3,9 +3,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Dict, Tuple, Optional, Union
 import sqlite3
-from pathlib import Path
-import re
-import os
 
 
 class DatabaseBackend(ABC):
@@ -269,8 +266,6 @@ def detect_backend_from_connection(connection_info: Union[str, Dict[str, Any]]) 
 
 def detect_backend_from_path(db_path: str) -> str:
     """Detect which backend to use based on file extension or existing database."""
-    path = Path(db_path)
-    
     # Check for remote LibSQL URLs
     if isinstance(db_path, str) and db_path.startswith(('http://', 'https://', 'libsql://')):
         return "libsql"
