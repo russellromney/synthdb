@@ -46,13 +46,27 @@ app = typer.Typer(
     name="synthdb",
     help="SynthDB - A flexible database system with schema-on-write capabilities",
     add_completion=True,
+    no_args_is_help=True,
 )
 console = Console()
 
 # Create noun-based subcommands with shortcuts
-database_app = typer.Typer(name="database", help="Database operations")
-table_app = typer.Typer(name="table", help="Table operations")
-config_app = typer.Typer(name="config", help="Configuration management")
+# no_args_is_help=True shows help when no command is provided
+database_app = typer.Typer(
+    name="database", 
+    help="Database operations",
+    no_args_is_help=True
+)
+table_app = typer.Typer(
+    name="table", 
+    help="Table operations",
+    no_args_is_help=True
+)
+config_app = typer.Typer(
+    name="config", 
+    help="Configuration management",
+    no_args_is_help=True
+)
 
 # Add main commands
 app.add_typer(database_app)
@@ -446,7 +460,11 @@ def table_delete(
 
 
 # Table sub-commands for complex operations
-table_add_app = typer.Typer(name="add", help="Add things to tables")
+table_add_app = typer.Typer(
+    name="add", 
+    help="Add things to tables",
+    no_args_is_help=True
+)
 table_app.add_typer(table_add_app)
 
 @table_add_app.command("column")
