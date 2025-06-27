@@ -27,7 +27,7 @@ classifiers = [
 dependencies = [
     "typer>=0.9.0",
     "rich>=13.0.0",
-    "pylimbo>=0.0.8",
+    "libsql-experimental>=0.0.10",
     "python-dateutil>=2.8.0",
 ]
 
@@ -43,13 +43,15 @@ config = [
 docs = [
     "sphinx>=7.0.0",
     "furo>=2023.9.10",
-    "myst-parser>=2.0.0",
+    "myst-parser[linkify]>=2.0.0",
     "sphinx-copybutton>=0.5.2",
     "sphinx-design>=0.5.0",
     "mkdocs>=1.5.0",
     "mkdocs-material>=9.4.0",
     "mkdocstrings[python]>=0.23.0",
     "mike>=1.1.0",
+    "linkify-it-py>=2.0.0",
+    "pymdown-extensions>=10.0",
 ]
 
 [project.urls]

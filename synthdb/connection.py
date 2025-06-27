@@ -52,17 +52,19 @@ class Connection:
         
         Args:
             connection_info: Database file path or dict
-            backend: Database backend ('limbo', 'sqlite')
+            backend: Database backend ('sqlite', 'libsql')
             auto_init: Automatically initialize database if it doesn't exist
         
         Examples:
             # File databases
             db = synthdb.connect('app.db', 'sqlite')
-            db = synthdb.connect('app.limbo', 'limbo')
+            db = synthdb.connect('data.db', 'libsql')
             
-            # Auto-detection by extension
-            db = synthdb.connect('app.db')     # Uses SQLite
-            db = synthdb.connect('app.limbo')  # Uses Limbo
+            # Remote LibSQL
+            db = synthdb.connect('libsql://your-db.turso.io', 'libsql')
+            
+            # Auto-detection
+            db = synthdb.connect('app.db')  # Uses SQLite (default)
             
             # Connection dict
             db = synthdb.connect({
@@ -319,17 +321,18 @@ class Connection:
         """
         return list_tables(self.connection_info, self.backend_name)
     
-    def list_columns(self, table_name: str) -> List[Dict[str, Any]]:
+    def list_columns(self, table_name: str, include_deleted: bool = False) -> List[Dict[str, Any]]:
         """
-        List all columns in a table.
+        List columns in a table.
         
         Args:
             table_name: Name of the table
+            include_deleted: If True, include soft-deleted columns
             
         Returns:
-            List of column information dictionaries
+            List of column information dictionaries with id, name, data_type, created_at, and deleted_at
         """
-        return list_columns(table_name, self.connection_info, self.backend_name)
+        return list_columns(table_name, include_deleted, self.connection_info, self.backend_name)
     
     def delete_value(self, table_name: str, row_id: Union[str, int], column_name: str) -> bool:
         """
@@ -441,6 +444,75 @@ class Connection:
         """
         create_table_views(self.connection_info, self.backend_name)
     
+    def rename_column(self, table_name: str, old_column_name: str, new_column_name: str) -> None:
+        """
+        Rename a column in a table.
+        
+        Args:
+            table_name: Name of the table
+            old_column_name: Current column name
+            new_column_name: New column name
+            
+        Raises:
+            ValueError: If table/column not found or new name already exists
+            
+        Examples:
+            # Rename a column
+            db.rename_column("users", "email", "email_address")
+            
+            # Fix typo in column name
+            db.rename_column("products", "descrption", "description")
+        """
+        from .api import rename_column
+        rename_column(table_name, old_column_name, new_column_name,
+                     self.connection_info, self.backend_name)
+    
+    def delete_column(self, table_name: str, column_name: str, hard_delete: bool = False) -> None:
+        """
+        Delete a column from a table.
+        
+        Args:
+            table_name: Name of the table
+            column_name: Name of the column to delete
+            hard_delete: If True, permanently delete all column data; if False, soft delete
+            
+        Raises:
+            ValueError: If table/column not found
+            
+        Examples:
+            # Soft delete (preserves data)
+            db.delete_column("users", "deprecated_field")
+            
+            # Hard delete (permanently removes data)
+            db.delete_column("products", "old_price", hard_delete=True)
+            
+            # Hard delete a previously soft-deleted column
+            db.delete_column("users", "removed_field", hard_delete=True)
+        """
+        from .api import delete_column
+        delete_column(table_name, column_name, hard_delete, self.connection_info, self.backend_name)
+    
+    def delete_table(self, table_name: str, hard_delete: bool = False) -> None:
+        """
+        Delete a table and all its associated data.
+        
+        Args:
+            table_name: Name of the table to delete
+            hard_delete: If True, permanently delete all data; if False, soft delete
+            
+        Raises:
+            ValueError: If table not found
+            
+        Examples:
+            # Soft delete (can be recovered)
+            db.delete_table("old_users")
+            
+            # Hard delete (permanent, frees space)
+            db.delete_table("temp_import", hard_delete=True)
+        """
+        from .api import delete_table
+        delete_table(table_name, hard_delete, self.connection_info, self.backend_name)
+    
     def __repr__(self) -> str:
         """String representation of the connection."""
         backend = self.backend_name or 'auto'
@@ -471,7 +543,7 @@ def connect(connection_info: Union[str, Dict[str, Any]] = 'db.db',
         
     Examples:
         # Quick connection
-        db = synthdb.connect('myapp.db', 'sqlite')
+        db = synthdb.connect('myapp.db', 'libsql')
         
         # Auto-detect backend
         db = synthdb.connect('app.db')

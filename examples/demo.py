@@ -23,8 +23,9 @@ def main_demo():
     
     # Connect to database - the modern way
     print("\n📦 Connecting to Database...")
-    db = synthdb.connect('demo.db', backend='sqlite')  # Use SQLite for compatibility
+    db = synthdb.connect('demo.db')  # Uses SQLite by default
     print(f"✅ Connected: {db}")
+    print(f"🔧 Backend: {db.backend_name or 'auto-detected'}")
     
     print("\n1️⃣ Create Table and Add Columns")
     print("-" * 35)
@@ -40,7 +41,8 @@ def main_demo():
         'age': 25,                                # Infers 'integer'
         'salary': 75000.50,                       # Infers 'real'
         'last_login': '2023-12-25 10:30:00',     # Infers 'timestamp'
-        'bio': 'Software engineer and cat lover' # Explicit text
+        'bio': 'Software engineer and cat lover', # Explicit text
+        'active': True                            # Infers 'integer' (boolean)
     })
     
     print(f"✅ Added {len(column_ids)} columns:")
@@ -190,42 +192,51 @@ def main_demo():
         row_id_short = user['row_id'][:8] + "..." if len(user['row_id']) > 8 else user['row_id']
         print(f"   {row_id_short:12} | {name:20} | {email:20} | {age_str:3} | ${salary_str:8} | {active}")
     
-    print("\n8️⃣ Column Copying Operations")
-    print("-" * 31)
+    print("\n8️⃣ Column Management Operations")
+    print("-" * 33)
     
-    # Create a second table for column copying demo
+    # Create a test table for column operations
+    db.create_table('products')
+    print("✅ Created 'products' table")
+    
+    # Add columns including ones we'll delete
+    db.add_columns('products', {
+        'name': 'text',
+        'price': 'real',
+        'deprecated_field': 'text',
+        'temp_data': 'text'
+    })
+    print("✅ Added columns to products")
+    
+    # Insert some test data
+    db.insert('products', {
+        'name': 'Widget',
+        'price': 19.99,
+        'deprecated_field': 'old_value',
+        'temp_data': 'temporary'
+    })
+    
+    # Example 1: Soft delete (preserves data)
+    db.delete_column('products', 'deprecated_field')
+    print("✅ Soft deleted 'deprecated_field' column (data preserved)")
+    
+    # Example 2: Hard delete (permanently removes data)
+    db.delete_column('products', 'temp_data', hard_delete=True)
+    print("✅ Hard deleted 'temp_data' column (data permanently removed)")
+    
+    # Example 3: List columns with and without deleted
+    visible_cols = db.list_columns('products')
+    all_cols = db.list_columns('products', include_deleted=True)
+    
+    print(f"\n📊 Column Listing Results:")
+    print(f"   • Visible columns: {[c['name'] for c in visible_cols]}")
+    print(f"   • All columns (including deleted): {[c['name'] for c in all_cols]}")
+    print(f"   • Soft deleted columns: {[c['name'] for c in all_cols if c['deleted_at']]}")
+    
+    # Example 4: Column copying
     db.create_table('customers')
-    print("✅ Created 'customers' table")
-    
-    # Add a base column to customers
-    db.add_columns('customers', {'company': 'text'})
-    print("✅ Added 'company' column to customers")
-    
-    # Insert some customers data
-    db.insert('customers', {'company': 'ACME Corp'})
-    db.insert('customers', {'company': 'Tech Solutions Inc'})
-    print("✅ Added sample customer data")
-    
-    # Example 1: Copy column structure only (fast)
-    email_col_id = db.copy_column('users', 'email', 'customers', 'contact_email', copy_data=False)
-    print(f"✅ Copied email column structure to customers (ID: {email_col_id})")
-    
-    # Example 2: Copy column with data (complete copy)
-    age_col_id = db.copy_column('users', 'age', 'customers', 'contact_age', copy_data=True)
-    print(f"✅ Copied age column with data to customers (ID: {age_col_id})")
-    
-    # Example 3: Copy within same table (backup/duplicate column)
-    backup_col_id = db.copy_column('users', 'email', 'users', 'backup_email', copy_data=True)
-    print(f"✅ Created backup email column in users (ID: {backup_col_id})")
-    
-    # Show the results
-    print("\n📊 Column Copying Results:")
-    customers = db.query('customers')
-    print(f"   • Customers table now has {len(db.list_columns('customers'))} columns")
-    print(f"   • Contact ages copied: {[c.get('contact_age') for c in customers if c.get('contact_age')]}")
-    
-    users_with_backup = db.query('users')
-    print(f"   • Users with backup emails: {len([u for u in users_with_backup if u.get('backup_email')])}")
+    email_col_id = db.copy_column("users", "email", "customers", "contact_email", copy_data=False)
+    print(f"\n✅ Copied email column structure to customers (ID: {email_col_id})")
     
     print("\n✨ Demo completed successfully!")
 
@@ -237,13 +248,18 @@ def connection_examples():
     print("=" * 60)
     
     print("\n💾 Local Database Files:")
-    print("   • Limbo (default): synthdb.connect('app.limbo')")
-    print("   • SQLite: synthdb.connect('app.db', backend='sqlite')")
+    print("   • LibSQL (default): synthdb.connect('app.db')")
+    print("   • SQLite (explicit): synthdb.connect('app.db', backend='sqlite')")
+    
+    print("\n🌐 Remote Database Connections:")
+    print("   • Turso: synthdb.connect('libsql://your-database.turso.io')")
+    print("   • HTTP: synthdb.connect('https://your-database.turso.io')")
     
     print("\n🔧 Backend Selection:")
-    print("   • Auto-detection: synthdb.connect('app.limbo')  # Uses Limbo (recommended)")
-    print("   • Auto-detection: synthdb.connect('app.db')  # Uses SQLite")
+    print("   • Auto-detection: synthdb.connect('app.db')  # Uses LibSQL")
+    print("   • Remote URL: synthdb.connect('libsql://...')  # Always LibSQL")
     print("   • Explicit backend: synthdb.connect('app.db', backend='sqlite')")
+    print("   • Fallback: If LibSQL unavailable, automatically uses SQLite")
 
 
 def api_benefits():
@@ -268,6 +284,8 @@ def api_benefits():
     print("   • Built-in upsert functionality")
     print("   • Auto-generated or explicit row IDs")
     print("   • Column copying (structure-only or with data)")
+    print("   • Soft delete (preserves data) or hard delete (permanent)")
+    print("   • List deleted columns for recovery")
     
     print("\n🛡️ Robust & Reliable:")
     print("   • Enhanced error handling and validation")

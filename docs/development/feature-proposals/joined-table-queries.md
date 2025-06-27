@@ -70,7 +70,7 @@ user_orders = db.query_joined([
 ```python
 import synthdb
 
-db = synthdb.connect('app.limbo')  # Uses Limbo by default
+db = synthdb.connect('app.db')
 
 # Simple join syntax
 result = db.query_joined('users', 'orders', on='users.row_id = orders.user_id')

@@ -87,7 +87,7 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
     
     try:
         # Check if column exists and has a defined type
-        columns = list_columns(table_name, connection_info, backend_name)
+        columns = list_columns(table_name, False, connection_info, backend_name)
         existing_column = next((c for c in columns if c['name'] == column_name), None)
         
         if existing_column:
@@ -108,7 +108,7 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
         if not table_info:
             raise ValueError(f"Table '{table_name}' not found")
         
-        columns = list_columns(table_name, connection_info, backend_name)
+        columns = list_columns(table_name, False, connection_info, backend_name)
         column_info = next((c for c in columns if c['name'] == column_name), None)
         
         if not column_info:

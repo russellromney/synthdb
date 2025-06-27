@@ -30,10 +30,10 @@ Install documentation dependencies:
 uv sync --extra docs
 
 # With pip
-pip install "synthdb[docs]"
+uv add "synthdb[docs]"
 
 # Or install individual packages
-pip install sphinx furo myst-parser sphinx-copybutton sphinx-design mkdocs mkdocs-material mkdocstrings[python] mike
+uv add sphinx furo myst-parser sphinx-copybutton sphinx-design mkdocs mkdocs-material mkdocstrings[python] mike
 ```
 
 ### Build Commands

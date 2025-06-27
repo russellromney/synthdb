@@ -45,7 +45,7 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
             raise ValueError(f"Table '{table_name}' does not exist. Create it first.")
         
         # Get existing columns
-        existing_columns = list_columns(table_name, connection_info, backend_name)
+        existing_columns = list_columns(table_name, False, connection_info, backend_name)
         existing_column_names = {col['name']: col for col in existing_columns}
         
         # Find missing columns
@@ -65,7 +65,7 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
                 print(f"Created column '{col_name}' with type '{col_type}'")
             
             # Refresh column list
-            existing_columns = list_columns(table_name, connection_info, backend_name)
+            existing_columns = list_columns(table_name, False, connection_info, backend_name)
             existing_column_names = {col['name']: col for col in existing_columns}
         
         elif missing_columns:
@@ -94,7 +94,7 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
                     print(f"Created column '{col_name}' with type '{col_type}'")
                 
                 # Refresh column list
-                existing_columns = list_columns(table_name, connection_info, backend_name)
+                existing_columns = list_columns(table_name, False, connection_info, backend_name)
                 existing_column_names = {col['name']: col for col in existing_columns}
             
             # Insert all rows in the same transaction

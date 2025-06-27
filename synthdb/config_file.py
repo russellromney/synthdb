@@ -73,11 +73,11 @@ class ConfigManager:
                 config = json.load(f)
             elif suffix in ('.yaml', '.yml'):
                 if yaml is None:
-                    raise ImportError("PyYAML is required for YAML config files. Install with: pip install PyYAML")
+                    raise ImportError("PyYAML is required for YAML config files. Install with: uv add PyYAML")
                 config = yaml.safe_load(f)
             elif suffix == '.toml':
                 if toml is None:
-                    raise ImportError("toml is required for TOML config files. Install with: pip install toml")
+                    raise ImportError("toml is required for TOML config files. Install with: uv add toml")
                 config = toml.load(f)
             else:
                 raise ValueError(f"Unsupported config file format: {suffix}")
@@ -108,7 +108,7 @@ class ConfigManager:
         """Get default configuration."""
         return {
             'database': {
-                'default_backend': 'limbo',
+                'default_backend': 'sqlite',
                 'default_path': 'db.db',
                 'batch_size': 1000,
                 'timeout': 30
@@ -171,11 +171,11 @@ class ConfigManager:
                 json.dump(config, f, indent=2)
             elif suffix in ('.yaml', '.yml'):
                 if yaml is None:
-                    raise ImportError("PyYAML is required for YAML config files. Install with: pip install PyYAML")
+                    raise ImportError("PyYAML is required for YAML config files. Install with: uv add PyYAML")
                 yaml.dump(config, f, default_flow_style=False, indent=2)
             elif suffix == '.toml':
                 if toml is None:
-                    raise ImportError("toml is required for TOML config files. Install with: pip install toml")
+                    raise ImportError("toml is required for TOML config files. Install with: uv add toml")
                 toml.dump(config, f)
             else:
                 # Default to JSON

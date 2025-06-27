@@ -74,7 +74,7 @@ def transaction_context(connection_info: Any, backend_name: Optional[str] = None
 
 @contextmanager
 def bulk_transaction_context(connection_info: Any, backend_name: Optional[str] = None, 
-                           batch_size: int = 1000) -> Generator[Tuple[Any, Any, int], None, None]:
+                           batch_size: int = 5000) -> Generator[Tuple[Any, Any, int], None, None]:
     """
     Context manager optimized for bulk operations with configurable batch size.
     

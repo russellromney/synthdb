@@ -5,12 +5,12 @@ from .backends import DatabaseBackend
 
 
 def get_schema_sql(backend: DatabaseBackend) -> Dict[str, List[str]]:
-    """Get schema creation SQL for SQLite/Limbo backends."""
+    """Get schema creation SQL for SQLite backend."""
     return get_sqlite_schema()
 
 
 def get_sqlite_schema() -> Dict[str, List[str]]:
-    """SQLite/Limbo compatible schema with versioned storage."""
+    """SQLite schema with versioned storage."""
     return {
         "tables": [
             """

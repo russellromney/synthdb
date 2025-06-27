@@ -14,7 +14,7 @@ class Config:
     
     def _load_from_env(self):
         """Load configuration from environment variables."""
-        self._backend = os.getenv("SYNTHDB_BACKEND", "limbo")
+        self._backend = os.getenv("SYNTHDB_BACKEND", "sqlite")
     
     @property
     def backend(self) -> str:
@@ -24,8 +24,8 @@ class Config:
     @backend.setter
     def backend(self, value: str):
         """Set the default backend."""
-        if value not in ("limbo", "sqlite"):
-            raise ValueError(f"Invalid backend: {value}. Supported: limbo, sqlite")
+        if value not in ("sqlite", "libsql"):
+            raise ValueError(f"Invalid backend: {value}. Supported: libsql, sqlite")
         self._backend = value
     
     def get_backend_for_path(self, db_path: str, explicit_backend: Optional[str] = None) -> str:
@@ -33,14 +33,11 @@ class Config:
         if explicit_backend:
             return explicit_backend
         
-        # Check if file exists and has a specific extension preference
-        path = Path(db_path)
-        if path.suffix == ".sqlite" or path.suffix == ".sqlite3":
-            return "sqlite"
-        elif path.suffix == ".limbo":
-            return "limbo"
+        # Check for remote LibSQL URLs
+        if isinstance(db_path, str) and db_path.startswith(('http://', 'https://', 'libsql://')):
+            return "libsql"
         
-        # Use default backend
+        # Use default backend (libsql)
         return self.backend
 
 

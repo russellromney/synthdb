@@ -68,13 +68,13 @@ app.add_typer(table_app, name="t", help="Table operations (shortcut)")
 def database_init(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path or connection string"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing database"),
-    backend: str = typer.Option("limbo", "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option("sqlite", "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Initialize a new SynthDB database."""
     
     # Validate backend
-    if backend not in ("limbo", "sqlite"):
-        console.print(f"[red]Invalid backend '{backend}'. Supported: limbo, sqlite[/red]")
+    if backend not in ("sqlite", "libsql"):
+        console.print(f"[red]Invalid backend '{backend}'. Supported: libsql, sqlite[/red]")
         raise typer.Exit(1)
     
     # Build connection info
@@ -102,7 +102,7 @@ def database_init(
 @database_app.command("info")
 def database_info(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Show database information."""
     try:
@@ -141,7 +141,7 @@ def database_info(
 def table_create(
     name: str = typer.Argument(..., help="Table name"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Create a new table."""
     try:
@@ -158,23 +158,25 @@ def table_create(
 def table_list(
     columns: Optional[str] = typer.Argument(None, help="Show columns for specific table", autocompletion=get_table_names),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    include_deleted: bool = typer.Option(False, "--include-deleted", "-d", help="Include soft-deleted columns"),
 ):
     """List all tables or columns in a specific table."""
-    _list_implementation(columns, path, backend)
+    _list_implementation(columns, path, backend, include_deleted)
 
 
 @app.command("l")
 def list_short(
     columns: Optional[str] = typer.Argument(None, help="Show columns for specific table", autocompletion=get_table_names),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    include_deleted: bool = typer.Option(False, "--include-deleted", "-d", help="Include soft-deleted columns"),
 ):
     """List all tables or columns in a specific table (shortcut)."""
-    _list_implementation(columns, path, backend)
+    _list_implementation(columns, path, backend, include_deleted)
 
 
-def _list_implementation(columns: Optional[str], path: str, backend: str):
+def _list_implementation(columns: Optional[str], path: str, backend: str, include_deleted: bool = False):
     """Implementation for list commands."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -182,25 +184,32 @@ def _list_implementation(columns: Optional[str], path: str, backend: str):
         
         if columns:
             # List columns for specific table
-            table_columns = db.list_columns(columns)
+            table_columns = db.list_columns(columns, include_deleted=include_deleted)
             
             if not table_columns:
                 console.print(f"[yellow]No columns found in table '{columns}'[/yellow]")
                 return
             
-            table_display = Table(title=f"Columns in '{columns}'")
+            title = f"Columns in '{columns}'" + (" (including deleted)" if include_deleted else "")
+            table_display = Table(title=title)
             table_display.add_column("ID", style="cyan")
             table_display.add_column("Name", style="green")
             table_display.add_column("Type", style="magenta")
             table_display.add_column("Created At", style="yellow")
+            if include_deleted:
+                table_display.add_column("Deleted At", style="red")
             
             for column in table_columns:
-                table_display.add_row(
+                row_data = [
                     str(column['id']),
                     column['name'],
                     column['data_type'],
                     str(column['created_at'])
-                )
+                ]
+                if include_deleted:
+                    deleted_at = column.get('deleted_at', None)
+                    row_data.append(str(deleted_at) if deleted_at else "")
+                table_display.add_row(*row_data)
             
             console.print(table_display)
         else:
@@ -240,7 +249,7 @@ def _list_implementation(columns: Optional[str], path: str, backend: str):
 def table_show(
     name: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Show detailed table information."""
     try:
@@ -289,7 +298,7 @@ def table_show(
 def table_export(
     name: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Export table structure as CREATE TABLE SQL."""
     try:
@@ -316,7 +325,7 @@ def table_copy(
     target: str = typer.Argument(..., help="Target table name"),
     with_data: bool = typer.Option(False, "--with-data", help="Copy data along with structure"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Copy a table's structure and optionally its data."""
     try:
@@ -339,6 +348,103 @@ def table_copy(
         raise typer.Exit(1)
 
 
+@table_app.command("rename-column")
+def table_rename_column(
+    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    old_name: str = typer.Argument(..., help="Current column name", autocompletion=get_column_names),
+    new_name: str = typer.Argument(..., help="New column name"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+):
+    """Rename a column in a table."""
+    try:
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
+        db.rename_column(table, old_name, new_name)
+        console.print(f"[green]Renamed column '{old_name}' to '{new_name}' in table '{table}'[/green]")
+        
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error renaming column: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@table_app.command("delete-column")
+def table_delete_column(
+    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    column: str = typer.Argument(..., help="Column name to delete", autocompletion=get_column_names),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    hard: bool = typer.Option(False, "--hard", help="Permanently delete all column data (cannot be recovered)"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
+    """Delete a column from a table."""
+    delete_type = "permanently delete" if hard else "soft delete"
+    
+    if not yes:
+        confirm = typer.confirm(f"Are you sure you want to {delete_type} column '{column}' from table '{table}'?")
+        if not confirm:
+            console.print("[yellow]Operation cancelled[/yellow]")
+            raise typer.Exit(0)
+    
+    try:
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
+        db.delete_column(table, column, hard_delete=hard)
+        
+        if hard:
+            console.print(f"[green]Permanently deleted column '{column}' from table '{table}' and all its data[/green]")
+        else:
+            console.print(f"[green]Soft deleted column '{column}' from table '{table}' (data preserved)[/green]")
+        
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error deleting column: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@table_app.command("delete")
+def table_delete(
+    name: str = typer.Argument(..., help="Table name to delete", autocompletion=get_table_names),
+    hard: bool = typer.Option(False, "--hard", help="Permanently delete all data (cannot be recovered)"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
+    """Delete a table and all its data."""
+    delete_type = "permanently delete" if hard else "soft delete"
+    
+    if not yes:
+        confirm = typer.confirm(f"Are you sure you want to {delete_type} table '{name}'?")
+        if not confirm:
+            console.print("[yellow]Operation cancelled[/yellow]")
+            raise typer.Exit(0)
+    
+    try:
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
+        db.delete_table(name, hard_delete=hard)
+        
+        if hard:
+            console.print(f"[green]Permanently deleted table '{name}' and all its data[/green]")
+        else:
+            console.print(f"[green]Soft deleted table '{name}' (can be recovered)[/green]")
+        
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error deleting table: {e}[/red]")
+        raise typer.Exit(1)
+
+
 # Table sub-commands for complex operations
 table_add_app = typer.Typer(name="add", help="Add things to tables")
 table_app.add_typer(table_add_app)
@@ -349,7 +455,7 @@ def table_add_column(
     name: str = typer.Argument(..., help="Column name"),
     data_type: str = typer.Argument(..., help="Data type (text, integer, real, timestamp)", autocompletion=get_data_types),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Add a column to an existing table."""
     valid_types = ["text", "integer", "real", "timestamp"]
@@ -381,7 +487,7 @@ def insert_cmd(
     data_type: str = typer.Argument(None, help="Data type (text, integer, real, timestamp). If not provided, type will be inferred.", autocompletion=get_data_types),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     auto: bool = typer.Option(False, "--auto", "-a", help="Automatically infer data type"),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Insert a value into a specific table/row/column.
     
@@ -463,7 +569,7 @@ def query_cmd(
     where: Optional[str] = typer.Option(None, "--where", "-w", help="WHERE clause"),
     format: str = typer.Option("table", "--format", "-f", help="Output format: table, json", autocompletion=get_output_formats),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Query data from a table."""
     _query_implementation(table, where, format, path, backend)
@@ -475,7 +581,7 @@ def query_short(
     where: Optional[str] = typer.Option(None, "--where", "-w", help="WHERE clause"),
     format: str = typer.Option("table", "--format", "-f", help="Output format: table, json", autocompletion=get_output_formats),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (limbo, sqlite)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
 ):
     """Query data from a table (shortcut)."""
     _query_implementation(table, where, format, path, backend)

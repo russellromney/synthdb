@@ -5,7 +5,7 @@ This guide will help you install SynthDB and get it running on your system.
 ## Requirements
 
 - Python 3.11 or higher
-- pip or uv package manager
+- uv or pip package manager
 
 ## Quick Installation
 
@@ -21,27 +21,27 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv add synthdb
 ```
 
-### Traditional Installation with pip
+### Alternative Installation with pip
 
 ```bash
-pip install synthdb
+uv add synthdb
 ```
 
-## Backend Options
+## Database Backend
 
-SynthDB supports two database backends:
+SynthDB uses SQLite as its default database backend:
 
-### Limbo (Default)
-- **Pros**: Fastest performance, modern Rust implementation, SQLite-compatible
-- **Cons**: Alpha software, may have compatibility issues
-- **Best for**: Development, single-user applications, performance testing
+### SQLite (Default)
+- **Battle-tested**: Proven reliability with billions of deployments
+- **Maximum compatibility**: Works on all platforms and architectures
+- **Zero configuration**: No setup required, included with Python
+- **Embedded database**: Perfect for desktop apps and local development
 
-### SQLite (Stable)
-- **Pros**: Battle-tested, maximum compatibility, stable, embedded
-- **Cons**: Limited concurrent writes
-- **Best for**: Production apps, desktop apps, small web apps, embedded systems
-
-The Limbo backend is automatically installed with SynthDB. If it's not available on your system, SynthDB will automatically fall back to SQLite.
+### LibSQL (Optional)
+- **SQLite-compatible**: 100% compatible with SQLite databases and APIs
+- **Additional features**: Remote database support, edge computing capabilities
+- **Remote databases**: Connect to Turso and other LibSQL-compatible services
+- **Installation**: Install separately with `uv add libsql-experimental`
 
 ## Optional Dependencies
 
@@ -53,7 +53,7 @@ For YAML and TOML configuration file support:
 # With uv
 uv add "synthdb[config]"
 
-# With pip
+# With pip (if not using uv)
 pip install "synthdb[config]"
 ```
 
@@ -72,7 +72,7 @@ make dev               # Setup development environment
 make test              # Run tests
 make lint              # Run linting
 
-# With pip (traditional)
+# With pip (if not using uv)
 pip install -e ".[dev]"
 ```
 
@@ -87,10 +87,14 @@ python -c "import synthdb; print(synthdb.__version__)"
 # Test basic functionality
 python -c "
 import synthdb
-db = synthdb.connect('test.limbo')  # Uses Limbo by default
+db = synthdb.connect('test.db')
 db.create_table('test')
 print('✅ SynthDB is working!')
+print(f'Using backend: {db.backend.get_name()}')
 "
+
+# Test remote database connection (if you have a Turso database)
+# python -c "import synthdb; db = synthdb.connect('libsql://your-db.turso.io'); print('✅ Remote connection working!')"
 
 # Test CLI
 synthdb --help
@@ -103,23 +107,29 @@ sdb --help
 You can configure SynthDB behavior with environment variables:
 
 ```bash
-# Set default backend (optional - Limbo is already default)
-export SYNTHDB_BACKEND=limbo
-
 # Set default database path
-export SYNTHDB_DEFAULT_PATH=myapp.limbo
+export SYNTHDB_DEFAULT_PATH=myapp.db
+
+# Set default backend (sqlite or libsql)
+export SYNTHDB_BACKEND=sqlite  # Default
+# export SYNTHDB_BACKEND=libsql  # Use LibSQL for remote features
 ```
 
 ## Troubleshooting
 
+### LibSQL Installation (Optional)
+
+To use LibSQL for remote database support:
+
+```bash
+# Install LibSQL support with uv
+uv add libsql-experimental
+
+# Or with pip (if not using uv)
+pip install libsql-experimental
+```
+
 ### Common Issues
-
-#### Limbo backend not available
-```
-Warning: Limbo backend not available, falling back to SQLite
-```
-
-This is normal and not an error. SynthDB will use SQLite as the backend, which works perfectly for all operations.
 
 #### Permission errors
 ```
@@ -134,6 +144,16 @@ ModuleNotFoundError: No module named 'synthdb'
 ```
 
 Make sure you've activated the correct Python environment where SynthDB is installed.
+
+#### Using LibSQL backend
+```
+Info: Using LibSQL backend for remote database support
+```
+
+If you want to use LibSQL features for remote databases:
+```bash
+uv add libsql-experimental
+```
 
 ### Getting Help
 

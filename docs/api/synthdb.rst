@@ -9,141 +9,157 @@ synthdb.api module
 
 .. automodule:: synthdb.api
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.backends module
 -----------------------
 
 .. automodule:: synthdb.backends
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.bulk module
 -------------------
 
 .. automodule:: synthdb.bulk
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.cli module
 ------------------
 
 .. automodule:: synthdb.cli
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.completion module
 -------------------------
 
 .. automodule:: synthdb.completion
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.config module
 ---------------------
 
 .. automodule:: synthdb.config
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.config\_file module
 ---------------------------
 
 .. automodule:: synthdb.config_file
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.connection module
 -------------------------
 
 .. automodule:: synthdb.connection
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+synthdb.constants module
+------------------------
+
+.. automodule:: synthdb.constants
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 synthdb.core module
 -------------------
 
 .. automodule:: synthdb.core
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.database module
 -----------------------
 
 .. automodule:: synthdb.database
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.errors module
 ---------------------
 
 .. automodule:: synthdb.errors
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.inference module
 ------------------------
 
 .. automodule:: synthdb.inference
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.schema module
 ---------------------
 
 .. automodule:: synthdb.schema
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
+
+synthdb.timestamps module
+-------------------------
+
+.. automodule:: synthdb.timestamps
+   :members:
+   :show-inheritance:
+   :undoc-members:
 
 synthdb.transactions module
 ---------------------------
 
 .. automodule:: synthdb.transactions
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.types module
 --------------------
 
 .. automodule:: synthdb.types
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.utils module
 --------------------
 
 .. automodule:: synthdb.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 synthdb.views module
 --------------------
 
 .. automodule:: synthdb.views
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: synthdb
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

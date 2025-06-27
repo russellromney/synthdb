@@ -86,7 +86,7 @@ result = db.execute_query("""
 ```python
 import synthdb
 
-db = synthdb.connect('app.limbo')  # Uses Limbo by default
+db = synthdb.connect('app.db')
 
 # Simple read-only query
 result = db.execute_query("SELECT * FROM users WHERE age > 25")
@@ -414,7 +414,7 @@ sdb sql-shell
 import synthdb
 
 # Setup
-db = synthdb.connect('analytics.limbo')  # Uses Limbo by default
+db = synthdb.connect('analytics.db')
 
 # Simple queries
 user_count = db.execute_query("SELECT COUNT(*) as total FROM users")[0]['total']

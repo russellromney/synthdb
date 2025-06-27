@@ -7,8 +7,11 @@ The `Connection` class is the primary interface for interacting with SynthDB dat
 ```python
 import synthdb
 
-# Create connection
-db = synthdb.connect('app.limbo')  # Uses Limbo by default
+# Create connection (SQLite by default)
+db = synthdb.connect('app.db')
+
+# Connect to remote LibSQL database (requires libsql-experimental)
+db = synthdb.connect('libsql://your-database.turso.io')
 
 # Table operations
 db.create_table('users')
@@ -111,7 +114,7 @@ columns = db.list_columns('users')
 import synthdb
 
 # Create connection
-db = synthdb.connect('example.limbo')  # Uses Limbo by default
+db = synthdb.connect('example.db')
 
 # Create table and add columns
 db.create_table('products')
@@ -179,26 +182,39 @@ except Exception as e:
 
 ## Connection Configuration
 
-### Backend Selection
+### Database Connection
 
 ```python
-# Explicit backend selection
-db_limbo = synthdb.connect('app.limbo')                    # Uses Limbo (default)
-db_sqlite = synthdb.connect('app.db', backend='sqlite')     # Uses SQLite explicitly
+# Connect to local database (SQLite by default)
+db = synthdb.connect('app.db')
 
-# Auto-detection by file extension
-db_auto_limbo = synthdb.connect('app.limbo')   # Uses Limbo (recommended)
-db_auto_sqlite = synthdb.connect('app.db')     # Uses SQLite
+# Connect to remote LibSQL database (requires libsql-experimental)
+db = synthdb.connect('libsql://your-database.turso.io')
+db = synthdb.connect('https://your-database.turso.io')
+
+# Explicitly specify backend
+db = synthdb.connect('app.db', backend='sqlite')  # Default
+db = synthdb.connect('app.db', backend='libsql')  # For LibSQL features
+
+# Database file is created if it doesn't exist
+db = synthdb.connect('newapp.db')
 ```
 
 ### Connection Options
 
 ```python
+# Backend selection
+db = synthdb.connect('app.db')  # Uses SQLite by default
+db = synthdb.connect('app.db', backend='libsql')  # Force LibSQL
+
+# Remote databases only work with LibSQL
+db = synthdb.connect('libsql://db.turso.io')  # LibSQL required
+
 # Auto-initialization (default: True)
-db = synthdb.connect('app.limbo', auto_init=True)
+db = synthdb.connect('app.db', auto_init=True)
 
 # Manual initialization
-db = synthdb.connect('app.limbo', auto_init=False)
+db = synthdb.connect('app.db', auto_init=False)
 # ... perform setup operations ...
 db.init_db()  # Call when ready
 ```
@@ -233,7 +249,7 @@ recent_users = db.query('users', 'created_at > "2024-01-01"')
 
 ```python
 # Reuse connections for multiple operations
-db = synthdb.connect('app.limbo')
+db = synthdb.connect('app.db')
 
 # Multiple operations on same connection
 db.create_table('users')

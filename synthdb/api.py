@@ -90,7 +90,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
         raise ValueError(f"Table '{table_name}' not found")
     
     table_id = table_info['id']
-    columns = list_columns(table_name, connection_info, backend_name)
+    columns = list_columns(table_name, False, connection_info, backend_name)
     column_lookup = {col['name']: col for col in columns}
     
     # Handle row ID - explicit or auto-generated
@@ -265,7 +265,7 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: str,
             table_info = next((t for t in tables if t['name'] == table_name), None)
             table_id = table_info['id']
             
-            columns = list_columns(table_name, connection_info, backend_name)
+            columns = list_columns(table_name, False, connection_info, backend_name)
             column_lookup = {col['name']: col for col in columns}
             
             for col_name, col_value in data.items():
@@ -359,6 +359,90 @@ def copy_table(source_table: str, target_table: str, copy_data: bool = False,
     
     return _copy_table(source_table, target_table, copy_data,
                       connection_info, backend_name)
+
+
+def rename_column(table_name: str, old_column_name: str, new_column_name: str,
+                  connection_info: str = 'db.db', backend_name: str = None) -> None:
+    """
+    Rename a column in a table.
+    
+    Args:
+        table_name: Name of the table
+        old_column_name: Current column name
+        new_column_name: New column name
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Raises:
+        ValueError: If table/column not found or new name already exists
+        
+    Examples:
+        # Rename a column
+        rename_column("users", "email", "email_address")
+        
+        # Fix typo in column name
+        rename_column("products", "descrption", "description")
+    """
+    from .core import rename_column as _rename_column
+    
+    _rename_column(table_name, old_column_name, new_column_name,
+                   connection_info, backend_name)
+
+
+def delete_column(table_name: str, column_name: str, hard_delete: bool = False,
+                  connection_info: str = 'db.db', backend_name: str = None) -> None:
+    """
+    Delete a column from a table.
+    
+    Args:
+        table_name: Name of the table
+        column_name: Name of the column to delete
+        hard_delete: If True, permanently delete all column data; if False, soft delete
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Raises:
+        ValueError: If table/column not found
+        
+    Examples:
+        # Soft delete (preserves data)
+        delete_column("users", "deprecated_field")
+        
+        # Hard delete (permanently removes data)
+        delete_column("products", "old_price", hard_delete=True)
+        
+        # Hard delete a previously soft-deleted column
+        delete_column("users", "removed_field", hard_delete=True)
+    """
+    from .core import delete_column as _delete_column
+    
+    _delete_column(table_name, column_name, hard_delete, connection_info, backend_name)
+
+
+def delete_table(table_name: str, hard_delete: bool = False,
+                 connection_info: str = 'db.db', backend_name: str = None) -> None:
+    """
+    Delete a table and all its associated data.
+    
+    Args:
+        table_name: Name of the table to delete
+        hard_delete: If True, permanently delete all data; if False, soft delete
+        connection_info: Database connection
+        backend_name: Backend to use
+        
+    Raises:
+        ValueError: If table not found
+        
+    Examples:
+        # Soft delete (can be recovered)
+        delete_table("old_users")
+        
+        # Hard delete (permanent, frees space)
+        delete_table("temp_import", hard_delete=True)
+    """
+    from .core import delete_table as _delete_table
+    
+    _delete_table(table_name, hard_delete, connection_info, backend_name)
 
 
 def delete_value(table_name: str, row_id: Union[str, int], column_name: str,

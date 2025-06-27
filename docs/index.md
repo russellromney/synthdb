@@ -15,15 +15,19 @@ SynthDB is a modern database system that adapts to your data as it evolves. Unli
 - **History Tracking**: Built-in audit trail with creation and update timestamps
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
-- **Multiple Backends**: Supports Limbo and SQLite backends
+- **SQLite Backend**: Built on SQLite - the world's most widely deployed database engine
+- **Remote Support**: Optional LibSQL backend for remote database connectivity
 
 ## Quick Example
 
 ```python
 import synthdb
 
-# Create a connection
+# Create a connection (SQLite by default)
 db = synthdb.connect('app.db')
+
+# Or connect to remote database (requires libsql-experimental)
+# db = synthdb.connect('libsql://your-database.turso.io')
 
 # Create table and add columns
 db.create_table('users')

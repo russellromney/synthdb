@@ -5,6 +5,7 @@ from typing import Any, List, Dict, Tuple, Optional, Union
 import sqlite3
 from pathlib import Path
 import re
+import os
 
 
 class DatabaseBackend(ABC):
@@ -148,24 +149,33 @@ class SqliteBackend(LocalBackend):
         return "INTEGER PRIMARY KEY"
 
 
-class LimboBackend(LocalBackend):
-    """Limbo database backend."""
+
+
+class LibSQLBackend(LocalBackend):
+    """LibSQL database backend (SQLite-compatible with additional features)."""
     
     def __init__(self):
         try:
-            import limbo
-            self._limbo = limbo
+            import libsql_experimental as libsql
+            self._libsql = libsql
         except ImportError:
             raise ImportError(
-                "Limbo backend requires 'pylimbo' package. Install with: pip install pylimbo"
+                "LibSQL backend requires 'libsql-experimental' package. "
+                "Install with: uv add libsql-experimental"
             )
     
     def _connect_file(self, db_path: str) -> Any:
-        """Connect to Limbo database."""
-        return self._limbo.connect(db_path)
+        """Connect to LibSQL database."""
+        # LibSQL can connect to local files or remote databases
+        if db_path.startswith(('http://', 'https://', 'libsql://')):
+            # Remote database
+            return self._libsql.connect(db_path)
+        else:
+            # Local file
+            return self._libsql.connect(f"file:{db_path}")
     
     def execute(self, connection: Any, query: str, params: Optional[Tuple] = None) -> Any:
-        """Execute a query on Limbo."""
+        """Execute a query on LibSQL."""
         cursor = connection.cursor()
         if params:
             cursor.execute(query, params)
@@ -174,7 +184,7 @@ class LimboBackend(LocalBackend):
         return cursor
     
     def fetchall(self, cursor: Any) -> List[Dict[str, Any]]:
-        """Fetch all results from Limbo cursor."""
+        """Fetch all results from LibSQL cursor."""
         results = cursor.fetchall()
         if not results:
             return []
@@ -184,7 +194,7 @@ class LimboBackend(LocalBackend):
         return [dict(zip(columns, row)) for row in results]
     
     def fetchone(self, cursor: Any) -> Optional[Dict[str, Any]]:
-        """Fetch one result from Limbo cursor."""
+        """Fetch one result from LibSQL cursor."""
         row = cursor.fetchone()
         if not row:
             return None
@@ -193,54 +203,55 @@ class LimboBackend(LocalBackend):
         return dict(zip(columns, row))
     
     def commit(self, connection: Any) -> None:
-        """Commit Limbo transaction."""
+        """Commit LibSQL transaction."""
         connection.commit()
     
     def rollback(self, connection: Any) -> None:
-        """Rollback Limbo transaction."""
+        """Rollback LibSQL transaction."""
         connection.rollback()
     
     def close(self, connection: Any) -> None:
-        """Close Limbo connection."""
-        connection.close()
+        """Close LibSQL connection."""
+        # LibSQL connections may not have a close method
+        if hasattr(connection, 'close'):
+            connection.close()
     
     def get_name(self) -> str:
         """Get the backend name."""
-        return "limbo"
+        return "libsql"
     
     def supports_returning(self) -> bool:
-        """Limbo supports RETURNING (SQLite-compatible)."""
+        """LibSQL supports RETURNING (SQLite 3.35.0+)."""
         return True
     
     def get_sql_type(self, synthdb_type: str) -> str:
-        """Convert SynthDB type to Limbo SQL type."""
-        # Limbo is SQLite-compatible
+        """Convert SynthDB type to LibSQL type (SQLite-compatible)."""
         type_mapping = {
             'text': 'TEXT',
             'integer': 'INTEGER',
             'real': 'REAL',
-            'timestamp': 'TIMESTAMP'
+            'timestamp': 'TEXT'
         }
         return type_mapping.get(synthdb_type, 'TEXT')
     
     def get_autoincrement_sql(self) -> str:
-        """Get Limbo autoincrement SQL."""
-        return "INTEGER PRIMARY KEY"
+        """Get LibSQL autoincrement SQL."""
+        return "INTEGER PRIMARY KEY AUTOINCREMENT"
 
 
-def get_backend(backend_name: str = "limbo") -> DatabaseBackend:
+def get_backend(backend_name: str = "sqlite") -> DatabaseBackend:
     """Get a database backend instance."""
     if backend_name == "sqlite":
         return SqliteBackend()
-    elif backend_name == "limbo":
+    elif backend_name == "libsql":
         try:
-            return LimboBackend()
+            return LibSQLBackend()
         except ImportError:
-            # Fall back to SQLite if Limbo is not available
-            print("Warning: Limbo backend not available, falling back to SQLite")
+            # Fall back to SQLite if LibSQL is not available
+            print("Warning: LibSQL backend not available, falling back to SQLite")
             return SqliteBackend()
     else:
-        raise ValueError(f"Unknown backend: {backend_name}. Supported backends: limbo, sqlite")
+        raise ValueError(f"Unknown backend: {backend_name}. Supported backends: libsql, sqlite")
 
 
 def detect_backend_from_connection(connection_info: Union[str, Dict[str, Any]]) -> str:
@@ -253,27 +264,19 @@ def detect_backend_from_connection(connection_info: Union[str, Dict[str, Any]]) 
         # Treat as file path
         return detect_backend_from_path(connection_info)
     
-    return "limbo"  # Default
+    return "sqlite"  # Default
 
 
 def detect_backend_from_path(db_path: str) -> str:
     """Detect which backend to use based on file extension or existing database."""
     path = Path(db_path)
     
-    # Check file extension hints
-    if path.suffix in ('.sqlite', '.sqlite3', '.db'):
-        return "sqlite"
-    elif path.suffix == '.limbo':
-        return "limbo"
+    # Check for remote LibSQL URLs
+    if isinstance(db_path, str) and db_path.startswith(('http://', 'https://', 'libsql://')):
+        return "libsql"
     
-    # If file exists, try to detect the backend
-    if path.exists():
-        # For now, assume SQLite for existing files unless explicitly specified
-        # In the future, we could add magic number detection
-        return "sqlite"
-    
-    # For new files, use limbo by default (with fallback)
-    return "limbo"
+    # Default to sqlite for local files
+    return "sqlite"
 
 
 def parse_connection_string(connection_string: str) -> Tuple[str, Union[str, Dict[str, Any]]]:

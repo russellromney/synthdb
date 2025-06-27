@@ -11,8 +11,7 @@ A flexible database system with schema-on-write capabilities. SynthDB makes it e
 - **History Tracking**: Built-in audit trail with creation and update timestamps
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
-- **Multiple Backends**: Supports Limbo and SQLite backends
-- **Configurable**: Choose your backend based on performance and stability needs
+- **SQLite Backend**: Built on SQLite, the world's most widely deployed database engine
 
 ## Installation
 
@@ -29,12 +28,18 @@ uv add synthdb
 ### **Traditional Installation**
 
 ```bash
-pip install synthdb
+uv add synthdb
 ```
 
-**Backend Options:**
-- **Limbo** (default): Fast, modern SQLite-compatible database written in Rust
-- **SQLite**: Traditional SQLite for maximum stability and compatibility
+**Backend:**
+- **SQLite**: Default backend - Battle-tested, stable, and available everywhere
+- **LibSQL**: Optional backend for remote database support (Turso, etc.)
+
+```bash
+# SQLite is included with Python, no additional installation needed
+# For LibSQL remote database support:
+uv add libsql-experimental
+```
 
 ### **Development Setup**
 
@@ -49,7 +54,7 @@ make test              # Run tests
 make lint              # Run linting
 
 # With pip (traditional)
-pip install -e ".[dev]"
+uv add -e ".[dev]"
 ```
 
 ## Quick Start
@@ -57,17 +62,9 @@ pip install -e ".[dev]"
 ### CLI Usage
 
 ```bash
-# Initialize a new database (uses Limbo by default)
+# Initialize a new database
 synthdb database init
 # or use the shorter alias:
-sdb database init
-
-# Use different backends
-sdb database init                    # Uses Limbo by default
-sdb database init --backend sqlite   # Use SQLite explicitly
-
-# Environment variable (optional)
-export SYNTHDB_BACKEND=limbo  # Already the default
 sdb database init
 
 # Create a table
@@ -106,8 +103,11 @@ sdb table export products
 ```python
 import synthdb
 
-# Create a connection - handles everything automatically
-db = synthdb.connect('app.limbo')  # Uses Limbo by default
+# Create a connection - uses SQLite by default
+db = synthdb.connect('app.db')
+
+# Or connect to a remote LibSQL database (Turso, etc.)
+db = synthdb.connect('libsql://your-database.turso.io')
 
 # Create table and add columns in one go
 db.create_table('products')
@@ -151,55 +151,42 @@ tables = db.list_tables()
 columns = db.list_columns('products')
 ```
 
-#### 🔧 **Alternative Connection Methods**
+#### 🔧 **Connection Methods**
 
 ```python
-# Different backends
-db = synthdb.connect('app.limbo')                    # Uses Limbo (default)
-db = synthdb.connect('app.db', backend='sqlite')     # Uses SQLite explicitly
+# Create database connection (SQLite by default)
+db = synthdb.connect('app.db')
 
-# Auto-detection by file extension
-db = synthdb.connect('app.limbo')  # Uses Limbo (recommended)
-db = synthdb.connect('app.db')     # Uses SQLite
+# Explicitly use LibSQL backend for remote databases
+db = synthdb.connect('libsql://your-database.turso.io')
+db = synthdb.connect('https://your-database.turso.io')
+
+# Explicitly specify backend
+db = synthdb.connect('app.db', backend='sqlite')  # Default
+db = synthdb.connect('app.db', backend='libsql')   # For LibSQL features
 ```
 
 
-## Backend Selection
+## Backend
 
-SynthDB supports two database backends optimized for different use cases:
+SynthDB uses SQLite as the default backend, with optional LibSQL support for remote databases:
 
-### Limbo (Default)
-- **Pros**: Fastest performance, modern Rust implementation, SQLite-compatible
-- **Cons**: Alpha software, may have compatibility issues
-- **Best for**: Development, single-user applications, performance testing
-- **Concurrency**: Single writer, multiple readers
+### SQLite (Default)
+- **Pros**: Battle-tested, maximum compatibility, stable, embedded, zero-configuration
+- **Built-in**: Included with Python - no additional installation required
+- **Best for**: Desktop apps, embedded systems, local development
+- **File extensions**: .db, .sqlite, .sqlite3
 
-### SQLite (Stable)
-- **Pros**: Battle-tested, maximum compatibility, stable, embedded
-- **Cons**: Limited concurrent writes
-- **Best for**: Production apps, desktop apps, small web apps, embedded systems
-- **Concurrency**: Single writer, multiple readers
-
-### Configuration
-
-```python
-# Set backend globally (optional - Limbo is default)
-synthdb.set_default_backend("limbo")  # Already the default
-
-# Environment variable (optional)
-SYNTHDB_BACKEND=limbo  # Already the default
-
-# File extension hints
-# .limbo files use Limbo
-# .sqlite/.sqlite3/.db files use SQLite
-```
-
-### Performance Comparison
-
-| Backend | Single User | Multi User | Complex Queries | Overall Performance |
-|---------|-------------|------------|-----------------|---------------------|
-| Limbo | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| SQLite | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+### LibSQL (Optional)
+- **What it is**: SQLite-compatible database with additional features
+- **Pros**: All SQLite benefits plus remote database support, edge computing ready
+- **Remote Support**: Connect to Turso and other LibSQL-compatible services
+- **Compatibility**: 100% SQLite compatible - existing SQLite databases work as-is
+- **Best for**: Modern applications requiring remote databases, edge computing, distributed systems
+- **Installation**: Requires `libsql-experimental` package:
+  ```bash
+  uv add libsql-experimental
+  ```
 
 ## Architecture
 
@@ -333,26 +320,26 @@ synthdb/
 - `sdb i <table> '<data>'` - Insert data (shortcut for `add`)
 
 ### Database Operations
-- `sdb database init [--path <path>] [--backend <backend>] [connection options]` - Initialize database
+- `sdb database init [--path <path>] [connection options]` - Initialize database
 - `sdb db init` - Shortcut for database init
-- `sdb database info [--path <path>] [--backend <backend>] [connection options]` - Show database information
+- `sdb database info [--path <path>] [connection options]` - Show database information
 
 
 ### Table Operations
-- `sdb table create <name> [--backend <backend>]` - Create table
+- `sdb table create <name>` - Create table
 - `sdb t create <name>` - Shortcut for table create
-- `sdb table list [<table>] [--backend <backend>]` - List tables or columns in specific table
+- `sdb table list [<table>]` - List tables or columns in specific table
 - `sdb l [table]` - Shortcut for table list
-- `sdb table show <name> [--backend <backend>]` - Show detailed table information
-- `sdb table export <name> [--backend <backend>]` - Export table structure
-- `sdb table add column <table> <column> <type> [--backend <backend>]` - Add column
+- `sdb table show <name>` - Show detailed table information
+- `sdb table export <name>` - Export table structure
+- `sdb table add column <table> <column> <type>` - Add column
 
 ### Data Operations
-- `sdb add <table> '<data>' [--id <row_id>] [--backend <backend>]` - Add data using modern API (auto-generated IDs, type inference)
+- `sdb add <table> '<data>' [--id <row_id>]` - Add data using modern API (auto-generated IDs, type inference)
 - `sdb i <table> '<data>'` - Shortcut for add
-- `sdb query <table> [--where <clause>] [--backend <backend>]` - Query table data
+- `sdb query <table> [--where <clause>]` - Query table data
 - `sdb q <table>` - Shortcut for query
-- `sdb insert <table> <row_id> <column> <value> <type> [--backend <backend>]` - Insert value into specific row/column
+- `sdb insert <table> <row_id> <column> <value> <type>` - Insert value into specific row/column
 
 > 💡 **Tip**: Use shortcuts for faster development: `sdb db init`, `sdb t create users`, `sdb i users '{"name":"John"}'`, `sdb q users`
 
@@ -360,19 +347,18 @@ synthdb/
 
 All commands support:
 - `--path <path>` to specify database file (defaults to `db.db`)
-- `--backend <backend>` to specify backend (`limbo`, `sqlite`)
 
 **Connection Examples:**
 ```bash
-# Local file with Limbo (recommended)
-sdb query products --path myapp.limbo
+# Local database file (uses SQLite by default)
+sdb query products --path myapp.db
 
-# Local file with SQLite
-sdb query products --path myapp.db --backend sqlite
+# Remote LibSQL database
+sdb query products --path "libsql://your-database.turso.io"
 
-# Environment variable (optional)
-export SYNTHDB_BACKEND="limbo"  # Already the default
-sdb query products
+# Explicitly specify backend
+sdb query products --path myapp.db --backend sqlite  # Default
+sdb query products --path myapp.db --backend libsql  # For LibSQL features
 ```
 
 ## License
@@ -443,9 +429,18 @@ db.create_table('text_values')
 
 ### Common
 - View complexity increases with table width
-- Not suitable for high-frequency transactional workloads
+- Not suitable for extreme-frequency transactional workloads
 - Schema changes require view regeneration
+- Not suitable for extremely large workloads (>100GB)
+- Computationally more intense than just using a normal table setup
 
-### Backend-Specific
-- **SQLite/Limbo**: Limited concurrent write performance
-- **Limbo**: Alpha software, potential compatibility issues
+### Backend Specific
+
+#### LibSQL
+- Requires `libsql-experimental` package installation
+- Remote databases require internet connectivity
+
+#### SQLite
+- Limited concurrent write performance (single writer, multiple readers)
+- Database size limited by filesystem constraints
+- No remote database support

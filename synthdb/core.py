@@ -715,3 +715,213 @@ def _copy_values_by_type(source_table_id: int, target_table_id: int,
             VALUES (?, ?, ?, ?, ?, ?)
         """, (new_row_id, target_table_id, new_col_id, 
               val['version'], val['value'], val['is_current']))
+
+
+def rename_column(table_name: str, old_column_name: str, new_column_name: str,
+                  db_path: str = 'db.db', backend_name: str = None) -> None:
+    """
+    Rename a column in a table.
+    
+    Args:
+        table_name: Name of the table
+        old_column_name: Current column name
+        new_column_name: New column name
+        db_path: Database path
+        backend_name: Backend to use
+        
+    Raises:
+        ValueError: If table/column not found or new name already exists
+    """
+    from .transactions import transaction_context
+    
+    # Validate new column name is not protected
+    validate_column_name(new_column_name)
+    
+    backend_to_use = backend_name or config.get_backend_for_path(db_path)
+    
+    with transaction_context(db_path, backend_to_use) as (backend, connection):
+        # Get table ID
+        table_id = get_table_id(table_name, backend, connection)
+        
+        # Check old column exists
+        cur = backend.execute(connection, """
+            SELECT id FROM column_definitions 
+            WHERE table_id = ? AND name = ? AND deleted_at IS NULL
+        """, (table_id, old_column_name))
+        result = backend.fetchone(cur)
+        if not result:
+            raise ValueError(f"Column '{old_column_name}' not found in table '{table_name}'")
+        column_id = result['id']
+        
+        # Check new name doesn't exist
+        cur = backend.execute(connection, """
+            SELECT id FROM column_definitions 
+            WHERE table_id = ? AND name = ? AND deleted_at IS NULL
+        """, (table_id, new_column_name))
+        if backend.fetchone(cur):
+            raise ValueError(f"Column '{new_column_name}' already exists in table '{table_name}'")
+        
+        # Update column name
+        backend.execute(connection, """
+            UPDATE column_definitions 
+            SET name = ?, version = version + 1
+            WHERE id = ?
+        """, (new_column_name, column_id))
+    
+    # Recreate views after transaction
+    from .views import create_table_views
+    create_table_views(db_path, backend_name=backend_to_use)
+
+
+def delete_column(table_name: str, column_name: str, hard_delete: bool = False,
+                  db_path: str = 'db.db', backend_name: str = None) -> None:
+    """
+    Delete a column from a table.
+    
+    Args:
+        table_name: Name of the table
+        column_name: Name of the column to delete
+        hard_delete: If True, permanently delete all column data; if False, soft delete
+        db_path: Database path
+        backend_name: Backend to use
+        
+    Raises:
+        ValueError: If table/column not found
+    """
+    from .transactions import transaction_context
+    
+    backend_to_use = backend_name or config.get_backend_for_path(db_path)
+    
+    with transaction_context(db_path, backend_to_use) as (backend, connection):
+        # Get table ID
+        table_id = get_table_id(table_name, backend, connection)
+        
+        # Check column exists (including soft-deleted columns for hard delete)
+        if hard_delete:
+            # Allow hard deletion of soft-deleted columns
+            cur = backend.execute(connection, """
+                SELECT id, data_type FROM column_definitions 
+                WHERE table_id = ? AND name = ?
+            """, (table_id, column_name))
+        else:
+            # Only check non-deleted columns for soft delete
+            cur = backend.execute(connection, """
+                SELECT id, data_type FROM column_definitions 
+                WHERE table_id = ? AND name = ? AND deleted_at IS NULL
+            """, (table_id, column_name))
+        
+        result = backend.fetchone(cur)
+        if not result:
+            raise ValueError(f"Column '{column_name}' not found in table '{table_name}'")
+        column_id = result['id']
+        data_type = result['data_type']
+        
+        if hard_delete:
+            # Permanently delete all column data
+            _hard_delete_column(table_id, column_id, data_type, backend, connection)
+        else:
+            # Soft delete the column
+            backend.execute(connection, """
+                UPDATE column_definitions 
+                SET deleted_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), version = version + 1
+                WHERE id = ?
+            """, (column_id,))
+    
+    # Recreate views after transaction
+    from .views import create_table_views
+    create_table_views(db_path, backend_name=backend_to_use)
+
+
+def delete_table(table_name: str, hard_delete: bool = False,
+                 db_path: str = 'db.db', backend_name: str = None) -> None:
+    """
+    Delete a table and all its associated data.
+    
+    Args:
+        table_name: Name of the table to delete
+        hard_delete: If True, permanently delete all data; if False, soft delete
+        db_path: Database path
+        backend_name: Backend to use
+        
+    Raises:
+        ValueError: If table not found
+    """
+    from .transactions import transaction_context
+    
+    # Validate table name is not protected
+    validate_table_name(table_name)
+    
+    backend_to_use = backend_name or config.get_backend_for_path(db_path)
+    
+    with transaction_context(db_path, backend_to_use) as (backend, connection):
+        # Get table ID
+        table_id = get_table_id(table_name, backend, connection)
+        
+        if hard_delete:
+            # Permanently delete all data
+            _hard_delete_table(table_id, backend, connection)
+        else:
+            # Soft delete - mark table and columns as deleted
+            _soft_delete_table(table_id, backend, connection)
+    
+    # Recreate views after transaction
+    from .views import create_table_views
+    create_table_views(db_path, backend_name=backend_to_use)
+
+
+def _soft_delete_table(table_id: int, backend, connection) -> None:
+    """Soft delete a table by marking it and its columns as deleted."""
+    # Mark table as deleted
+    backend.execute(connection, """
+        UPDATE table_definitions 
+        SET deleted_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), version = version + 1
+        WHERE id = ?
+    """, (table_id,))
+    
+    # Mark all columns as deleted
+    backend.execute(connection, """
+        UPDATE column_definitions 
+        SET deleted_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), version = version + 1
+        WHERE table_id = ? AND deleted_at IS NULL
+    """, (table_id,))
+
+
+def _hard_delete_table(table_id: int, backend, connection) -> None:
+    """Permanently delete a table and all associated data."""
+    # Get all column IDs for cleanup
+    cur = backend.execute(connection, 
+        "SELECT id FROM column_definitions WHERE table_id = ?", (table_id,))
+    column_ids = [row['id'] for row in backend.fetchall(cur)]
+    
+    # Delete from all value tables
+    for type_table in ['text_values', 'integer_values', 'real_values', 'timestamp_values']:
+        backend.execute(connection, 
+            f"DELETE FROM {type_table} WHERE table_id = ?", (table_id,))
+    
+    # Delete row metadata
+    backend.execute(connection, 
+        "DELETE FROM row_metadata WHERE table_id = ?", (table_id,))
+    
+    # Delete column definitions
+    backend.execute(connection, 
+        "DELETE FROM column_definitions WHERE table_id = ?", (table_id,))
+    
+    # Delete table definition
+    backend.execute(connection, 
+        "DELETE FROM table_definitions WHERE id = ?", (table_id,))
+
+
+def _hard_delete_column(table_id: int, column_id: int, data_type: str, 
+                       backend, connection) -> None:
+    """Permanently delete a column and all its data."""
+    # Get the value table name for this data type
+    table_name = get_type_table_name(data_type)
+    
+    # Delete all values for this column
+    backend.execute(connection, 
+        f"DELETE FROM {table_name} WHERE table_id = ? AND column_id = ?", 
+        (table_id, column_id))
+    
+    # Delete column definition
+    backend.execute(connection, 
+        "DELETE FROM column_definitions WHERE id = ?", (column_id,))

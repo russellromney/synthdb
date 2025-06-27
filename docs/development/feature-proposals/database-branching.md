@@ -50,7 +50,7 @@ A branch is an independent copy of a database file that can be modified without 
 import synthdb
 
 # Create main connection
-main_db = synthdb.connect('app.limbo')  # Uses Limbo by default
+main_db = synthdb.connect('app.db')
 
 # Create a branch
 branch_db = main_db.create_branch('feature-user-profiles')

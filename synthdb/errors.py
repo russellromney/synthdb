@@ -109,15 +109,16 @@ class ConnectionError(SynthDBError):
     def __init__(self, backend: str, connection_info: Any, original_error: Exception = None):
         suggestions = []
         
-        if backend in ("limbo", "sqlite"):
+        if backend in ("sqlite", "libsql"):
             suggestions.extend([
                 "Check that the file path is accessible",
                 "Verify you have write permissions to the directory",
                 "Make sure the parent directory exists"
             ])
             
-            if backend == "limbo":
-                suggestions.append("Try using SQLite backend if Limbo is causing issues: --backend sqlite")
+            if backend == "libsql":
+                suggestions.append("For remote libSQL, ensure the URL is correct")
+                suggestions.append("For local libSQL, check file permissions")
         
         error_msg = f"Failed to connect to {backend} database"
         if original_error:

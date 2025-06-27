@@ -9,8 +9,11 @@ Let's create a simple user management system:
 ```python
 import synthdb
 
-# Create a connection (database file will be created automatically)
-db = synthdb.connect('my_app.limbo')  # Uses Limbo by default
+# Create a connection (uses SQLite by default)
+db = synthdb.connect('my_app.db')
+
+# Or connect to a remote LibSQL database
+# db = synthdb.connect('libsql://your-database.turso.io')
 
 # Create a table
 db.create_table('users')
@@ -171,8 +174,11 @@ print(f"\n📊 Final user count: {len(final_users)}")
 SynthDB also provides a powerful CLI for database operations:
 
 ```bash
-# Initialize a database
-sdb database init my_cli_app.limbo  # Uses Limbo by default
+# Initialize a local database (uses SQLite by default)
+sdb database init my_cli_app.db
+
+# Initialize with remote LibSQL database
+# sdb database init "libsql://your-database.turso.io"
 
 # Create a table
 sdb table create products
@@ -195,20 +201,24 @@ sdb table list
 sdb table list products
 ```
 
-## Backend Selection
+## Database Files
 
-Choose the right backend for your needs:
+SynthDB uses SQLite for reliable local data storage, with optional LibSQL support for remote databases:
 
 ```python
-# Use Limbo for best performance (default)
-db = synthdb.connect('fast_app.limbo')  # Uses Limbo automatically
+# Create or connect to a local database (SQLite by default)
+db = synthdb.connect('app.db')
 
-# Use SQLite for maximum stability  
-db = synthdb.connect('stable_app.db', backend='sqlite')
+# Connect to a remote LibSQL database (requires libsql-experimental)
+db = synthdb.connect('libsql://your-database.turso.io')
+db = synthdb.connect('https://your-database.turso.io')
 
-# Auto-detection by file extension
-db = synthdb.connect('app.limbo')  # Uses Limbo (recommended)
-db = synthdb.connect('app.db')     # Uses SQLite
+# Explicitly specify backend
+db = synthdb.connect('app.db', backend='sqlite')  # Default
+db = synthdb.connect('app.db', backend='libsql')  # For LibSQL features
+
+# The .db extension works with both SQLite and LibSQL
+db = synthdb.connect('mydata.db')
 ```
 
 ## Error Handling
@@ -249,8 +259,11 @@ Here's everything together in a complete script:
 import synthdb
 
 def main():
-    # Connect to database
-    db = synthdb.connect('quickstart.limbo')  # Uses Limbo by default
+    # Connect to database (SQLite by default)
+    db = synthdb.connect('quickstart.db')
+    
+    # Print which backend is being used
+    print(f"Using backend: {db.backend.get_name()}")
     
     # Create and populate table
     db.create_table('products')
@@ -299,5 +312,8 @@ Now that you've seen the basics, explore more advanced features:
 If you want to remove the test databases created in this guide:
 
 ```bash
-rm quickstart.limbo my_app.limbo my_cli_app.limbo
+# Remove local database files
+rm quickstart.db my_app.db my_cli_app.db
+
+# Note: Remote LibSQL databases are managed through your provider
 ```
