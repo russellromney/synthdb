@@ -4,9 +4,10 @@ from .types import get_type_table_name
 from .backends import get_backend
 from .config import config
 from .constants import validate_column_name, validate_table_name
+from typing import Optional, Any, cast
 
 
-def _validate_row_id(row_id):
+def _validate_row_id(row_id: str) -> None:
     """
     Validate that row_id is a string.
     
@@ -17,8 +18,8 @@ def _validate_row_id(row_id):
 
 
 
-def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: str = 'db.db', 
-                      backend_name: str = None, backend=None, connection=None):
+def insert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, data_type: str, db_path: str = 'db.db', 
+                      backend_name: Optional[str] = None, backend: Any = None, connection: Any = None) -> None:
     """
     Insert a value into the appropriate type-specific table with versioned storage.
     
@@ -39,7 +40,7 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
     _validate_row_id(row_id)
     # Use upsert for consistency - it handles both insert and update cases
     if backend and connection:
-        return upsert_typed_value(row_id, table_id, column_id, value, data_type, backend, connection)
+        upsert_typed_value(row_id, table_id, column_id, value, data_type, backend, connection)
     else:
         # Create new transaction context
         from .transactions import transaction_context
@@ -48,11 +49,11 @@ def insert_typed_value(row_id, table_id, column_id, value, data_type, db_path: s
         connection_info = db_path
         
         with transaction_context(connection_info, backend_to_use) as (txn_backend, txn_connection):
-            return upsert_typed_value(row_id, table_id, column_id, value, data_type, txn_backend, txn_connection)
+            upsert_typed_value(row_id, table_id, column_id, value, data_type, txn_backend, txn_connection)
 
 
-def upsert_typed_value(row_id, table_id, column_id, value, data_type, 
-                      backend=None, connection=None):
+def upsert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, data_type: str, 
+                      backend: Any = None, connection: Any = None) -> int:
     """
     Smart upsert with automatic row resurrection and versioning.
     
@@ -125,8 +126,8 @@ def upsert_typed_value(row_id, table_id, column_id, value, data_type,
 
 # Cell-level deletes no longer supported - use row-level deletes instead
 # This function is kept for backward compatibility but will raise an error
-def soft_delete_typed_value(row_id, table_id, column_id, data_type, 
-                           backend=None, connection=None):
+def soft_delete_typed_value(row_id: str, table_id: int, column_id: int, data_type: str, 
+                           backend: Any = None, connection: Any = None) -> None:
     """
     DEPRECATED: Cell-level deletes no longer supported.
     
@@ -137,8 +138,8 @@ def soft_delete_typed_value(row_id, table_id, column_id, data_type,
     )
 
 
-def get_typed_value(row_id, table_id, column_id, data_type, 
-                   include_deleted=False, backend=None, connection=None):
+def get_typed_value(row_id: str, table_id: int, column_id: int, data_type: str, 
+                   include_deleted: bool = False, backend: Any = None, connection: Any = None) -> dict[str, Any] | None:
     """
     Get current value with option to include deleted rows.
     
@@ -179,19 +180,19 @@ def get_typed_value(row_id, table_id, column_id, data_type,
             AND tv.is_current = 1 AND rm.is_deleted = 0
         """, (row_id, table_id, column_id))
     
-    return backend.fetchone(cur)
+    return cast(dict[str, Any] | None, backend.fetchone(cur))
 
 
-def get_table_id(table_name: str, backend, connection) -> int:
+def get_table_id(table_name: str, backend: Any, connection: Any) -> int:
     """Get table ID from table name."""
     cur = backend.execute(connection, "SELECT id FROM table_definitions WHERE name = ? AND deleted_at IS NULL", (table_name,))
-    result = backend.fetchone(cur)
+    result = cast(dict[str, Any] | None, backend.fetchone(cur))
     if not result:
         raise ValueError(f"Table '{table_name}' not found")
-    return result['id']
+    return cast(int, result['id'])
 
 
-def get_column_info(table_name: str, column_name: str, backend, connection) -> dict:
+def get_column_info(table_name: str, column_name: str, backend: Any, connection: Any) -> dict[str, Any] | None:
     """Get column information including ID and data type."""
     cur = backend.execute(connection, """
         SELECT cd.id, cd.data_type, cd.name
@@ -200,10 +201,10 @@ def get_column_info(table_name: str, column_name: str, backend, connection) -> d
         WHERE td.name = ? AND cd.name = ? 
         AND td.deleted_at IS NULL AND cd.deleted_at IS NULL
     """, (table_name, column_name))
-    return backend.fetchone(cur)
+    return cast(dict[str, Any] | None, backend.fetchone(cur))
 
 
-def get_table_columns(table_name: str, backend, connection) -> list:
+def get_table_columns(table_name: str, backend: Any, connection: Any) -> list[dict[str, Any]]:
     """Get all columns for a table."""
     cur = backend.execute(connection, """
         SELECT cd.id, cd.name, cd.data_type
@@ -213,10 +214,10 @@ def get_table_columns(table_name: str, backend, connection) -> list:
         AND td.deleted_at IS NULL AND cd.deleted_at IS NULL
         ORDER BY cd.id
     """, (table_name,))
-    return backend.fetchall(cur)
+    return cast(list[dict[str, Any]], backend.fetchall(cur))
 
 
-def create_row_metadata(row_id: str, table_id: int, backend, connection) -> None:
+def create_row_metadata(row_id: str, table_id: int, backend: Any, connection: Any) -> None:
     """Create row metadata entry for a new row."""
     backend.execute(connection, """
         INSERT INTO row_metadata (row_id, table_id, is_deleted, version)
@@ -224,7 +225,7 @@ def create_row_metadata(row_id: str, table_id: int, backend, connection) -> None
     """, (row_id, table_id))
 
 
-def ensure_row_metadata_exists(row_id: str, table_id: int, backend, connection) -> None:
+def ensure_row_metadata_exists(row_id: str, table_id: int, backend: Any, connection: Any) -> None:
     """Ensure row metadata exists, create if missing."""
     cur = backend.execute(connection, """
         SELECT row_id FROM row_metadata WHERE row_id = ?
@@ -234,26 +235,26 @@ def ensure_row_metadata_exists(row_id: str, table_id: int, backend, connection) 
         create_row_metadata(row_id, table_id, backend, connection)
 
 
-def get_row_metadata(row_id: str, backend, connection) -> dict:
+def get_row_metadata(row_id: str, backend: Any, connection: Any) -> dict[str, Any] | None:
     """Get row metadata for a specific row."""
     cur = backend.execute(connection, """
         SELECT row_id, table_id, created_at, updated_at, deleted_at, is_deleted, version
         FROM row_metadata 
         WHERE row_id = ?
     """, (row_id,))
-    return backend.fetchone(cur)
+    return cast(dict[str, Any] | None, backend.fetchone(cur))
 
 
-def is_row_deleted(row_id: str, backend, connection) -> bool:
+def is_row_deleted(row_id: str, backend: Any, connection: Any) -> bool:
     """Check if a row is deleted."""
     cur = backend.execute(connection, """
         SELECT is_deleted FROM row_metadata WHERE row_id = ?
     """, (row_id,))
-    result = backend.fetchone(cur)
+    result = cast(dict[str, Any] | None, backend.fetchone(cur))
     return result and result['is_deleted']
 
 
-def delete_row_metadata(row_id: str, backend, connection) -> bool:
+def delete_row_metadata(row_id: str, backend: Any, connection: Any) -> bool:
     """Soft delete a row by updating metadata only."""
     changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
     
@@ -267,7 +268,7 @@ def delete_row_metadata(row_id: str, backend, connection) -> bool:
     return changes_after > changes_before
 
 
-def resurrect_row_metadata(row_id: str, backend, connection) -> bool:
+def resurrect_row_metadata(row_id: str, backend: Any, connection: Any) -> bool:
     """Un-delete a row by clearing deleted_at."""
     changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
     
@@ -281,7 +282,7 @@ def resurrect_row_metadata(row_id: str, backend, connection) -> bool:
     return changes_after > changes_before
 
 
-def update_row_metadata_timestamp(row_id: str, backend, connection) -> None:
+def update_row_metadata_timestamp(row_id: str, backend: Any, connection: Any) -> None:
     """Update the updated_at timestamp for a row."""
     backend.execute(connection, """
         UPDATE row_metadata 
@@ -290,7 +291,7 @@ def update_row_metadata_timestamp(row_id: str, backend, connection) -> None:
     """, (row_id,))
 
 
-def create_table(table_name, db_path: str = 'db.db', backend_name: str = None):
+def create_table(table_name: str, db_path: str = 'db.db', backend_name: Optional[str] = None) -> int:
     """Create a new table definition"""
     # Validate table name is not protected
     validate_table_name(table_name)
@@ -328,8 +329,8 @@ def create_table(table_name, db_path: str = 'db.db', backend_name: str = None):
         backend.close(db)
 
 
-def add_column(table_name, column_name, data_type, db_path: str = 'db.db', backend_name: str = None,
-              backend=None, connection=None):
+def add_column(table_name: str, column_name: str, data_type: str, db_path: str = 'db.db', backend_name: Optional[str] = None,
+              backend: Any = None, connection: Any = None) -> int:
     """
     Add a column to an existing table with transaction support.
     
@@ -357,7 +358,7 @@ def add_column(table_name, column_name, data_type, db_path: str = 'db.db', backe
             return _add_column_with_connection(txn_backend, txn_connection, table_name, column_name, data_type, db_path, backend_name)
 
 
-def _add_column_with_connection(backend, connection, table_name, column_name, data_type, db_path, backend_name):
+def _add_column_with_connection(backend: Any, connection: Any, table_name: str, column_name: str, data_type: str, db_path: str, backend_name: Optional[str]) -> int:
     """Add a column using provided backend and connection."""
     # Validate column name is not protected
     validate_column_name(column_name)
@@ -386,8 +387,8 @@ def _add_column_with_connection(backend, connection, table_name, column_name, da
     return column_id
 
 
-def copy_column_structure(source_table, source_column, target_table, target_column, 
-                         db_path: str = 'db.db', backend_name: str = None):
+def copy_column_structure(source_table: str, source_column: str, target_table: str, target_column: str, 
+                         db_path: str = 'db.db', backend_name: Optional[str] = None) -> int:
     """
     Copy column structure (metadata) without data.
     
@@ -433,8 +434,8 @@ def copy_column_structure(source_table, source_column, target_table, target_colu
     return column_id
 
 
-def copy_column_with_data(source_table, source_column, target_table, target_column,
-                         db_path: str = 'db.db', backend_name: str = None):
+def copy_column_with_data(source_table: str, source_column: str, target_table: str, target_column: str,
+                         db_path: str = 'db.db', backend_name: Optional[str] = None) -> int:
     """
     Copy column structure and all data.
     
@@ -503,7 +504,7 @@ def copy_column_with_data(source_table, source_column, target_table, target_colu
 
 
 def copy_table(source_table: str, target_table: str, copy_data: bool = False,
-               db_path: str = 'db.db', backend_name: str = None) -> int:
+               db_path: str = 'db.db', backend_name: Optional[str] = None) -> int:
     """
     Copy a table's structure and optionally its data.
     
@@ -565,7 +566,7 @@ def copy_table(source_table: str, target_table: str, copy_data: bool = False,
 
 
 def _copy_table_structure(source_table_id: int, target_name: str, 
-                         backend, connection) -> int:
+                         backend: Any, connection: Any) -> int:
     """Copy table structure efficiently within a transaction."""
     # 1. Get next table ID
     cur = backend.execute(connection, 
@@ -606,7 +607,7 @@ def _copy_table_structure(source_table_id: int, target_name: str,
 
 
 def _copy_table_data(source_table_id: int, target_table_id: int, 
-                    backend, connection) -> None:
+                    backend: Any, connection: Any) -> None:
     """Copy table data efficiently within a transaction."""
     # 1. Get column mappings
     column_map = _get_column_mapping(source_table_id, target_table_id, backend, connection)
@@ -645,7 +646,7 @@ def _copy_table_data(source_table_id: int, target_table_id: int,
 
 
 def _get_column_mapping(source_table_id: int, target_table_id: int, 
-                       backend, connection) -> dict:
+                       backend: Any, connection: Any) -> dict[int, int]:
     """Get mapping of source column IDs to target column IDs."""
     # Get source columns
     cur = backend.execute(connection, """
@@ -675,8 +676,8 @@ def _get_column_mapping(source_table_id: int, target_table_id: int,
 
 
 def _copy_values_by_type(source_table_id: int, target_table_id: int,
-                        column_map: dict, row_map: dict, data_type: str,
-                        backend, connection) -> None:
+                        column_map: dict[int, int], row_map: dict[str, str], data_type: str,
+                        backend: Any, connection: Any) -> None:
     """Copy values for a specific data type."""
     table_name = get_type_table_name(data_type)
     
@@ -708,7 +709,7 @@ def _copy_values_by_type(source_table_id: int, target_table_id: int,
 
 
 def rename_column(table_name: str, old_column_name: str, new_column_name: str,
-                  db_path: str = 'db.db', backend_name: str = None) -> None:
+                  db_path: str = 'db.db', backend_name: Optional[str] = None) -> None:
     """
     Rename a column in a table.
     
@@ -764,7 +765,7 @@ def rename_column(table_name: str, old_column_name: str, new_column_name: str,
 
 
 def delete_column(table_name: str, column_name: str, hard_delete: bool = False,
-                  db_path: str = 'db.db', backend_name: str = None) -> None:
+                  db_path: str = 'db.db', backend_name: Optional[str] = None) -> None:
     """
     Delete a column from a table.
     
@@ -823,7 +824,7 @@ def delete_column(table_name: str, column_name: str, hard_delete: bool = False,
 
 
 def delete_table(table_name: str, hard_delete: bool = False,
-                 db_path: str = 'db.db', backend_name: str = None) -> None:
+                 db_path: str = 'db.db', backend_name: Optional[str] = None) -> None:
     """
     Delete a table and all its associated data.
     
@@ -859,7 +860,7 @@ def delete_table(table_name: str, hard_delete: bool = False,
     create_table_views(db_path, backend_name=backend_to_use)
 
 
-def _soft_delete_table(table_id: int, backend, connection) -> None:
+def _soft_delete_table(table_id: int, backend: Any, connection: Any) -> None:
     """Soft delete a table by marking it and its columns as deleted."""
     # Mark table as deleted
     backend.execute(connection, """
@@ -876,7 +877,7 @@ def _soft_delete_table(table_id: int, backend, connection) -> None:
     """, (table_id,))
 
 
-def _hard_delete_table(table_id: int, backend, connection) -> None:
+def _hard_delete_table(table_id: int, backend: Any, connection: Any) -> None:
     """Permanently delete a table and all associated data."""
     # Delete from all value tables
     for type_table in ['text_values', 'integer_values', 'real_values', 'timestamp_values']:
@@ -897,7 +898,7 @@ def _hard_delete_table(table_id: int, backend, connection) -> None:
 
 
 def _hard_delete_column(table_id: int, column_id: int, data_type: str, 
-                       backend, connection) -> None:
+                       backend: Any, connection: Any) -> None:
     """Permanently delete a column and all its data."""
     # Get the value table name for this data type
     table_name = get_type_table_name(data_type)

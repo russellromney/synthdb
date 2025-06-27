@@ -2,9 +2,10 @@
 
 from .backends import get_backend
 from .config import config
+from typing import Optional, Any
 
 
-def query_view(view_name, where_clause=None, db_path: str = 'db.db', backend_name: str = None):
+def query_view(view_name: str, where_clause: str | None = None, db_path: str = 'db.db', backend_name: Optional[str] = None) -> list[dict[str, Any]]:
     """Run a query on a view with optional WHERE clause"""
     # Get the appropriate backend
     backend_to_use = backend_name or config.get_backend_for_path(db_path)
@@ -27,7 +28,7 @@ def query_view(view_name, where_clause=None, db_path: str = 'db.db', backend_nam
 
 
 
-def list_tables(db_path: str = 'db.db', backend_name: str = None):
+def list_tables(db_path: str = 'db.db', backend_name: Optional[str] = None) -> list[dict[str, Any]]:
     """List all tables in the database"""
     # Get the appropriate backend
     backend_to_use = backend_name or config.get_backend_for_path(db_path)
@@ -48,7 +49,7 @@ def list_tables(db_path: str = 'db.db', backend_name: str = None):
         backend.close(db)
 
 
-def list_columns(table_name, include_deleted=False, db_path: str = 'db.db', backend_name: str = None):
+def list_columns(table_name: str, include_deleted: bool = False, db_path: str = 'db.db', backend_name: Optional[str] = None) -> list[dict[str, Any]]:
     """
     List columns for a specific table.
     

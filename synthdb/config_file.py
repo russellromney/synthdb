@@ -3,7 +3,7 @@
 import os
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, cast
 
 try:
     import yaml
@@ -19,7 +19,7 @@ except ImportError:
 class ConfigManager:
     """Manages SynthDB configuration files."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.config_search_paths = [
             Path.cwd() / ".synthdb.json",
             Path.cwd() / ".synthdb.yaml", 
@@ -136,13 +136,13 @@ class ConfigManager:
             self._config_cache = self.load_config()
         return self._config_cache
     
-    def get_connection_info(self, name: str = None) -> Dict[str, Any]:
+    def get_connection_info(self, name: Optional[str] = None) -> Dict[str, Any]:
         """Get connection information by name or default."""
         config = self.get_config()
         
         if name:
             if name in config['connections']:
-                return config['connections'][name]
+                return cast(Dict[str, Any], config['connections'][name])
             else:
                 raise ValueError(f"Connection '{name}' not found in config")
         
@@ -152,7 +152,7 @@ class ConfigManager:
             'path': config['database']['default_path']
         }
     
-    def save_config(self, config: Dict[str, Any], config_path: Union[str, Path] = None) -> None:
+    def save_config(self, config: Dict[str, Any], config_path: Optional[Union[str, Path]] = None) -> None:
         """Save configuration to file."""
         if config_path:
             config_file = Path(config_path)
@@ -222,10 +222,10 @@ class ConfigManager:
         else:
             return value
     
-    def get_resolved_connection(self, name: str = None) -> Dict[str, Any]:
+    def get_resolved_connection(self, name: Optional[str] = None) -> Dict[str, Any]:
         """Get connection info with environment variables resolved."""
         connection = self.get_connection_info(name)
-        return self.resolve_env_vars(connection)
+        return cast(Dict[str, Any], self.resolve_env_vars(connection))
 
 
 # Global config manager instance
@@ -237,17 +237,17 @@ def get_config() -> Dict[str, Any]:
     return config_manager.get_config()
 
 
-def get_connection_info(name: str = None) -> Dict[str, Any]:
+def get_connection_info(name: Optional[str] = None) -> Dict[str, Any]:
     """Get connection information."""
     return config_manager.get_resolved_connection(name)
 
 
-def load_config(config_path: str = None) -> Dict[str, Any]:
+def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """Load configuration from file."""
     return config_manager.load_config(config_path)
 
 
-def save_config(config: Dict[str, Any], config_path: str = None) -> None:
+def save_config(config: Dict[str, Any], config_path: Optional[str] = None) -> None:
     """Save configuration to file."""
     config_manager.save_config(config, config_path)
 

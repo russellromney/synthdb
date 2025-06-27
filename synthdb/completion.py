@@ -1,7 +1,7 @@
 """Auto-completion support for SynthDB CLI."""
 
 import os
-from typing import List
+from typing import Optional, List
 from pathlib import Path
 
 
@@ -143,7 +143,7 @@ def complete_file_path(incomplete: str) -> List[str]:
         return []
 
 
-def setup_completion():
+def setup_completion() -> str:
     """Setup shell completion for SynthDB."""
     
     completion_script = """
@@ -163,7 +163,7 @@ eval (env _SDB_COMPLETE=fish_source sdb)
     return completion_script
 
 
-def install_completion(shell: str = None):
+def install_completion(shell: Optional[str] = None) -> bool:
     """Install shell completion for SynthDB."""
     import subprocess
     

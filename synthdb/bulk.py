@@ -2,7 +2,7 @@
 
 import csv
 import json
-from typing import List, Dict, Any
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 from .inference import create_table_from_data, suggest_column_types
 from .utils import list_tables, list_columns
@@ -10,7 +10,7 @@ from .core import add_column, insert_typed_value
 
 
 def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]], 
-                    connection_info = 'db.db', backend_name: str = None,
+                    connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None,
                     create_missing_columns: bool = True) -> Dict[str, int]:
     """
     Insert multiple rows into a table efficiently.
@@ -127,8 +127,8 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
         raise ValueError(f"Bulk insert failed: {e}")
 
 
-def load_csv(file_path: str, table_name: str = None, 
-            connection_info = 'db.db', backend_name: str = None,
+def load_csv(file_path: str, table_name: Optional[str] = None, 
+            connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None,
             create_table: bool = True, delimiter: str = ',',
             encoding: str = 'utf-8') -> Dict[str, Any]:
     """
@@ -191,9 +191,9 @@ def load_csv(file_path: str, table_name: str = None,
     }
 
 
-def load_json(file_path: str, table_name: str = None,
-             connection_info = 'db.db', backend_name: str = None,
-             create_table: bool = True, json_key: str = None) -> Dict[str, Any]:
+def load_json(file_path: str, table_name: Optional[str] = None,
+             connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None,
+             create_table: bool = True, json_key: Optional[str] = None) -> Dict[str, Any]:
     """
     Load data from JSON file into SynthDB.
     
@@ -265,8 +265,8 @@ def load_json(file_path: str, table_name: str = None,
 
 
 def export_csv(table_name: str, file_path: str,
-              connection_info = 'db.db', backend_name: str = None,
-              where_clause: str = None, delimiter: str = ',') -> Dict[str, Any]:
+              connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None,
+              where_clause: Optional[str] = None, delimiter: str = ',') -> Dict[str, Any]:
     """
     Export table data to CSV file.
     
@@ -309,8 +309,8 @@ def export_csv(table_name: str, file_path: str,
 
 
 def export_json(table_name: str, file_path: str,
-               connection_info = 'db.db', backend_name: str = None,
-               where_clause: str = None, indent: int = 2) -> Dict[str, Any]:
+               connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None,
+               where_clause: Optional[str] = None, indent: int = 2) -> Dict[str, Any]:
     """
     Export table data to JSON file.
     

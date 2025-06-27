@@ -1,7 +1,7 @@
 """CLI interface for SynthDB using Typer with noun-first structure."""
 
 import typer
-from typing import Optional
+from typing import Optional, Dict, Any, Union
 from rich.console import Console
 from rich.table import Table
 from rich.syntax import Syntax
@@ -19,7 +19,7 @@ from .completion import (
 )
 
 
-def build_connection_info(path: str, backend: str = None, connection_name: str = None):
+def build_connection_info(path: str, backend: Optional[str] = None, connection_name: Optional[str] = None) -> Union[str, Dict[str, Any]]:
     """Build connection info from CLI parameters."""
     # Check for named connection first
     if connection_name:
@@ -50,7 +50,7 @@ console = Console()
 
 # Main app callback to show help when no command is provided
 @app.callback()
-def main_callback(ctx: typer.Context):
+def main_callback(ctx: typer.Context) -> None:
     """SynthDB - A flexible database system with schema-on-write capabilities"""
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())

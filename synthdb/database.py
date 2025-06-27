@@ -2,10 +2,11 @@
 
 from .backends import get_backend, detect_backend_from_connection
 from .schema import create_schema
+from typing import Optional, Any
 
 
 
-def make_db(connection_info = 'db.db', backend_name: str = None):
+def make_db(connection_info: str | dict[str, Any] = 'db.db', backend_name: Optional[str] = None) -> None:
     """Initialize the SynthDB database with all required tables."""
     # Get the appropriate backend
     if backend_name:

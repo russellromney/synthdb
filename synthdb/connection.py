@@ -6,7 +6,7 @@ database operations as methods, eliminating the need to pass connection
 details to every function call.
 """
 
-from typing import Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List
 from .database import make_db
 from .core import create_table as _create_table, add_column as _add_column
 from .utils import list_tables, list_columns, query_view
@@ -46,7 +46,7 @@ class Connection:
     """
     
     def __init__(self, connection_info: Union[str, Dict[str, Any]] = 'db.db', 
-                 backend: str = None, auto_init: bool = True):
+                 backend: Optional[str] = None, auto_init: bool = True):
         """
         Initialize SynthDB connection.
         
@@ -174,7 +174,7 @@ class Connection:
         return column_ids
     
     def insert(self, table_name: str, data: Union[Dict[str, Any], str], 
-               value: Any = None, force_type: str = None, row_id: Union[str, int] = None) -> str:
+               value: Optional[Any] = None, force_type: Optional[str] = None, row_id: Optional[Union[str, int]] = None) -> str:
         """
         Insert data into a table with automatic or explicit ID management.
         
@@ -205,7 +205,7 @@ class Connection:
         return insert(table_name, data, value, self.connection_info, 
                      self.backend_name, force_type, row_id)
     
-    def query(self, table_name: str, where: str = None) -> List[Dict[str, Any]]:
+    def query(self, table_name: str, where: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Query data from a table.
         
@@ -407,7 +407,7 @@ class Connection:
         from .api import get_row_status
         return get_row_status(table_name, row_id, self.connection_info, self.backend_name)
     
-    def get_table_history(self, table_name: str, row_id: str = None, column_name: str = None,
+    def get_table_history(self, table_name: str, row_id: Optional[str] = None, column_name: Optional[str] = None,
                          include_deleted: bool = True) -> List[Dict]:
         """
         Get complete history for a table, row, or specific cell.
@@ -524,7 +524,7 @@ class Connection:
             conn_desc = f"file: {self.connection_info}"
         return f"Connection({conn_desc}, backend={backend})"
     
-    def close(self):
+    def close(self) -> None:
         """
         Close the database connection.
         
@@ -535,11 +535,11 @@ class Connection:
         # this method is provided for compatibility
         pass
     
-    def __enter__(self):
+    def __enter__(self) -> 'Connection':
         """Support context manager protocol."""
         return self
     
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Support context manager protocol."""
         self.close()
         return False
@@ -547,7 +547,7 @@ class Connection:
 
 # Main connection function
 def connect(connection_info: Union[str, Dict[str, Any]] = 'db.db', 
-           backend: str = None, auto_init: bool = True) -> Connection:
+           backend: Optional[str] = None, auto_init: bool = True) -> Connection:
     """
     Create a SynthDB connection.
     

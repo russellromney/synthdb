@@ -1,7 +1,7 @@
 """Type inference for automatic data type detection in SynthDB."""
 
 from datetime import datetime
-from typing import Any, Tuple, List, Dict
+from typing import Optional, Any, Tuple, List, Dict
 from dateutil import parser as date_parser
 
 
@@ -71,7 +71,7 @@ def infer_column_type(values: List[Any]) -> str:
 
 
 def smart_insert(table_name: str, row_id: int, column_name: str, value: Any, 
-                connection_info = 'db.db', backend_name: str = None) -> Tuple[str, Any]:
+                connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None) -> Tuple[str, Any]:
     """
     Insert a value with automatic type inference.
     
@@ -191,7 +191,7 @@ def suggest_column_types(data: List[Dict[str, Any]]) -> Dict[str, str]:
 
 
 def create_table_from_data(table_name: str, data: List[Dict[str, Any]], 
-                          connection_info = 'db.db', backend_name: str = None) -> Dict[str, str]:
+                          connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None) -> Dict[str, str]:
     """
     Create a table and columns automatically from data with type inference.
     

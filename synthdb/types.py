@@ -1,7 +1,7 @@
 """Type mapping utilities for SynthDB."""
 
 
-def get_type_table_name(data_type, is_history=False):
+def get_type_table_name(data_type: str, is_history: bool = False) -> str:
     """Get the appropriate table name for a given data type.
     
     Supported types: text, integer, real, timestamp

@@ -17,6 +17,9 @@ from .backends import get_backend
 # Data import/export utilities
 from .bulk import load_csv, load_json, export_csv, export_json
 
+# Utility functions
+from .utils import list_tables
+
 __all__ = [
     # Connection-based API
     "Connection",
@@ -32,4 +35,7 @@ __all__ = [
     "load_json", 
     "export_csv",
     "export_json",
+    
+    # Utility functions
+    "list_tables",
 ]

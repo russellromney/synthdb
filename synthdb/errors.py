@@ -8,7 +8,7 @@ from difflib import get_close_matches
 class SynthDBError(Exception):
     """Base exception for SynthDB with enhanced error messages."""
     
-    def __init__(self, message: str, suggestions: List[str] = None, context: Dict[str, Any] = None):
+    def __init__(self, message: str, suggestions: List[str] | None = None, context: Dict[str, Any] | None = None):
         self.message = message
         self.suggestions = suggestions or []
         self.context = context or {}
@@ -34,7 +34,7 @@ class SynthDBError(Exception):
 class TableNotFoundError(SynthDBError):
     """Exception for when a table is not found."""
     
-    def __init__(self, table_name: str, available_tables: List[str] = None):
+    def __init__(self, table_name: str, available_tables: List[str] | None = None):
         suggestions = []
         
         if available_tables:
@@ -58,7 +58,7 @@ class TableNotFoundError(SynthDBError):
 class ColumnNotFoundError(SynthDBError):
     """Exception for when a column is not found."""
     
-    def __init__(self, column_name: str, table_name: str, available_columns: List[str] = None):
+    def __init__(self, column_name: str, table_name: str, available_columns: List[str] | None = None):
         suggestions = []
         
         if available_columns:
@@ -83,7 +83,7 @@ class ColumnNotFoundError(SynthDBError):
 class InvalidDataTypeError(SynthDBError):
     """Exception for invalid data types."""
     
-    def __init__(self, data_type: str, valid_types: List[str] = None):
+    def __init__(self, data_type: str, valid_types: List[str] | None = None):
         valid_types = valid_types or ["text", "integer", "real", "timestamp"]
         
         suggestions = []
@@ -106,7 +106,7 @@ class InvalidDataTypeError(SynthDBError):
 class ConnectionError(SynthDBError):
     """Exception for database connection issues."""
     
-    def __init__(self, backend: str, connection_info: Any, original_error: Exception = None):
+    def __init__(self, backend: str, connection_info: Any, original_error: Exception | None = None):
         suggestions = []
         
         if backend in ("sqlite", "libsql"):
@@ -134,7 +134,7 @@ class ConnectionError(SynthDBError):
 class TypeConversionError(SynthDBError):
     """Exception for type conversion failures."""
     
-    def __init__(self, value: Any, target_type: str, original_error: Exception = None):
+    def __init__(self, value: Any, target_type: str, original_error: Exception | None = None):
         suggestions = []
         
         if target_type == "integer":
@@ -231,7 +231,7 @@ def suggest_similar_command(command: str, available_commands: List[str]) -> List
     return suggestions
 
 
-def enhance_cli_error(error: Exception, command_context: Dict[str, Any] = None) -> str:
+def enhance_cli_error(error: Exception, command_context: Dict[str, Any] | None = None) -> str:
     """Enhance CLI errors with helpful suggestions."""
     if isinstance(error, SynthDBError):
         return str(error)

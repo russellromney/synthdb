@@ -3,9 +3,10 @@
 from .types import get_type_table_name
 from .backends import get_backend
 from .config import config
+from typing import Optional, Any
 
 
-def create_table_views(db_path: str = 'db.db', backend_name: str = None, backend=None, connection=None):
+def create_table_views(db_path: str = 'db.db', backend_name: Optional[str] = None, backend: Any = None, connection: Any = None) -> None:
     """Create SQLite views for each table using versioned storage with soft deletes."""
     # Use provided backend and connection, or create new ones
     if backend is not None and connection is not None:

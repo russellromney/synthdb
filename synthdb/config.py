@@ -7,11 +7,11 @@ from typing import Optional
 class Config:
     """Configuration class for SynthDB."""
     
-    def __init__(self):
-        self._backend = None
+    def __init__(self) -> None:
+        self._backend: str = "sqlite"  # Default value
         self._load_from_env()
     
-    def _load_from_env(self):
+    def _load_from_env(self) -> None:
         """Load configuration from environment variables."""
         self._backend = os.getenv("SYNTHDB_BACKEND", "sqlite")
     
@@ -21,7 +21,7 @@ class Config:
         return self._backend
     
     @backend.setter
-    def backend(self, value: str):
+    def backend(self, value: str) -> None:
         """Set the default backend."""
         if value not in ("sqlite", "libsql"):
             raise ValueError(f"Invalid backend: {value}. Supported: libsql, sqlite")
@@ -44,7 +44,7 @@ class Config:
 config = Config()
 
 
-def set_default_backend(backend: str):
+def set_default_backend(backend: str) -> None:
     """Set the default backend globally."""
     config.backend = backend
 

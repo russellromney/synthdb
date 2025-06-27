@@ -2,6 +2,7 @@
 
 from typing import Dict, List
 from .backends import DatabaseBackend
+from typing import Any
 
 
 def get_schema_sql(backend: DatabaseBackend) -> Dict[str, List[str]]:
@@ -120,7 +121,7 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
     }
 
 
-def create_schema(backend: DatabaseBackend, connection) -> None:
+def create_schema(backend: DatabaseBackend, connection: Any) -> None:
     """Create the complete schema for the given backend."""
     schema = get_schema_sql(backend)
     

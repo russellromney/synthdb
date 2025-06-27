@@ -4,7 +4,7 @@ Modern, intuitive API for SynthDB operations.
 This module provides the core API functions used by the Connection class.
 """
 
-from typing import Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List
 from .core import insert_typed_value, add_column as _add_column, get_table_id, get_table_columns, delete_row_metadata, get_row_metadata
 from .utils import list_tables, list_columns, query_view
 from .inference import infer_type
@@ -13,7 +13,7 @@ from .config import config
 
 
 
-def _column_value_exists(backend, connection, table_id: int, row_id: Union[str, int], column_id: int) -> bool:
+def _column_value_exists(backend: Any, connection: Any, table_id: int, row_id: Union[str, int], column_id: int) -> bool:
     """Check if a specific (row_id, column_id) combination already has a value."""
     type_tables = ['text_values', 'integer_values', 'real_values', 'timestamp_values']
     
@@ -38,9 +38,9 @@ def _get_next_row_id() -> str:
     return str(uuid.uuid4())
 
 
-def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None, 
-          connection_info: str = 'db.db', backend_name: str = None, 
-          force_type: str = None, row_id: str = None) -> str:
+def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[Any] = None, 
+          connection_info: str = 'db.db', backend_name: Optional[str] = None, 
+          force_type: Optional[str] = None, row_id: Optional[str] = None) -> str:
     """
     Insert data into a table with automatic or explicit ID management and type inference.
     
@@ -143,8 +143,8 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Any = None,
     return final_row_id
 
 
-def query(table_name: str, where: str = None, connection_info: str = 'db.db', 
-         backend_name: str = None) -> List[Dict[str, Any]]:
+def query(table_name: str, where: Optional[str] = None, connection_info: str = 'db.db', 
+         backend_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Query data from a table.
     
@@ -168,7 +168,7 @@ def query(table_name: str, where: str = None, connection_info: str = 'db.db',
 
 
 def add_columns(table_name: str, columns: Dict[str, Union[str, Any]], 
-               connection_info: str = 'db.db', backend_name: str = None) -> Dict[str, int]:
+               connection_info: str = 'db.db', backend_name: Optional[str] = None) -> Dict[str, int]:
     """
     Add multiple columns to a table at once.
     
@@ -225,7 +225,7 @@ def add_columns(table_name: str, columns: Dict[str, Union[str, Any]],
 
 
 def upsert(table_name: str, data: Dict[str, Any], row_id: str,
-          connection_info: str = 'db.db', backend_name: str = None) -> str:
+          connection_info: str = 'db.db', backend_name: Optional[str] = None) -> str:
     """
     Insert or update data for a specific row_id.
     
@@ -286,7 +286,7 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: str,
 
 
 def copy_column(source_table: str, source_column: str, target_table: str, target_column: str,
-               copy_data: bool = False, connection_info: str = 'db.db', backend_name: str = None) -> int:
+               copy_data: bool = False, connection_info: str = 'db.db', backend_name: Optional[str] = None) -> int:
     """
     Copy a column from one table to another, optionally including data.
     
@@ -323,7 +323,7 @@ def copy_column(source_table: str, source_column: str, target_table: str, target
 
 
 def copy_table(source_table: str, target_table: str, copy_data: bool = False,
-              connection_info: str = 'db.db', backend_name: str = None) -> int:
+              connection_info: str = 'db.db', backend_name: Optional[str] = None) -> int:
     """
     Copy a table's structure and optionally its data.
     
@@ -361,7 +361,7 @@ def copy_table(source_table: str, target_table: str, copy_data: bool = False,
 
 
 def rename_column(table_name: str, old_column_name: str, new_column_name: str,
-                  connection_info: str = 'db.db', backend_name: str = None) -> None:
+                  connection_info: str = 'db.db', backend_name: Optional[str] = None) -> None:
     """
     Rename a column in a table.
     
@@ -389,7 +389,7 @@ def rename_column(table_name: str, old_column_name: str, new_column_name: str,
 
 
 def delete_column(table_name: str, column_name: str, hard_delete: bool = False,
-                  connection_info: str = 'db.db', backend_name: str = None) -> None:
+                  connection_info: str = 'db.db', backend_name: Optional[str] = None) -> None:
     """
     Delete a column from a table.
     
@@ -419,7 +419,7 @@ def delete_column(table_name: str, column_name: str, hard_delete: bool = False,
 
 
 def delete_table(table_name: str, hard_delete: bool = False,
-                 connection_info: str = 'db.db', backend_name: str = None) -> None:
+                 connection_info: str = 'db.db', backend_name: Optional[str] = None) -> None:
     """
     Delete a table and all its associated data.
     
@@ -445,7 +445,7 @@ def delete_table(table_name: str, hard_delete: bool = False,
 
 
 def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
-                connection_info: str = 'db.db', backend_name: str = None) -> bool:
+                connection_info: str = 'db.db', backend_name: Optional[str] = None) -> bool:
     """
     DEPRECATED: Cell-level deletes no longer supported.
     
@@ -467,7 +467,7 @@ def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
 
 
 def delete_row(table_name: str, row_id: str,
-              connection_info: str = 'db.db', backend_name: str = None) -> bool:
+              connection_info: str = 'db.db', backend_name: Optional[str] = None) -> bool:
     """
     Soft delete an entire row by updating row metadata.
     
@@ -498,7 +498,7 @@ def delete_row(table_name: str, row_id: str,
 
 
 def undelete_row(table_name: str, row_id: str,
-                connection_info: str = 'db.db', backend_name: str = None) -> bool:
+                connection_info: str = 'db.db', backend_name: Optional[str] = None) -> bool:
     """
     Un-delete (resurrect) a previously deleted row.
     
@@ -529,7 +529,7 @@ def undelete_row(table_name: str, row_id: str,
 
 
 def get_row_status(table_name: str, row_id: str,
-                  connection_info: str = 'db.db', backend_name: str = None) -> Dict:
+                  connection_info: str = 'db.db', backend_name: Optional[str] = None) -> Dict:
     """
     Get row metadata including deletion status.
     
@@ -560,9 +560,9 @@ def get_row_status(table_name: str, row_id: str,
         return get_row_metadata(row_id, backend, connection)
 
 
-def get_table_history(table_name: str, row_id: str = None, column_name: str = None,
+def get_table_history(table_name: str, row_id: Optional[str] = None, column_name: Optional[str] = None,
                      include_deleted: bool = True, connection_info: str = 'db.db', 
-                     backend_name: str = None) -> List[Dict]:
+                     backend_name: Optional[str] = None) -> List[Dict]:
     """
     Get complete history for a table, row, or specific cell.
     

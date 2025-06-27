@@ -14,7 +14,7 @@ class DatabaseBackend(ABC):
         pass
     
     @abstractmethod
-    def execute(self, connection: Any, query: str, params: Optional[Tuple] = None) -> Any:
+    def execute(self, connection: Any, query: str, params: Optional[Tuple[Any, ...]] = None) -> Any:
         """Execute a query."""
         pass
     
@@ -90,7 +90,7 @@ class SqliteBackend(LocalBackend):
         """Connect to SQLite database."""
         return sqlite3.connect(db_path)
     
-    def execute(self, connection: sqlite3.Connection, query: str, params: Optional[Tuple] = None) -> sqlite3.Cursor:
+    def execute(self, connection: sqlite3.Connection, query: str, params: Optional[Tuple[Any, ...]] = None) -> sqlite3.Cursor:
         """Execute a query on SQLite."""
         cursor = connection.cursor()
         if params:
@@ -151,7 +151,7 @@ class SqliteBackend(LocalBackend):
 class LibSQLBackend(LocalBackend):
     """LibSQL database backend (SQLite-compatible with additional features)."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         try:
             import libsql_experimental as libsql
             self._libsql = libsql
@@ -171,7 +171,7 @@ class LibSQLBackend(LocalBackend):
             # Local file
             return self._libsql.connect(f"file:{db_path}")
     
-    def execute(self, connection: Any, query: str, params: Optional[Tuple] = None) -> Any:
+    def execute(self, connection: Any, query: str, params: Optional[Tuple[Any, ...]] = None) -> Any:
         """Execute a query on LibSQL."""
         cursor = connection.cursor()
         if params:
