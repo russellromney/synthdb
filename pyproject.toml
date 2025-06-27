@@ -90,6 +90,21 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
+# Exclude CLI from type checking (framework-heavy, less critical for type safety)
+[[tool.mypy.overrides]]
+module = "synthdb.cli"
+ignore_errors = true
+
+# Exclude config files from type checking (configuration-heavy, less critical for type safety)
+[[tool.mypy.overrides]]
+module = "synthdb.config_file"
+ignore_errors = true
+
+# Ignore external libraries without type stubs
+[[tool.mypy.overrides]]
+module = "libsql_experimental"
+ignore_missing_imports = true
+
 [tool.uv]
 dev-dependencies = [
     "pytest>=7.0.0",

@@ -6,7 +6,7 @@ database operations as methods, eliminating the need to pass connection
 details to every function call.
 """
 
-from typing import Optional, Dict, Any, Union, List
+from typing import Optional, Dict, Any, Union, List, cast
 from .database import make_db
 from .core import create_table as _create_table, add_column as _add_column
 from .utils import list_tables, list_columns, query_view
@@ -88,6 +88,18 @@ class Connection:
                 # Database might already exist, which is fine
                 pass
     
+    def _get_db_path(self) -> str:
+        """
+        Extract database path from connection_info.
+        
+        Returns:
+            Database path as string
+        """
+        if isinstance(self.connection_info, dict):
+            return cast(str, self.connection_info.get('path', 'db.db'))
+        else:
+            return self.connection_info
+    
     def init_db(self) -> None:
         """
         Initialize the database schema.
@@ -104,7 +116,7 @@ class Connection:
         Returns:
             Table ID
         """
-        return _create_table(name, self.connection_info, self.backend_name)
+        return _create_table(name, self._get_db_path(), self.backend_name)
     
     def add_column(self, table_name: str, column_name: str, data_type: str) -> int:
         """
@@ -119,7 +131,7 @@ class Connection:
             Column ID
         """
         return _add_column(table_name, column_name, data_type, 
-                          self.connection_info, self.backend_name)
+                          self._get_db_path(), self.backend_name)
     
     def add_columns(self, table_name: str, columns: Dict[str, Union[str, Any]]) -> Dict[str, int]:
         """
@@ -163,13 +175,13 @@ class Connection:
                 
                 # Add the column using transaction context
                 column_id = _add_column(
-                    table_name, col_name, data_type, self.connection_info, self.backend_name,
+                    table_name, col_name, data_type, self._get_db_path(), self.backend_name,
                     backend=backend, connection=connection
                 )
                 column_ids[col_name] = column_id
         
         # Recreate views to include new columns
-        create_table_views(self.connection_info, self.backend_name)
+        create_table_views(self._get_db_path(), self.backend_name)
         
         return column_ids
     
@@ -202,8 +214,8 @@ class Connection:
             db.insert('users', 'age', '25', force_type='text')
         """
         from .api import insert
-        return insert(table_name, data, value, self.connection_info, 
-                     self.backend_name, force_type, row_id)
+        return insert(table_name, data, value, self._get_db_path(), 
+                     self.backend_name, force_type, str(row_id) if row_id is not None else None)
     
     def query(self, table_name: str, where: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -223,7 +235,7 @@ class Connection:
             # Filter rows
             rows = db.query('users', 'age > 25')
         """
-        return query_view(table_name, where, self.connection_info, self.backend_name)
+        return query_view(table_name, where, self._get_db_path(), self.backend_name)
     
     def upsert(self, table_name: str, data: Dict[str, Any], row_id: Union[str, int]) -> str:
         """
@@ -248,7 +260,7 @@ class Connection:
             db.upsert('users', {'name': 'John Updated', 'email': 'john.new@example.com'}, row_id="1")
         """
         from .api import upsert
-        return upsert(table_name, data, row_id, self.connection_info, self.backend_name)
+        return upsert(table_name, data, str(row_id), self._get_db_path(), self.backend_name)
     
     def copy_column(self, source_table: str, source_column: str, target_table: str, 
                    target_column: str, copy_data: bool = False) -> int:
@@ -277,7 +289,7 @@ class Connection:
         """
         from .api import copy_column
         return copy_column(source_table, source_column, target_table, target_column,
-                          copy_data, self.connection_info, self.backend_name)
+                          copy_data, self._get_db_path(), self.backend_name)
     
     def copy_table(self, source_table: str, target_table: str, copy_data: bool = False) -> int:
         """
@@ -310,7 +322,7 @@ class Connection:
         """
         from .core import copy_table as _copy_table
         return _copy_table(source_table, target_table, copy_data, 
-                          self.connection_info, self.backend_name)
+                          self._get_db_path(), self.backend_name)
     
     def list_tables(self) -> List[Dict[str, Any]]:
         """
@@ -319,7 +331,7 @@ class Connection:
         Returns:
             List of table information dictionaries
         """
-        return list_tables(self.connection_info, self.backend_name)
+        return list_tables(self._get_db_path(), self.backend_name)
     
     def list_columns(self, table_name: str, include_deleted: bool = False) -> List[Dict[str, Any]]:
         """
@@ -332,7 +344,7 @@ class Connection:
         Returns:
             List of column information dictionaries with id, name, data_type, created_at, and deleted_at
         """
-        return list_columns(table_name, include_deleted, self.connection_info, self.backend_name)
+        return list_columns(table_name, include_deleted, self._get_db_path(), self.backend_name)
     
     def delete_value(self, table_name: str, row_id: Union[str, int], column_name: str) -> bool:
         """
@@ -349,7 +361,7 @@ class Connection:
             bool: Always raises NotImplementedError
         """
         from .api import delete_value
-        return delete_value(table_name, row_id, column_name, self.connection_info, self.backend_name)
+        return delete_value(table_name, str(row_id), column_name, self._get_db_path(), self.backend_name)
     
     def delete_row(self, table_name: str, row_id: Union[str, int]) -> bool:
         """
@@ -367,7 +379,7 @@ class Connection:
             was_deleted = db.delete_row("users", "user-123")
         """
         from .api import delete_row
-        return delete_row(table_name, row_id, self.connection_info, self.backend_name)
+        return delete_row(table_name, str(row_id), self._get_db_path(), self.backend_name)
     
     def undelete_row(self, table_name: str, row_id: Union[str, int]) -> bool:
         """
@@ -385,9 +397,9 @@ class Connection:
             was_resurrected = db.undelete_row("users", "user-123")
         """
         from .api import undelete_row
-        return undelete_row(table_name, row_id, self.connection_info, self.backend_name)
+        return undelete_row(table_name, str(row_id), self._get_db_path(), self.backend_name)
     
-    def get_row_status(self, table_name: str, row_id: Union[str, int]) -> Dict:
+    def get_row_status(self, table_name: str, row_id: Union[str, int]) -> Dict[str, Any]:
         """
         Get row metadata including deletion status.
         
@@ -405,10 +417,10 @@ class Connection:
                 print(f"Row exists, deleted: {status['is_deleted']}")
         """
         from .api import get_row_status
-        return get_row_status(table_name, row_id, self.connection_info, self.backend_name)
+        return get_row_status(table_name, str(row_id), self._get_db_path(), self.backend_name)
     
     def get_table_history(self, table_name: str, row_id: Optional[str] = None, column_name: Optional[str] = None,
-                         include_deleted: bool = True) -> List[Dict]:
+                         include_deleted: bool = True) -> List[Dict[str, Any]]:
         """
         Get complete history for a table, row, or specific cell.
         
@@ -435,14 +447,14 @@ class Connection:
             active_history = db.get_table_history("users", include_deleted=False)
         """
         from .api import get_table_history
-        return get_table_history(table_name, row_id, column_name, include_deleted, 
-                                self.connection_info, self.backend_name)
+        return get_table_history(table_name, str(row_id), column_name, include_deleted, 
+                                self._get_db_path(), self.backend_name)
     
     def refresh_views(self) -> None:
         """
         Refresh all table views in the database.
         """
-        create_table_views(self.connection_info, self.backend_name)
+        create_table_views(self._get_db_path(), self.backend_name)
     
     def rename_column(self, table_name: str, old_column_name: str, new_column_name: str) -> None:
         """
@@ -465,7 +477,7 @@ class Connection:
         """
         from .api import rename_column
         rename_column(table_name, old_column_name, new_column_name,
-                     self.connection_info, self.backend_name)
+                     self._get_db_path(), self.backend_name)
     
     def delete_column(self, table_name: str, column_name: str, hard_delete: bool = False) -> None:
         """
@@ -490,7 +502,7 @@ class Connection:
             db.delete_column("users", "removed_field", hard_delete=True)
         """
         from .api import delete_column
-        delete_column(table_name, column_name, hard_delete, self.connection_info, self.backend_name)
+        delete_column(table_name, column_name, hard_delete, self._get_db_path(), self.backend_name)
     
     def delete_table(self, table_name: str, hard_delete: bool = False) -> None:
         """
@@ -511,7 +523,7 @@ class Connection:
             db.delete_table("temp_import", hard_delete=True)
         """
         from .api import delete_table
-        delete_table(table_name, hard_delete, self.connection_info, self.backend_name)
+        delete_table(table_name, hard_delete, self._get_db_path(), self.backend_name)
     
     def __repr__(self) -> str:
         """String representation of the connection."""
@@ -542,7 +554,6 @@ class Connection:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Support context manager protocol."""
         self.close()
-        return False
 
 
 # Main connection function

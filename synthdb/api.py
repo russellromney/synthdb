@@ -262,6 +262,8 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: str,
         with transaction_context(connection_info, backend_name) as (backend, connection):
             tables = list_tables(connection_info, backend_name)
             table_info = next((t for t in tables if t['name'] == table_name), None)
+            if table_info is None:
+                raise ValueError(f"Table '{table_name}' not found")
             table_id = table_info['id']
             
             columns = list_columns(table_name, False, connection_info, backend_name)
@@ -529,7 +531,7 @@ def undelete_row(table_name: str, row_id: str,
 
 
 def get_row_status(table_name: str, row_id: str,
-                  connection_info: str = 'db.db', backend_name: Optional[str] = None) -> Dict:
+                  connection_info: str = 'db.db', backend_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Get row metadata including deletion status.
     
@@ -557,12 +559,15 @@ def get_row_status(table_name: str, row_id: str,
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
-        return get_row_metadata(row_id, backend, connection)
+        metadata = get_row_metadata(row_id, backend, connection)
+        if metadata is None:
+            raise ValueError(f"No metadata found for row_id: {row_id}")
+        return metadata
 
 
 def get_table_history(table_name: str, row_id: Optional[str] = None, column_name: Optional[str] = None,
                      include_deleted: bool = True, connection_info: str = 'db.db', 
-                     backend_name: Optional[str] = None) -> List[Dict]:
+                     backend_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Get complete history for a table, row, or specific cell.
     

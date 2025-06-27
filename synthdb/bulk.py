@@ -2,11 +2,19 @@
 
 import csv
 import json
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
 from .inference import create_table_from_data, suggest_column_types
 from .utils import list_tables, list_columns
 from .core import add_column, insert_typed_value
+
+
+def _get_db_path(connection_info: Union[str, Dict[str, Any]]) -> str:
+    """Extract database path from connection_info."""
+    if isinstance(connection_info, dict):
+        return str(connection_info.get('path', 'db.db'))
+    else:
+        return connection_info
 
 
 def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]], 
@@ -38,18 +46,18 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
     
     # Check if table exists
     try:
-        tables = list_tables(connection_info, backend_name)
+        tables = list_tables(_get_db_path(connection_info), backend_name)
         table_exists = any(t['name'] == table_name for t in tables)
         
         if not table_exists:
             raise ValueError(f"Table '{table_name}' does not exist. Create it first.")
         
         # Get existing columns
-        existing_columns = list_columns(table_name, False, connection_info, backend_name)
+        existing_columns = list_columns(table_name, False, _get_db_path(connection_info), backend_name)
         existing_column_names = {col['name']: col for col in existing_columns}
         
         # Find missing columns
-        all_column_names = set()
+        all_column_names: set[str] = set()
         for row in data:
             all_column_names.update(row.keys())
         
@@ -61,11 +69,11 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
             
             for col_name in missing_columns:
                 col_type = column_suggestions.get(col_name, 'text')
-                add_column(table_name, col_name, col_type, connection_info, backend_name)
+                add_column(table_name, col_name, col_type, _get_db_path(connection_info), backend_name)
                 print(f"Created column '{col_name}' with type '{col_type}'")
             
             # Refresh column list
-            existing_columns = list_columns(table_name, False, connection_info, backend_name)
+            existing_columns = list_columns(table_name, False, _get_db_path(connection_info), backend_name)
             existing_column_names = {col['name']: col for col in existing_columns}
         
         elif missing_columns:
@@ -73,6 +81,8 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
         
         # Get table info
         table_info = next((t for t in tables if t['name'] == table_name), None)
+        if table_info is None:
+            raise ValueError(f"Table '{table_name}' not found")
         table_id = table_info['id']
         
         # Batch insert with proper transaction handling
@@ -89,17 +99,17 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
                 
                 for col_name in missing_columns:
                     col_type = column_suggestions.get(col_name, 'text')
-                    add_column(table_name, col_name, col_type, connection_info, backend_name,
+                    add_column(table_name, col_name, col_type, _get_db_path(connection_info), backend_name,
                              backend=txn_backend, connection=txn_connection)
                     print(f"Created column '{col_name}' with type '{col_type}'")
                 
                 # Refresh column list
-                existing_columns = list_columns(table_name, False, connection_info, backend_name)
+                existing_columns = list_columns(table_name, False, _get_db_path(connection_info), backend_name)
                 existing_column_names = {col['name']: col for col in existing_columns}
             
             # Insert all rows in the same transaction
             for row_idx, row in enumerate(data):
-                row_id = row_idx  # Use sequential row IDs
+                row_id = str(row_idx)  # Use sequential row IDs
                 
                 for col_name, value in row.items():
                     if col_name in existing_column_names:
@@ -146,17 +156,17 @@ def load_csv(file_path: str, table_name: Optional[str] = None,
     Returns:
         Dictionary with load statistics
     """
-    file_path = Path(file_path)
-    if not file_path.exists():
+    file_path_obj = Path(file_path)
+    if not file_path_obj.exists():
         raise ValueError(f"File not found: {file_path}")
     
     if table_name is None:
-        table_name = file_path.stem
+        table_name = file_path_obj.stem
     
     # Read CSV data
     data = []
     try:
-        with open(file_path, 'r', encoding=encoding) as f:
+        with open(file_path_obj, 'r', encoding=encoding) as f:
             reader = csv.DictReader(f, delimiter=delimiter)
             for row in reader:
                 # Convert empty strings to None
@@ -171,7 +181,7 @@ def load_csv(file_path: str, table_name: Optional[str] = None,
     # Create table if needed
     if create_table:
         try:
-            tables = list_tables(connection_info, backend_name)
+            tables = list_tables(_get_db_path(connection_info), backend_name)
             table_exists = any(t['name'] == table_name for t in tables)
             
             if not table_exists:
@@ -185,7 +195,7 @@ def load_csv(file_path: str, table_name: Optional[str] = None,
     
     return {
         'table_name': table_name,
-        'file_path': str(file_path),
+        'file_path': str(file_path_obj),
         'rows_processed': len(data),
         **stats
     }
@@ -208,16 +218,16 @@ def load_json(file_path: str, table_name: Optional[str] = None,
     Returns:
         Dictionary with load statistics
     """
-    file_path = Path(file_path)
-    if not file_path.exists():
+    file_path_obj = Path(file_path)
+    if not file_path_obj.exists():
         raise ValueError(f"File not found: {file_path}")
     
     if table_name is None:
-        table_name = file_path.stem
+        table_name = file_path_obj.stem
     
     # Read JSON data
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path_obj, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
     except Exception as e:
         raise ValueError(f"Error reading JSON file: {e}")
@@ -244,7 +254,7 @@ def load_json(file_path: str, table_name: Optional[str] = None,
     # Create table if needed
     if create_table:
         try:
-            tables = list_tables(connection_info, backend_name)
+            tables = list_tables(_get_db_path(connection_info), backend_name)
             table_exists = any(t['name'] == table_name for t in tables)
             
             if not table_exists:
@@ -258,7 +268,7 @@ def load_json(file_path: str, table_name: Optional[str] = None,
     
     return {
         'table_name': table_name,
-        'file_path': str(file_path),
+        'file_path': str(file_path_obj),
         'rows_processed': len(data),
         **stats
     }
@@ -285,7 +295,7 @@ def export_csv(table_name: str, file_path: str,
     
     # Query data
     try:
-        data = query_view(table_name, where_clause, connection_info, backend_name)
+        data = query_view(table_name, where_clause, _get_db_path(connection_info), backend_name)
     except Exception as e:
         raise ValueError(f"Error querying table: {e}")
     
@@ -329,7 +339,7 @@ def export_json(table_name: str, file_path: str,
     
     # Query data
     try:
-        data = query_view(table_name, where_clause, connection_info, backend_name)
+        data = query_view(table_name, where_clause, _get_db_path(connection_info), backend_name)
     except Exception as e:
         raise ValueError(f"Error querying table: {e}")
     

@@ -1,8 +1,16 @@
 """Type inference for automatic data type detection in SynthDB."""
 
 from datetime import datetime
-from typing import Optional, Any, Tuple, List, Dict
+from typing import Optional, Any, Tuple, List, Dict, Union
 from dateutil import parser as date_parser
+
+
+def _get_db_path(connection_info: Union[str, Dict[str, Any]]) -> str:
+    """Extract database path from connection_info."""
+    if isinstance(connection_info, dict):
+        return str(connection_info.get('path', 'db.db'))
+    else:
+        return connection_info
 
 
 def infer_type(value: Any) -> Tuple[str, Any]:
@@ -43,7 +51,7 @@ def infer_column_type(values: List[Any]) -> str:
         return "text"
     
     # Count types
-    type_counts = {}
+    type_counts: Dict[str, int] = {}
     non_null_values = [v for v in values if v is not None]
     
     if not non_null_values:
@@ -70,7 +78,7 @@ def infer_column_type(values: List[Any]) -> str:
     return "text"
 
 
-def smart_insert(table_name: str, row_id: int, column_name: str, value: Any, 
+def smart_insert(table_name: str, row_id: str, column_name: str, value: Any, 
                 connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None) -> Tuple[str, Any]:
     """
     Insert a value with automatic type inference.
@@ -86,7 +94,7 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
     
     try:
         # Check if column exists and has a defined type
-        columns = list_columns(table_name, False, connection_info, backend_name)
+        columns = list_columns(table_name, False, _get_db_path(connection_info), backend_name)
         existing_column = next((c for c in columns if c['name'] == column_name), None)
         
         if existing_column:
@@ -96,18 +104,18 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
         else:
             # Create new column with inferred type
             from .core import add_column
-            add_column(table_name, column_name, inferred_type, connection_info, backend_name)
+            add_column(table_name, column_name, inferred_type, _get_db_path(connection_info), backend_name)
             column_type = inferred_type
         
         # Get table and column IDs for insertion
         from .utils import list_tables
-        tables = list_tables(connection_info, backend_name)
+        tables = list_tables(_get_db_path(connection_info), backend_name)
         table_info = next((t for t in tables if t['name'] == table_name), None)
         
         if not table_info:
             raise ValueError(f"Table '{table_name}' not found")
         
-        columns = list_columns(table_name, False, connection_info, backend_name)
+        columns = list_columns(table_name, False, _get_db_path(connection_info), backend_name)
         column_info = next((c for c in columns if c['name'] == column_name), None)
         
         if not column_info:
@@ -116,7 +124,7 @@ def smart_insert(table_name: str, row_id: int, column_name: str, value: Any,
         # Insert the value
         try:
             insert_typed_value(row_id, table_info['id'], column_info['id'], 
-                              converted_value, column_type, connection_info, backend_name)
+                              converted_value, column_type, _get_db_path(connection_info), backend_name)
         except (ValueError, TypeError) as insert_error:
             # Provide helpful error message for type mismatches
             if existing_column and inferred_type != column_type:
@@ -177,7 +185,7 @@ def suggest_column_types(data: List[Dict[str, Any]]) -> Dict[str, str]:
         return {}
     
     # Collect all column names
-    all_columns = set()
+    all_columns: set[str] = set()
     for row in data:
         all_columns.update(row.keys())
     
@@ -204,13 +212,13 @@ def create_table_from_data(table_name: str, data: List[Dict[str, Any]],
         raise ValueError("Cannot create table from empty data")
     
     # Create the table
-    create_table(table_name, connection_info, backend_name)
+    create_table(table_name, _get_db_path(connection_info), backend_name)
     
     # Infer column types
     column_types = suggest_column_types(data)
     
     # Create columns
     for column_name, column_type in column_types.items():
-        add_column(table_name, column_name, column_type, connection_info, backend_name)
+        add_column(table_name, column_name, column_type, _get_db_path(connection_info), backend_name)
     
     return column_types

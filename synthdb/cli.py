@@ -76,21 +76,21 @@ config_app = typer.Typer(
 
 # Add callback functions to show help when no subcommand is provided
 @database_app.callback()
-def database_callback(ctx: typer.Context):
+def database_callback(ctx: typer.Context) -> None:
     """Database operations"""
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
         raise typer.Exit()
 
 @table_app.callback()
-def table_callback(ctx: typer.Context):
+def table_callback(ctx: typer.Context) -> None:
     """Table operations"""
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
         raise typer.Exit()
 
 @config_app.callback()
-def config_callback(ctx: typer.Context):
+def config_callback(ctx: typer.Context) -> None:
     """Configuration management"""
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
@@ -107,7 +107,7 @@ def database_init(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path or connection string"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing database"),
     backend: str = typer.Option("sqlite", "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
+) -> None:
     """Initialize a new SynthDB database."""
     
     # Validate backend
@@ -141,7 +141,7 @@ def database_init(
 def database_info(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
+) -> None:
     """Show database information."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -180,7 +180,7 @@ def table_create(
     name: str = typer.Argument(..., help="Table name"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
+) -> None:
     """Create a new table."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -198,13 +198,13 @@ def table_list(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
     include_deleted: bool = typer.Option(False, "--include-deleted", "-d", help="Include soft-deleted columns"),
-):
+) -> None:
     """List all tables or columns in a specific table."""
     _list_implementation(columns, path, backend, include_deleted)
 
 
 
-def _list_implementation(columns: Optional[str], path: str, backend: str, include_deleted: bool = False):
+def _list_implementation(columns: Optional[str], path: str, backend: str, include_deleted: bool = False) -> None:
     """Implementation for list commands."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -278,7 +278,7 @@ def table_show(
     name: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
+) -> None:
     """Show detailed table information."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -327,7 +327,7 @@ def table_export(
     name: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
+) -> None:
     """Export table structure as CREATE TABLE SQL."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -354,7 +354,7 @@ def table_copy(
     with_data: bool = typer.Option(False, "--with-data", help="Copy data along with structure"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
-):
+) -> None:
     """Copy a table's structure and optionally its data."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -482,7 +482,7 @@ table_add_app = typer.Typer(
 
 # Add callback for table add help
 @table_add_app.callback()
-def table_add_callback(ctx: typer.Context):
+def table_add_callback(ctx: typer.Context) -> None:
     """Add things to tables"""
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
@@ -618,7 +618,7 @@ def query_cmd(
 
 
 
-def _query_implementation(table: str, where: Optional[str], format: str, path: str, backend: str):
+def _query_implementation(table: str, where: Optional[str], format: str, path: str, backend: str) -> None:
     """Query data from a table."""
     try:
         connection_info = build_connection_info(path, backend)
@@ -822,7 +822,7 @@ def config_show(
 
 
 @config_app.command("connections")
-def config_connections():
+def config_connections() -> None:
     """List available named connections."""
     try:
         config = config_manager.get_config()
@@ -934,7 +934,7 @@ def _export_table_structure(db, table_name: str) -> str:
     return create_statement
 
 
-def _add_implementation(table: str, data: str, path: str, backend: str, row_id: str):
+def _add_implementation(table: str, data: str, path: str, backend: str, row_id: str) -> None:
     """Implementation for add/insert commands."""
     import json
     

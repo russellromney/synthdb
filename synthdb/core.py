@@ -251,7 +251,7 @@ def is_row_deleted(row_id: str, backend: Any, connection: Any) -> bool:
         SELECT is_deleted FROM row_metadata WHERE row_id = ?
     """, (row_id,))
     result = cast(dict[str, Any] | None, backend.fetchone(cur))
-    return result and result['is_deleted']
+    return bool(result and result['is_deleted']) if result else False
 
 
 def delete_row_metadata(row_id: str, backend: Any, connection: Any) -> bool:
