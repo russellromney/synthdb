@@ -122,7 +122,7 @@ class TestLibSQLBackend:
                 try:
                     with transaction_context(db_path, 'libsql') as (backend, connection):
                         backend.execute(connection, 
-                            "INSERT INTO integer_values (row_id, table_id, column_id, value) VALUES ('test', 1, 1, 100)")
+                            "INSERT INTO integer_values (id, table_id, column_id, value) VALUES ('test', 1, 1, 100)")
                         # Force an error to trigger rollback
                         raise Exception("Test rollback")
                 except:

@@ -88,7 +88,7 @@ class TestRowIdGeneration:
         
         # Insert with explicit custom ID
         explicit_id = "custom-1000"
-        result_id = self.db.insert('data', {'value': 'explicit'}, row_id=explicit_id)
+        result_id = self.db.insert('data', {'value': 'explicit'}, id=explicit_id)
         
         # Insert with auto-generated UUID again
         auto_id2 = self.db.insert('data', {'value': 'auto2'})
@@ -108,8 +108,8 @@ class TestRowIdGeneration:
         self.db.add_columns('items', {'name': 'text'})
         
         # Insert several items with explicit IDs
-        self.db.insert('items', {'name': 'item1'}, row_id="explicit-100")
-        self.db.insert('items', {'name': 'item2'}, row_id="explicit-200")
+        self.db.insert('items', {'name': 'item1'}, id="explicit-100")
+        self.db.insert('items', {'name': 'item2'}, id="explicit-200")
         
         # Insert with auto-generated UUIDs
         auto_id1 = self.db.insert('items', {'name': 'auto1'})
@@ -178,7 +178,7 @@ class TestRowIdGeneration:
         id2 = self.db.insert('upsert_test', {'name': 'Bob', 'value': 20})
         
         # Upsert using existing row_id (should update)
-        updated_id = self.db.upsert('upsert_test', {'name': 'Alice Updated', 'value': 15}, row_id=id1)
+        updated_id = self.db.upsert('upsert_test', {'name': 'Alice Updated', 'value': 15}, id=id1)
         
         # Insert new data with auto UUID
         id3 = self.db.insert('upsert_test', {'name': 'Charlie', 'value': 30})
@@ -193,7 +193,7 @@ class TestRowIdGeneration:
         assert len(data) == 3, "Should have 3 rows total"
         
         # Find Alice's record and verify it was updated
-        alice_record = next(row for row in data if row['row_id'] == id1)
+        alice_record = next(row for row in data if row['id'] == id1)
         assert alice_record['name'] == 'Alice Updated'
         assert alice_record['value'] == 15
 

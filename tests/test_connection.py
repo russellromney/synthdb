@@ -94,7 +94,7 @@ class TestSynthDBConnection:
         assert users[0]['name'] == 'John Doe'
         assert users[0]['age'] == 30
         assert users[0]['email'] == 'john@example.com'
-        assert users[0]['row_id'] == user_id
+        assert users[0]['id'] == user_id
     
     def test_insert_explicit_id(self):
         """Test inserting data with explicit ID."""
@@ -103,13 +103,13 @@ class TestSynthDBConnection:
         
         # Insert with explicit ID
         explicit_id = "custom-uuid-100"
-        result_id = self.db.insert('users', {'name': 'Jane Doe'}, row_id=explicit_id)
+        result_id = self.db.insert('users', {'name': 'Jane Doe'}, id=explicit_id)
         assert result_id == explicit_id
         
         # Verify data was inserted
         users = self.db.query('users')
         assert len(users) == 1
-        assert users[0]['row_id'] == explicit_id
+        assert users[0]['id'] == explicit_id
         assert users[0]['name'] == 'Jane Doe'
     
     def test_insert_single_column(self):
@@ -121,7 +121,7 @@ class TestSynthDBConnection:
         user_id = self.db.insert('users', 'name', 'Alice')
         
         # Verify data was inserted
-        users = self.db.query('users', f'row_id = "{user_id}"')
+        users = self.db.query('users', f'id = "{user_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Alice'
         assert users[0]['age'] is None  # Other columns should be null
@@ -167,7 +167,7 @@ class TestSynthDBConnection:
             'name': 'John Doe',
             'email': 'john@example.com',
             'age': 30
-        }, row_id=target_id)
+        }, id=target_id)
         
         assert user_id == target_id
         users = self.db.query('users')
@@ -180,7 +180,7 @@ class TestSynthDBConnection:
             'name': 'John Smith',  # Updated name
             'email': 'john.smith@example.com',  # Updated email
             'age': 31  # Updated age
-        }, row_id=target_id)
+        }, id=target_id)
         
         # Should be same ID
         assert updated_id == user_id
@@ -255,10 +255,10 @@ class TestSynthDBConnection:
         # Insert with existing ID should update the value (not raise error)
         user_id = self.db.insert('users', {'name': 'John'})
         # This should update the existing row, not raise an error
-        self.db.insert('users', {'name': 'Jane'}, row_id=user_id)
+        self.db.insert('users', {'name': 'Jane'}, id=user_id)
         
         # Verify the update happened
-        users = self.db.query('users', f'row_id = "{user_id}"')
+        users = self.db.query('users', f'id = "{user_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Jane'  # Should be updated to Jane
     

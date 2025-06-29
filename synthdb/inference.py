@@ -78,7 +78,7 @@ def infer_column_type(values: List[Any]) -> str:
     return "text"
 
 
-def smart_insert(table_name: str, row_id: str, column_name: str, value: Any, 
+def smart_insert(table_name: str, id: str, column_name: str, value: Any, 
                 connection_info: str | Dict[str, Any] = 'db.db', backend_name: Optional[str] = None) -> Tuple[str, Any]:
     """
     Insert a value with automatic type inference.
@@ -123,7 +123,7 @@ def smart_insert(table_name: str, row_id: str, column_name: str, value: Any,
         
         # Insert the value
         try:
-            insert_typed_value(row_id, table_info['id'], column_info['id'], 
+            insert_typed_value(id, table_info['id'], column_info['id'], 
                               converted_value, column_type, _get_db_path(connection_info), backend_name)
         except (ValueError, TypeError) as insert_error:
             # Provide helpful error message for type mismatches

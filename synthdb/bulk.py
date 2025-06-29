@@ -109,7 +109,7 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
             
             # Insert all rows in the same transaction
             for row_idx, row in enumerate(data):
-                row_id = str(row_idx)  # Use sequential row IDs
+                id = str(row_idx)  # Use sequential row IDs
                 
                 for col_name, value in row.items():
                     if col_name in existing_column_names:
@@ -120,13 +120,13 @@ def bulk_insert_rows(table_name: str, data: List[Dict[str, Any]],
                         try:
                             # Insert using shared transaction
                             insert_typed_value(
-                                row_id, table_id, column_id, value, column_type,
+                                id, table_id, column_id, value, column_type,
                                 backend=txn_backend, connection=txn_connection
                             )
                             stats['inserted'] += 1
                         except Exception as e:
                             stats['errors'] += 1
-                            print(f"Error inserting {col_name}={value} for row {row_id}: {e}")
+                            print(f"Error inserting {col_name}={value} for row {id}: {e}")
                             # Continue with other values, but transaction will rollback if any error occurs
             
             # Transaction commits automatically on successful completion

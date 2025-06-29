@@ -88,7 +88,7 @@ class TestNewAPI:
         explicit_id = "custom-100"
         result_id = self.db.insert('users', {
             'name': 'Bob'
-        }, row_id=explicit_id)
+        }, id=explicit_id)
         
         assert result_id == explicit_id
 
@@ -99,13 +99,13 @@ class TestNewAPI:
         
         # Insert first row
         test_id = "test-10"
-        self.db.insert('users', {'name': 'Alice'}, row_id=test_id)
+        self.db.insert('users', {'name': 'Alice'}, id=test_id)
         
         # Insert with same ID should update
-        self.db.insert('users', {'name': 'Bob'}, row_id=test_id)
+        self.db.insert('users', {'name': 'Bob'}, id=test_id)
         
         # Verify update
-        users = self.db.query('users', f'row_id = "{test_id}"')
+        users = self.db.query('users', f'id = "{test_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Bob'  # Should be updated
 
@@ -125,7 +125,7 @@ class TestNewAPI:
         assert isinstance(row_id, str)  # row_id is always a string (UUID)
         
         # Add more data to same row
-        self.db.insert('users', 'age', 30, row_id=row_id)
+        self.db.insert('users', 'age', 30, id=row_id)
 
     def test_insert_force_type(self):
         """Test forcing a specific type override."""
@@ -167,7 +167,7 @@ class TestNewAPI:
             'name': 'Diana',
             'email': 'diana@example.com',
             'age': 28
-        }, row_id=target_id)
+        }, id=target_id)
         
         assert row_id == target_id
 
@@ -191,7 +191,7 @@ class TestNewAPI:
             'name': 'Eve Smith',  # Updated name
             'email': 'eve.smith@example.com',  # Updated email
             'age': 26  # Updated age
-        }, row_id=initial_id)
+        }, id=initial_id)
         
         assert updated_id == initial_id  # Should be same row
 
@@ -207,7 +207,7 @@ class TestNewAPI:
         result_id = self.db.upsert('users', {
             'name': 'Frank',
             'email': 'frank@example.com'
-        }, row_id=explicit_id)
+        }, id=explicit_id)
         
         assert result_id == explicit_id
 
@@ -230,12 +230,12 @@ class TestNewAPI:
         result_id = self.db.upsert('users', {
             'name': 'Alice Updated',
             'age': 30
-        }, row_id=initial_id)
+        }, id=initial_id)
         
         assert result_id == initial_id
         
         # Verify the row was updated
-        users = self.db.query('users', f'row_id = "{initial_id}"')
+        users = self.db.query('users', f'id = "{initial_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Alice Updated'
         assert users[0]['age'] == 30
@@ -252,12 +252,12 @@ class TestNewAPI:
         result_id = self.db.upsert('users', {
             'name': 'Bob',
             'email': 'bob@example.com'
-        }, row_id=target_id)
+        }, id=target_id)
         
         assert result_id == target_id
         
         # Verify the row was inserted with correct ID
-        users = self.db.query('users', f'row_id = "{target_id}"')
+        users = self.db.query('users', f'id = "{target_id}"')
         assert len(users) == 1
         assert users[0]['name'] == 'Bob'
         assert users[0]['email'] == 'bob@example.com'
@@ -277,17 +277,17 @@ class TestNewAPI:
         result_id = self.db.upsert('users', {
             'name': 'Updated User1',
             'email': 'updated@example.com'
-        }, row_id=id1)
+        }, id=id1)
         
         assert result_id == id1
         
         # Verify id1 was updated
-        user1 = self.db.query('users', f'row_id = "{id1}"')[0]
+        user1 = self.db.query('users', f'id = "{id1}"')[0]
         assert user1['name'] == 'Updated User1'
         assert user1['email'] == 'updated@example.com'
         
         # Verify id2 was not affected
-        user2 = self.db.query('users', f'row_id = "{id2}"')[0]
+        user2 = self.db.query('users', f'id = "{id2}"')[0]
         assert user2['name'] == 'User2'
         assert user2['email'] == 'user2@example.com'
 
@@ -383,7 +383,7 @@ class TestAPIIntegration:
             'name': 'Laptop',
             'price': 1299.99,
             'stock': 25
-        }, row_id="1000")  # Explicit ID
+        }, id="1000")  # Explicit ID
         
         # Query and verify
         all_products = self.db.query('products')
@@ -401,7 +401,7 @@ class TestAPIIntegration:
             'name': 'Laptop Pro',  # Updated name
             'sku': 'LAPTOP-001',
             'price': 1399.99       # Updated price
-        }, row_id=product2)  # Update the laptop we inserted earlier
+        }, id=product2)  # Update the laptop we inserted earlier
         
         # Should have updated existing product, not created new one
         final_products = self.db.query('products')
@@ -477,10 +477,10 @@ class TestColumnCopyAPI:
         # Now manually insert rows to match users table row_ids
         users = self.db.query('users')
         for user in users:
-            # Insert each user's data into customers_full (excluding row_id and timestamps)
+            # Insert each user's data into customers_full (excluding id and timestamps)
             user_data = {k: v for k, v in user.items() 
-                        if k not in ['row_id', 'created_at', 'updated_at']}
-            self.db.insert('customers_full', user_data, row_id=user['row_id'])
+                        if k not in ['id', 'created_at', 'updated_at']}
+            self.db.insert('customers_full', user_data, id=user['id'])
         
         # Now test copying a single column with data to existing customers table
         column_id = self.db.copy_column('users', 'email', 'customers', 'contact_email', copy_data=False)
@@ -508,7 +508,7 @@ class TestColumnCopyAPI:
         users = self.db.query('users')
         for user in users:
             if user.get('email'):
-                self.db.insert('users', {'backup_email': user['email']}, row_id=user['row_id'])
+                self.db.insert('users', {'backup_email': user['email']}, id=user['id'])
         
         # Verify data was copied correctly
         users = self.db.query('users')

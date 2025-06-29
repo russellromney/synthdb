@@ -186,7 +186,7 @@ class Connection:
         return column_ids
     
     def insert(self, table_name: str, data: Union[Dict[str, Any], str], 
-               value: Optional[Any] = None, force_type: Optional[str] = None, row_id: Optional[Union[str, int]] = None) -> str:
+               value: Optional[Any] = None, force_type: Optional[str] = None, id: Optional[Union[str, int]] = None) -> str:
         """
         Insert data into a table with automatic or explicit ID management.
         
@@ -195,7 +195,7 @@ class Connection:
             data: Dictionary of column->value pairs, OR column name (if value provided)
             value: Value to insert (if data is a column name)
             force_type: Override automatic type inference
-            row_id: Explicit row ID (if None, auto-generates next available ID)
+            id: Explicit row ID (if None, auto-generates next available ID)
             
         Returns:
             The row ID (auto-generated or explicitly provided)
@@ -205,7 +205,7 @@ class Connection:
             user_id = db.insert('users', {'name': 'John', 'age': 25})
             
             # Explicit ID
-            db.insert('users', {'name': 'Jane'}, row_id="100")
+            db.insert('users', {'name': 'Jane'}, id="100")
             
             # Single column
             db.insert('users', 'email', 'john@example.com')
@@ -215,7 +215,7 @@ class Connection:
         """
         from .api import insert
         return insert(table_name, data, value, self._get_db_path(), 
-                     self.backend_name, force_type, str(row_id) if row_id is not None else None)
+                     self.backend_name, force_type, str(id) if id is not None else None)
     
     def query(self, table_name: str, where: Optional[str] = None) -> List[Dict[str, Any]]:
         """
@@ -235,115 +235,36 @@ class Connection:
             # Filter rows
             rows = db.query('users', 'age > 25')
             
-            # With ID aliasing (default):
             # rows[0]['id'] contains the row identifier
-            
-            # Without ID aliasing:
-            # db = synthdb.connect('app.db', use_id_alias=False)
-            # rows[0]['row_id'] contains the row identifier
         """
-        # If aliasing is enabled and WHERE clause contains 'id', convert to 'row_id'
-        if self.use_id_alias and where:
-            where = self._convert_id_in_where_clause(where)
-        
         results = query_view(table_name, where, self._get_db_path(), self.backend_name)
-        
-        # Apply ID aliasing if enabled
-        if self.use_id_alias:
-            results = self._apply_id_alias(results)
-        
         return results
     
-    def _convert_id_in_where_clause(self, where: str) -> str:
-        """Convert 'id' references to 'row_id' in WHERE clauses."""
-        import re
-        
-        # Pattern to match 'id' as a column name (not part of another word)
-        # Handles cases like: id = "...", id="...", id IN (...), etc.
-        patterns = [
-            (r'\bid\s*=', 'row_id ='),
-            (r'\bid\s*!=', 'row_id !='),
-            (r'\bid\s*<>', 'row_id <>'),
-            (r'\bid\s*<', 'row_id <'),
-            (r'\bid\s*>', 'row_id >'),
-            (r'\bid\s*<=', 'row_id <='),
-            (r'\bid\s*>=', 'row_id >='),
-            (r'\bid\s+IN\s*\(', 'row_id IN ('),
-            (r'\bid\s+NOT\s+IN\s*\(', 'row_id NOT IN ('),
-            (r'\bid\s+LIKE\s+', 'row_id LIKE '),
-            (r'\bid\s+IS\s+', 'row_id IS '),
-            (r'\(\s*id\s*=', '(row_id ='),
-            (r'\(\s*id\s*!=', '(row_id !='),
-        ]
-        
-        result = where
-        for pattern, replacement in patterns:
-            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
-        
-        return result
     
-    def _apply_id_alias(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Apply ID aliasing to query results."""
-        aliased_results = []
-        for row in results:
-            # Create a new dict to avoid modifying the original
-            aliased_row = row.copy()
-            if 'row_id' in aliased_row:
-                # Add 'id' as an alias for 'row_id'
-                aliased_row['id'] = aliased_row.pop('row_id')
-            aliased_results.append(aliased_row)
-        return aliased_results
-    
-    def _convert_id_in_sql(self, sql: str) -> str:
-        """Convert 'id' references to 'row_id' in SQL queries.
-        
-        This handles cases like:
-        - SELECT id FROM users
-        - SELECT u.id FROM users u
-        - JOIN orders o ON u.id = o.user_id
-        - SELECT id as user_id FROM users
+    def upsert(self, table_name: str, data: Dict[str, Any], id: Union[str, int]) -> str:
         """
-        import re
+        Insert or update data for a specific id.
         
-        # Pattern to match table.id or just id in various contexts
-        # This is more comprehensive than WHERE clause conversion
-        patterns = [
-            # Table-qualified id (e.g., u.id, users.id)
-            (r'\b(\w+)\.id\b', r'\1.row_id'),
-            # Standalone id not preceded by a dot (avoid matching things like user_id)
-            (r'(?<![.\w])id\b', 'row_id'),
-        ]
-        
-        result = sql
-        for pattern, replacement in patterns:
-            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
-        
-        return result
-    
-    def upsert(self, table_name: str, data: Dict[str, Any], row_id: Union[str, int]) -> str:
-        """
-        Insert or update data for a specific row_id.
-        
-        If the row_id exists, updates the existing row with new data.
-        If the row_id doesn't exist, creates a new row with that row_id.
+        If the id exists, updates the existing row with new data.
+        If the id doesn't exist, creates a new row with that id.
         
         Args:
             table_name: Name of the table
             data: Column data to insert/update
-            row_id: Specific row ID to insert or update
+            id: Specific row ID to insert or update
             
         Returns:
-            The row_id that was inserted or updated
+            The id that was inserted or updated
             
         Examples:
             # Update existing row or create new row with ID 100
-            db.upsert('users', {'name': 'Jane', 'age': 30}, row_id="100")
+            db.upsert('users', {'name': 'Jane', 'age': 30}, id="100")
             
             # Update row 1 with new data
-            db.upsert('users', {'name': 'John Updated', 'email': 'john.new@example.com'}, row_id="1")
+            db.upsert('users', {'name': 'John Updated', 'email': 'john.new@example.com'}, id="1")
         """
         from .api import upsert
-        return upsert(table_name, data, str(row_id), self._get_db_path(), self.backend_name)
+        return upsert(table_name, data, str(id), self._get_db_path(), self.backend_name)
     
     def copy_column(self, source_table: str, source_column: str, target_table: str, 
                    target_column: str, copy_data: bool = False) -> int:
@@ -429,7 +350,7 @@ class Connection:
         """
         return list_columns(table_name, include_deleted, self._get_db_path(), self.backend_name)
     
-    def delete_value(self, table_name: str, row_id: Union[str, int], column_name: str) -> bool:
+    def delete_value(self, table_name: str, id: Union[str, int], column_name: str) -> bool:
         """
         DEPRECATED: Cell-level deletes no longer supported.
         
@@ -437,22 +358,22 @@ class Connection:
         
         Args:
             table_name: Name of the table
-            row_id: Row identifier
+            id: Row identifier
             column_name: Name of the column
             
         Returns:
             bool: Always raises NotImplementedError
         """
         from .api import delete_value
-        return delete_value(table_name, str(row_id), column_name, self._get_db_path(), self.backend_name)
+        return delete_value(table_name, str(id), column_name, self._get_db_path(), self.backend_name)
     
-    def delete_row(self, table_name: str, row_id: Union[str, int]) -> bool:
+    def delete_row(self, table_name: str, id: Union[str, int]) -> bool:
         """
         Soft delete an entire row by updating row metadata.
         
         Args:
             table_name: Name of the table
-            row_id: Row identifier
+            id: Row identifier
             
         Returns:
             bool: True if the row was deleted, False if row didn't exist or was already deleted
@@ -462,15 +383,15 @@ class Connection:
             was_deleted = db.delete_row("users", "user-123")
         """
         from .api import delete_row
-        return delete_row(table_name, str(row_id), self._get_db_path(), self.backend_name)
+        return delete_row(table_name, str(id), self._get_db_path(), self.backend_name)
     
-    def undelete_row(self, table_name: str, row_id: Union[str, int]) -> bool:
+    def undelete_row(self, table_name: str, id: Union[str, int]) -> bool:
         """
         Un-delete (resurrect) a previously deleted row.
         
         Args:
             table_name: Name of the table
-            row_id: Row identifier
+            id: Row identifier
             
         Returns:
             bool: True if the row was resurrected, False if row didn't exist or wasn't deleted
@@ -480,15 +401,15 @@ class Connection:
             was_resurrected = db.undelete_row("users", "user-123")
         """
         from .api import undelete_row
-        return undelete_row(table_name, str(row_id), self._get_db_path(), self.backend_name)
+        return undelete_row(table_name, str(id), self._get_db_path(), self.backend_name)
     
-    def get_row_status(self, table_name: str, row_id: Union[str, int]) -> Dict[str, Any]:
+    def get_row_status(self, table_name: str, id: Union[str, int]) -> Dict[str, Any]:
         """
         Get row metadata including deletion status.
         
         Args:
             table_name: Name of the table
-            row_id: Row identifier
+            id: Row identifier
             
         Returns:
             Dict: Row metadata or None if row doesn't exist
@@ -500,16 +421,16 @@ class Connection:
                 print(f"Row exists, deleted: {status['is_deleted']}")
         """
         from .api import get_row_status
-        return get_row_status(table_name, str(row_id), self._get_db_path(), self.backend_name)
+        return get_row_status(table_name, str(id), self._get_db_path(), self.backend_name)
     
-    def get_table_history(self, table_name: str, row_id: Optional[str] = None, column_name: Optional[str] = None,
+    def get_table_history(self, table_name: str, id: Optional[str] = None, column_name: Optional[str] = None,
                          include_deleted: bool = True) -> List[Dict[str, Any]]:
         """
         Get complete history for a table, row, or specific cell.
         
         Args:
             table_name: Name of the table
-            row_id: Optional row identifier to filter by
+            id: Optional row identifier to filter by
             column_name: Optional column name to filter by
             include_deleted: Whether to include values from deleted rows
             
@@ -521,16 +442,16 @@ class Connection:
             history = db.get_table_history("users")
             
             # Get history for a specific row
-            user_history = db.get_table_history("users", row_id="user-123")
+            user_history = db.get_table_history("users", id="user-123")
             
             # Get history for a specific cell
-            email_history = db.get_table_history("users", row_id="user-123", column_name="email")
+            email_history = db.get_table_history("users", id="user-123", column_name="email")
             
             # Exclude values from deleted rows
             active_history = db.get_table_history("users", include_deleted=False)
         """
         from .api import get_table_history
-        return get_table_history(table_name, str(row_id), column_name, include_deleted, 
+        return get_table_history(table_name, str(id), column_name, include_deleted, 
                                 self._get_db_path(), self.backend_name)
     
     
@@ -644,9 +565,7 @@ class Connection:
         """
         from .sql_validator import SafeQueryExecutor
         
-        # If ID aliasing is enabled, pre-process SQL to convert 'id' to 'row_id'
-        if self.use_id_alias:
-            sql = self._convert_id_in_sql(sql)
+        # SQL now uses 'id' natively
         
         # Create executor with this connection
         executor = SafeQueryExecutor(self)
@@ -687,8 +606,7 @@ class Connection:
 
 # Main connection function
 def connect(connection_info: Union[str, Dict[str, Any]] = None, 
-           backend: Optional[str] = None, auto_init: bool = True,
-           use_id_alias: bool = True) -> Connection:
+           backend: Optional[str] = None, auto_init: bool = True) -> Connection:
     """
     Create a SynthDB connection.
     
@@ -698,7 +616,6 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
         connection_info: Database file path or dict. If None, uses local project config
         backend: Database backend ('libsql', 'sqlite')
         auto_init: Automatically initialize database if it doesn't exist
-        use_id_alias: Whether to show row_id as 'id' in query results (default: True)
         
     Returns:
         Connection instance
@@ -712,9 +629,6 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
         
         # Use local project config (if .synthdb exists)
         db = synthdb.connect()
-        
-        # Disable ID aliasing for backward compatibility
-        db = synthdb.connect('app.db', use_id_alias=False)
     """
     # Check for local project config if no connection info provided
     if connection_info is None:
@@ -730,4 +644,4 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
             # Fall back to default
             connection_info = 'db.db'
     
-    return Connection(connection_info, backend, auto_init, use_id_alias)
+    return Connection(connection_info, backend, auto_init)

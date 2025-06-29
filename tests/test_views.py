@@ -48,25 +48,25 @@ def test_create_table_view_with_data(temp_db):
         "price": 19.99,
         "quantity": 100,
         "active": True
-    }, row_id="0")
+    }, id="0")
     
     db.insert("products", {
         "name": "Gadget", 
         "price": 29.99,
         "quantity": 50,
         "active": False
-    }, row_id="1")
+    }, id="1")
     
     # Query the view
     db = sqlite3.connect(temp_db)
     cur = db.cursor()
     
-    cur.execute("SELECT * FROM products ORDER BY row_id")
+    cur.execute("SELECT * FROM products ORDER BY id")
     rows = cur.fetchall()
     columns = [desc[0] for desc in cur.description]
     
     # Verify structure
-    assert 'row_id' in columns, "View should include row_id"
+    assert 'id' in columns, "View should include id"
     assert 'created_at' in columns, "View should include created_at"
     assert 'updated_at' in columns, "View should include updated_at"
     assert 'name' in columns, "View should include name column"
@@ -103,7 +103,7 @@ def test_view_recreated_after_column_addition(temp_db):
     db.add_columns("products", {"name": "text"})
     
     # Insert some data
-    db.insert("products", {"name": "Widget"}, row_id="0")
+    db.insert("products", {"name": "Widget"}, id="0")
     
     # Query initial view
     db = sqlite3.connect(temp_db)
@@ -117,7 +117,7 @@ def test_view_recreated_after_column_addition(temp_db):
     synthdb_conn.add_columns("products", {"price": "real"})
     
     # Update existing row with price
-    synthdb_conn.insert("products", {"name": "Widget", "price": 19.99}, row_id="0")
+    synthdb_conn.insert("products", {"name": "Widget", "price": 19.99}, id="0")
     
     # Query updated view
     db = sqlite3.connect(temp_db)
@@ -130,7 +130,7 @@ def test_view_recreated_after_column_addition(temp_db):
     assert len(updated_columns) > len(initial_columns), "View should have more columns"
     
     # Verify data is accessible
-    cur.execute("SELECT name, price FROM products WHERE row_id = '0'")
+    cur.execute("SELECT name, price FROM products WHERE id = '0'")
     result = cur.fetchone()
     assert result[0] == "Widget"
     assert result[1] is not None, "Price should not be None"

@@ -67,7 +67,7 @@ def test_insert_typed_value(temp_db):
     column_id = column_ids["name"]
     
     # Insert a value
-    db.insert("products", {"name": "Widget"}, row_id="0")
+    db.insert("products", {"name": "Widget"}, id="0")
     
     # Verify value was inserted in both tables
     db = sqlite3.connect(temp_db)
@@ -75,8 +75,8 @@ def test_insert_typed_value(temp_db):
     
     # Check main table
     main_result = cur.execute(
-        "SELECT value FROM text_values WHERE row_id = ? AND table_id = ? AND column_id = ?",
-        ("0", table_id, column_id)  # row_id is TEXT in schema
+        "SELECT value FROM text_values WHERE id = ? AND table_id = ? AND column_id = ?",
+        ("0", table_id, column_id)  # id is TEXT in schema
     ).fetchone()
     
     db.close()

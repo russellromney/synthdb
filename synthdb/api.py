@@ -13,15 +13,15 @@ from .config import config
 
 
 
-def _column_value_exists(backend: Any, connection: Any, table_id: int, row_id: Union[str, int], column_id: int) -> bool:
-    """Check if a specific (row_id, column_id) combination already has a value."""
+def _column_value_exists(backend: Any, connection: Any, table_id: int, id: Union[str, int], column_id: int) -> bool:
+    """Check if a specific (id, column_id) combination already has a value."""
     type_tables = ['text_values', 'integer_values', 'real_values', 'timestamp_values']
     
     for type_table in type_tables:
         try:
             cur = backend.execute(connection, 
-                f"SELECT 1 FROM {type_table} WHERE table_id = ? AND row_id = ? AND column_id = ? AND deleted_at IS NULL LIMIT 1", 
-                (table_id, str(row_id), column_id))
+                f"SELECT 1 FROM {type_table} WHERE table_id = ? AND id = ? AND column_id = ? AND deleted_at IS NULL LIMIT 1", 
+                (table_id, str(id), column_id))
             result = backend.fetchone(cur)
             if result:
                 return True
@@ -32,15 +32,15 @@ def _column_value_exists(backend: Any, connection: Any, table_id: int, row_id: U
     return False
 
 
-def _get_next_row_id() -> str:
-    """Generate a new globally unique row ID using UUID4."""
+def _get_next_id() -> str:
+    """Generate a new globally unique ID using UUID4."""
     import uuid
     return str(uuid.uuid4())
 
 
 def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[Any] = None, 
           connection_info: str = 'db.db', backend_name: Optional[str] = None, 
-          force_type: Optional[str] = None, row_id: Optional[str] = None) -> str:
+          force_type: Optional[str] = None, id: Optional[str] = None) -> str:
     """
     Insert data into a table with automatic or explicit ID management and type inference.
     
@@ -51,7 +51,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[An
         connection_info: Database connection
         backend_name: Backend to use
         force_type: Override automatic type inference
-        row_id: Explicit row ID (if None, auto-generates next available ID)
+        id: Explicit row ID (if None, auto-generates next available ID)
         
     Returns:
         The row ID (auto-generated or explicitly provided)
@@ -62,10 +62,10 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[An
         
     Examples:
         # Auto-generated ID
-        row_id = insert("users", {"name": "John", "age": 25})
+        id = insert("users", {"name": "John", "age": 25})
         
         # Explicit ID
-        insert("users", {"name": "Jane"}, row_id="100")
+        insert("users", {"name": "Jane"}, id="100")
         
         # Single column
         insert("users", "email", "john@example.com")
@@ -94,14 +94,14 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[An
     
     # Handle row ID - explicit or auto-generated
     with transaction_context(connection_info, backend_name) as (backend, connection):
-        if row_id is not None:
-            # Validate that row_id is a string
-            if not isinstance(row_id, str):
-                raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
-            final_row_id = row_id
+        if id is not None:
+            # Validate that id is a string
+            if not isinstance(id, str):
+                raise ValueError(f"id must be a string, got {type(id).__name__}: {id}")
+            final_id = id
         else:
             # Auto-generate next available row ID
-            final_row_id = _get_next_row_id()
+            final_id = _get_next_id()
         
         # Insert each column value with enhanced error handling
         for col_name, col_value in column_data.items():
@@ -113,12 +113,12 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[An
             column_info = column_lookup[col_name]
             column_id = column_info['id']
             
-            # Check if this specific (row_id, column_id) combination already has a value
-            if row_id is not None:
-                # For explicit row_id, check if this column already has a value
-                existing_check = _column_value_exists(backend, connection, table_id, final_row_id, column_id)
+            # Check if this specific (id, column_id) combination already has a value
+            if id is not None:
+                # For explicit id, check if this column already has a value
+                existing_check = _column_value_exists(backend, connection, table_id, final_id, column_id)
                 if existing_check:
-                    raise ValueError(f"Row ID {final_row_id} already has a value for column '{col_name}' in table '{table_name}'")
+                    raise ValueError(f"Row ID {final_id} already has a value for column '{col_name}' in table '{table_name}'")
             
             # Use force_type if provided, otherwise use column's defined type
             if force_type:
@@ -129,7 +129,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[An
             try:
                 # Insert the value using existing function with transaction context
                 insert_typed_value(
-                    final_row_id, table_id, column_id, col_value, data_type,
+                    final_id, table_id, column_id, col_value, data_type,
                     backend=backend, connection=connection
                 )
             except (ValueError, TypeError) as e:
@@ -140,7 +140,7 @@ def insert(table_name: str, data: Union[Dict[str, Any], str], value: Optional[An
                 # Wrap unexpected errors with context
                 raise ValueError(f"Failed to insert value '{col_value}' into column '{col_name}': {e}") from e
     
-    return final_row_id
+    return final_id
 
 
 def query(table_name: str, where: Optional[str] = None, connection_info: str = 'db.db', 
@@ -224,41 +224,41 @@ def add_columns(table_name: str, columns: Dict[str, Union[str, Any]],
     return column_ids
 
 
-def upsert(table_name: str, data: Dict[str, Any], row_id: str,
+def upsert(table_name: str, data: Dict[str, Any], id: str,
           connection_info: str = 'db.db', backend_name: Optional[str] = None) -> str:
     """
-    Insert or update data for a specific row_id.
+    Insert or update data for a specific id.
     
-    If the row_id exists, updates the existing row with new data.
-    If the row_id doesn't exist, creates a new row with that row_id.
+    If the id exists, updates the existing row with new data.
+    If the id doesn't exist, creates a new row with that id.
     
     Args:
         table_name: Name of the table
         data: Column data to insert/update
-        row_id: Specific row ID to insert or update
+        id: Specific row ID to insert or update
         connection_info: Database connection  
         backend_name: Backend to use
         
     Returns:
-        The row_id that was inserted or updated
+        The id that was inserted or updated
         
     Examples:
         # Update existing row or create new row with ID 100
-        upsert("users", {"name": "Jane", "age": 30}, row_id="100")
+        upsert("users", {"name": "Jane", "age": 30}, id="100")
         
         # Update row 1 with new data
-        upsert("users", {"name": "John Updated", "email": "john.new@example.com"}, row_id="1")
+        upsert("users", {"name": "John Updated", "email": "john.new@example.com"}, id="1")
     """
-    # Validate that row_id is a string
-    if not isinstance(row_id, str):
-        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    # Validate that id is a string
+    if not isinstance(id, str):
+        raise ValueError(f"id must be a string, got {type(id).__name__}: {id}")
     
-    # Check if the specific row_id exists
-    row_id_str = row_id
-    existing_rows = query(table_name, f"row_id = '{row_id_str}'", connection_info, backend_name)
+    # Check if the specific id exists
+    id_str = id
+    existing_rows = query(table_name, f"id = '{id_str}'", connection_info, backend_name)
     
     if existing_rows:
-        # Update existing row with specified row_id
+        # Update existing row with specified id
         with transaction_context(connection_info, backend_name) as (backend, connection):
             tables = list_tables(connection_info, backend_name)
             table_info = next((t for t in tables if t['name'] == table_name), None)
@@ -277,14 +277,14 @@ def upsert(table_name: str, data: Dict[str, Any], row_id: str,
                     
                     from .core import upsert_typed_value
                     upsert_typed_value(
-                        row_id_str, table_id, column_id, col_value, data_type,
+                        id_str, table_id, column_id, col_value, data_type,
                         backend=backend, connection=connection
                     )
         
-        return row_id_str
+        return id_str
     else:
-        # Insert new row with the specified row_id
-        return insert(table_name, data, connection_info=connection_info, backend_name=backend_name, row_id=row_id)
+        # Insert new row with the specified id
+        return insert(table_name, data, connection_info=connection_info, backend_name=backend_name, id=id)
 
 
 def copy_column(source_table: str, source_column: str, target_table: str, target_column: str,
@@ -446,7 +446,7 @@ def delete_table(table_name: str, hard_delete: bool = False,
     _delete_table(table_name, hard_delete, connection_info, backend_name)
 
 
-def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
+def delete_value(table_name: str, id: Union[str, int], column_name: str,
                 connection_info: str = 'db.db', backend_name: Optional[str] = None) -> bool:
     """
     DEPRECATED: Cell-level deletes no longer supported.
@@ -455,7 +455,7 @@ def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
     
     Args:
         table_name: Name of the table
-        row_id: Row identifier
+        id: Row identifier
         column_name: Name of the column
         connection_info: Database connection
         backend_name: Backend to use
@@ -468,14 +468,14 @@ def delete_value(table_name: str, row_id: Union[str, int], column_name: str,
     )
 
 
-def delete_row(table_name: str, row_id: str,
+def delete_row(table_name: str, id: str,
               connection_info: str = 'db.db', backend_name: Optional[str] = None) -> bool:
     """
     Soft delete an entire row by updating row metadata.
     
     Args:
         table_name: Name of the table
-        row_id: Row identifier
+        id: Row identifier
         connection_info: Database connection
         backend_name: Backend to use
         
@@ -488,25 +488,25 @@ def delete_row(table_name: str, row_id: str,
     """
     from .transactions import transaction_context
     
-    # Validate that row_id is a string
-    if not isinstance(row_id, str):
-        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    # Validate that id is a string
+    if not isinstance(id, str):
+        raise ValueError(f"id must be a string, got {type(id).__name__}: {id}")
     
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
         # Simply delete the row metadata - much more efficient
-        return delete_row_metadata(row_id, backend, connection)
+        return delete_row_metadata(id, backend, connection)
 
 
-def undelete_row(table_name: str, row_id: str,
+def undelete_row(table_name: str, id: str,
                 connection_info: str = 'db.db', backend_name: Optional[str] = None) -> bool:
     """
     Un-delete (resurrect) a previously deleted row.
     
     Args:
         table_name: Name of the table
-        row_id: Row identifier
+        id: Row identifier
         connection_info: Database connection
         backend_name: Backend to use
         
@@ -520,24 +520,24 @@ def undelete_row(table_name: str, row_id: str,
     from .transactions import transaction_context
     from .core import resurrect_row_metadata
     
-    # Validate that row_id is a string
-    if not isinstance(row_id, str):
-        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    # Validate that id is a string
+    if not isinstance(id, str):
+        raise ValueError(f"id must be a string, got {type(id).__name__}: {id}")
     
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
-        return resurrect_row_metadata(row_id, backend, connection)
+        return resurrect_row_metadata(id, backend, connection)
 
 
-def get_row_status(table_name: str, row_id: str,
+def get_row_status(table_name: str, id: str,
                   connection_info: str = 'db.db', backend_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Get row metadata including deletion status.
     
     Args:
         table_name: Name of the table
-        row_id: Row identifier
+        id: Row identifier
         connection_info: Database connection
         backend_name: Backend to use
         
@@ -552,20 +552,20 @@ def get_row_status(table_name: str, row_id: str,
     """
     from .transactions import transaction_context
     
-    # Validate that row_id is a string
-    if not isinstance(row_id, str):
-        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    # Validate that id is a string
+    if not isinstance(id, str):
+        raise ValueError(f"id must be a string, got {type(id).__name__}: {id}")
     
     backend_to_use = backend_name or config.get_backend_for_path(connection_info)
     
     with transaction_context(connection_info, backend_to_use) as (backend, connection):
-        metadata = get_row_metadata(row_id, backend, connection)
+        metadata = get_row_metadata(id, backend, connection)
         if metadata is None:
-            raise ValueError(f"No metadata found for row_id: {row_id}")
+            raise ValueError(f"No metadata found for id: {id}")
         return metadata
 
 
-def get_table_history(table_name: str, row_id: Optional[str] = None, column_name: Optional[str] = None,
+def get_table_history(table_name: str, id: Optional[str] = None, column_name: Optional[str] = None,
                      include_deleted: bool = True, connection_info: str = 'db.db', 
                      backend_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """
@@ -573,7 +573,7 @@ def get_table_history(table_name: str, row_id: Optional[str] = None, column_name
     
     Args:
         table_name: Name of the table
-        row_id: Optional row identifier to filter by
+        id: Optional row identifier to filter by
         column_name: Optional column name to filter by
         include_deleted: Whether to include values from deleted rows
         connection_info: Database connection
@@ -587,10 +587,10 @@ def get_table_history(table_name: str, row_id: Optional[str] = None, column_name
         history = get_table_history("users")
         
         # Get history for a specific row
-        user_history = get_table_history("users", row_id="user-123")
+        user_history = get_table_history("users", id="user-123")
         
         # Get history for a specific cell
-        email_history = get_table_history("users", row_id="user-123", column_name="email")
+        email_history = get_table_history("users", id="user-123", column_name="email")
         
         # Exclude values from deleted rows
         active_history = get_table_history("users", include_deleted=False)
@@ -617,7 +617,7 @@ def get_table_history(table_name: str, row_id: Optional[str] = None, column_name
                 # Include values even from deleted rows
                 cur = backend.execute(connection, f"""
                     SELECT 
-                        tv.row_id, 
+                        tv.id, 
                         tv.version,
                         tv.value,
                         tv.created_at,
@@ -627,16 +627,16 @@ def get_table_history(table_name: str, row_id: Optional[str] = None, column_name
                         '{column['name']}' as column_name,
                         '{column['data_type']}' as data_type
                     FROM {type_table} tv
-                    LEFT JOIN row_metadata rm ON tv.row_id = rm.row_id
+                    LEFT JOIN row_metadata rm ON tv.id = rm.id
                     WHERE tv.table_id = {table_id} AND tv.column_id = {column['id']}
-                    {f"AND tv.row_id = '{row_id}'" if row_id else ""}
-                    ORDER BY tv.row_id, tv.version DESC
+                    {f"AND tv.id = '{id}'" if id else ""}
+                    ORDER BY tv.id, tv.version DESC
                 """)
             else:
                 # Only include values from active rows
                 cur = backend.execute(connection, f"""
                     SELECT 
-                        tv.row_id, 
+                        tv.id, 
                         tv.version,
                         tv.value,
                         tv.created_at,
@@ -646,11 +646,11 @@ def get_table_history(table_name: str, row_id: Optional[str] = None, column_name
                         '{column['name']}' as column_name,
                         '{column['data_type']}' as data_type
                     FROM {type_table} tv
-                    JOIN row_metadata rm ON tv.row_id = rm.row_id
+                    JOIN row_metadata rm ON tv.id = rm.id
                     WHERE tv.table_id = {table_id} AND tv.column_id = {column['id']}
                     AND rm.is_deleted = 0
-                    {f"AND tv.row_id = '{row_id}'" if row_id else ""}
-                    ORDER BY tv.row_id, tv.version DESC
+                    {f"AND tv.id = '{id}'" if id else ""}
+                    ORDER BY tv.id, tv.version DESC
                 """)
             
             for row in backend.fetchall(cur):

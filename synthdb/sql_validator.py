@@ -40,7 +40,7 @@ class SQLValidator:
         # SQLite specific
         'PRAGMA', 'ATTACH', 'DETACH', 'VACUUM', 'ANALYZE',
         # SynthDB internal
-        'ROW_ID'
+        'ID'
     }
     
     # Operations that are not allowed in user queries

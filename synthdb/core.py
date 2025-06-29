@@ -8,18 +8,18 @@ from .sql_validator import SQLValidator
 from typing import Optional, Any, cast
 
 
-def _validate_row_id(row_id: str) -> None:
+def _validate_id(id: str) -> None:
     """
-    Validate that row_id is a string.
+    Validate that id is a string.
     
-    Raises ValueError if row_id is not a string.
+    Raises ValueError if id is not a string.
     """
-    if not isinstance(row_id, str):
-        raise ValueError(f"row_id must be a string, got {type(row_id).__name__}: {row_id}")
+    if not isinstance(id, str):
+        raise ValueError(f"id must be a string, got {type(id).__name__}: {id}")
 
 
 
-def insert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, data_type: str, db_path: str = 'db.db', 
+def insert_typed_value(id: str, table_id: int, column_id: int, value: Any, data_type: str, db_path: str = 'db.db', 
                       backend_name: Optional[str] = None, backend: Any = None, connection: Any = None) -> None:
     """
     Insert a value into the appropriate type-specific table with versioned storage.
@@ -27,7 +27,7 @@ def insert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
     This is a convenience wrapper around upsert_typed_value for new insertions.
     
     Args:
-        row_id: Row identifier (must be string)
+        id: Row identifier (must be string)
         table_id: Table identifier  
         column_id: Column identifier
         value: Value to insert
@@ -37,11 +37,11 @@ def insert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
         backend: Optional backend instance for transaction reuse
         connection: Optional connection for transaction reuse
     """
-    # Validate row_id is a string
-    _validate_row_id(row_id)
+    # Validate id is a string
+    _validate_id(id)
     # Use upsert for consistency - it handles both insert and update cases
     if backend and connection:
-        upsert_typed_value(row_id, table_id, column_id, value, data_type, backend, connection)
+        upsert_typed_value(id, table_id, column_id, value, data_type, backend, connection)
     else:
         # Create new transaction context
         from .transactions import transaction_context
@@ -50,10 +50,10 @@ def insert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
         connection_info = db_path
         
         with transaction_context(connection_info, backend_to_use) as (txn_backend, txn_connection):
-            upsert_typed_value(row_id, table_id, column_id, value, data_type, txn_backend, txn_connection)
+            upsert_typed_value(id, table_id, column_id, value, data_type, txn_backend, txn_connection)
 
 
-def upsert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, data_type: str, 
+def upsert_typed_value(id: str, table_id: int, column_id: int, value: Any, data_type: str, 
                       backend: Any = None, connection: Any = None) -> int:
     """
     Smart upsert with automatic row resurrection and versioning.
@@ -61,7 +61,7 @@ def upsert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
     This function MUST be called within a transaction context.
     
     Args:
-        row_id: Row identifier (must be string)
+        id: Row identifier (must be string)
         table_id: Table identifier  
         column_id: Column identifier
         value: Value to insert/update
@@ -72,8 +72,8 @@ def upsert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
     Returns:
         version: Version number of the new value
     """
-    # Validate row_id is a string
-    _validate_row_id(row_id)
+    # Validate id is a string
+    _validate_id(id)
     
     if not backend or not connection:
         raise ValueError("upsert_typed_value requires existing transaction context")
@@ -84,38 +84,38 @@ def upsert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
     
     try:
         # Step 1: Check if row is deleted and resurrect if needed
-        if is_row_deleted(row_id, backend, connection):
-            resurrect_row_metadata(row_id, backend, connection)
+        if is_row_deleted(id, backend, connection):
+            resurrect_row_metadata(id, backend, connection)
         
         # Step 2: Ensure row metadata exists
-        ensure_row_metadata_exists(row_id, table_id, backend, connection)
+        ensure_row_metadata_exists(id, table_id, backend, connection)
         
         # Step 3: Mark current value as historical (atomic)
         backend.execute(connection, f"""
             UPDATE {table_name} 
             SET is_current = 0 
-            WHERE row_id = ? AND table_id = ? AND column_id = ? 
+            WHERE id = ? AND table_id = ? AND column_id = ? 
             AND is_current = 1
-        """, (row_id, table_id, column_id))
+        """, (id, table_id, column_id))
         
         # Step 4: Get next version number (within same transaction)
         cur = backend.execute(connection, f"""
             SELECT COALESCE(MAX(version), -1) + 1 as next_version
             FROM {table_name} 
-            WHERE row_id = ? AND table_id = ? AND column_id = ?
-        """, (row_id, table_id, column_id))
+            WHERE id = ? AND table_id = ? AND column_id = ?
+        """, (id, table_id, column_id))
         
         result = backend.fetchone(cur)
         next_version = result['next_version'] if result else 0
         
         # Step 5: Insert new current value (atomic)
         backend.execute(connection, f"""
-            INSERT INTO {table_name} (row_id, table_id, column_id, version, value, is_current)
+            INSERT INTO {table_name} (id, table_id, column_id, version, value, is_current)
             VALUES (?, ?, ?, ?, ?, 1)
-        """, (row_id, table_id, column_id, next_version, value))
+        """, (id, table_id, column_id, next_version, value))
         
         # Step 6: Update row metadata timestamp
-        update_row_metadata_timestamp(row_id, backend, connection)
+        update_row_metadata_timestamp(id, backend, connection)
         
         # Transaction will be committed by caller
         return next_version
@@ -127,7 +127,7 @@ def upsert_typed_value(row_id: str, table_id: int, column_id: int, value: Any, d
 
 # Cell-level deletes no longer supported - use row-level deletes instead
 # This function is kept for backward compatibility but will raise an error
-def soft_delete_typed_value(row_id: str, table_id: int, column_id: int, data_type: str, 
+def soft_delete_typed_value(id: str, table_id: int, column_id: int, data_type: str, 
                            backend: Any = None, connection: Any = None) -> None:
     """
     DEPRECATED: Cell-level deletes no longer supported.
@@ -139,13 +139,13 @@ def soft_delete_typed_value(row_id: str, table_id: int, column_id: int, data_typ
     )
 
 
-def get_typed_value(row_id: str, table_id: int, column_id: int, data_type: str, 
+def get_typed_value(id: str, table_id: int, column_id: int, data_type: str, 
                    include_deleted: bool = False, backend: Any = None, connection: Any = None) -> dict[str, Any] | None:
     """
     Get current value with option to include deleted rows.
     
     Args:
-        row_id: Row identifier
+        id: Row identifier
         table_id: Table identifier  
         column_id: Column identifier
         data_type: Data type for value storage
@@ -167,19 +167,19 @@ def get_typed_value(row_id: str, table_id: int, column_id: int, data_type: str,
         cur = backend.execute(connection, f"""
             SELECT tv.value, rm.is_deleted, rm.deleted_at, tv.created_at, tv.version
             FROM {table_name} tv
-            LEFT JOIN row_metadata rm ON tv.row_id = rm.row_id
-            WHERE tv.row_id = ? AND tv.table_id = ? AND tv.column_id = ? 
+            LEFT JOIN row_metadata rm ON tv.id = rm.id
+            WHERE tv.id = ? AND tv.table_id = ? AND tv.column_id = ? 
             AND tv.is_current = 1
-        """, (row_id, table_id, column_id))
+        """, (id, table_id, column_id))
     else:
         # Only include values from active rows
         cur = backend.execute(connection, f"""
             SELECT tv.value, rm.is_deleted, rm.deleted_at, tv.created_at, tv.version
             FROM {table_name} tv
-            JOIN row_metadata rm ON tv.row_id = rm.row_id
-            WHERE tv.row_id = ? AND tv.table_id = ? AND tv.column_id = ? 
+            JOIN row_metadata rm ON tv.id = rm.id
+            WHERE tv.id = ? AND tv.table_id = ? AND tv.column_id = ? 
             AND tv.is_current = 1 AND rm.is_deleted = 0
-        """, (row_id, table_id, column_id))
+        """, (id, table_id, column_id))
     
     return cast(dict[str, Any] | None, backend.fetchone(cur))
 
@@ -218,78 +218,78 @@ def get_table_columns(table_name: str, backend: Any, connection: Any) -> list[di
     return cast(list[dict[str, Any]], backend.fetchall(cur))
 
 
-def create_row_metadata(row_id: str, table_id: int, backend: Any, connection: Any) -> None:
+def create_row_metadata(id: str, table_id: int, backend: Any, connection: Any) -> None:
     """Create row metadata entry for a new row."""
     backend.execute(connection, """
-        INSERT INTO row_metadata (row_id, table_id, is_deleted, version)
+        INSERT INTO row_metadata (id, table_id, is_deleted, version)
         VALUES (?, ?, 0, 1)
-    """, (row_id, table_id))
+    """, (id, table_id))
 
 
-def ensure_row_metadata_exists(row_id: str, table_id: int, backend: Any, connection: Any) -> None:
+def ensure_row_metadata_exists(id: str, table_id: int, backend: Any, connection: Any) -> None:
     """Ensure row metadata exists, create if missing."""
     cur = backend.execute(connection, """
-        SELECT row_id FROM row_metadata WHERE row_id = ?
-    """, (row_id,))
+        SELECT id FROM row_metadata WHERE id = ?
+    """, (id,))
     
     if not backend.fetchone(cur):
-        create_row_metadata(row_id, table_id, backend, connection)
+        create_row_metadata(id, table_id, backend, connection)
 
 
-def get_row_metadata(row_id: str, backend: Any, connection: Any) -> dict[str, Any] | None:
+def get_row_metadata(id: str, backend: Any, connection: Any) -> dict[str, Any] | None:
     """Get row metadata for a specific row."""
     cur = backend.execute(connection, """
-        SELECT row_id, table_id, created_at, updated_at, deleted_at, is_deleted, version
+        SELECT id, table_id, created_at, updated_at, deleted_at, is_deleted, version
         FROM row_metadata 
-        WHERE row_id = ?
-    """, (row_id,))
+        WHERE id = ?
+    """, (id,))
     return cast(dict[str, Any] | None, backend.fetchone(cur))
 
 
-def is_row_deleted(row_id: str, backend: Any, connection: Any) -> bool:
+def is_row_deleted(id: str, backend: Any, connection: Any) -> bool:
     """Check if a row is deleted."""
     cur = backend.execute(connection, """
-        SELECT is_deleted FROM row_metadata WHERE row_id = ?
-    """, (row_id,))
+        SELECT is_deleted FROM row_metadata WHERE id = ?
+    """, (id,))
     result = cast(dict[str, Any] | None, backend.fetchone(cur))
     return bool(result and result['is_deleted']) if result else False
 
 
-def delete_row_metadata(row_id: str, backend: Any, connection: Any) -> bool:
+def delete_row_metadata(id: str, backend: Any, connection: Any) -> bool:
     """Soft delete a row by updating metadata only."""
     changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
     
     backend.execute(connection, """
         UPDATE row_metadata 
         SET is_deleted = 1, deleted_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
-        WHERE row_id = ? AND is_deleted = 0
-    """, (row_id,))
+        WHERE id = ? AND is_deleted = 0
+    """, (id,))
     
     changes_after = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
     return changes_after > changes_before
 
 
-def resurrect_row_metadata(row_id: str, backend: Any, connection: Any) -> bool:
+def resurrect_row_metadata(id: str, backend: Any, connection: Any) -> bool:
     """Un-delete a row by clearing deleted_at."""
     changes_before = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
     
     backend.execute(connection, """
         UPDATE row_metadata 
         SET is_deleted = 0, deleted_at = NULL, updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now'), version = version + 1
-        WHERE row_id = ? AND is_deleted = 1
-    """, (row_id,))
+        WHERE id = ? AND is_deleted = 1
+    """, (id,))
     
     changes_after = getattr(connection, 'total_changes', 0) if hasattr(connection, 'total_changes') else 0
     return changes_after > changes_before
 
 
-def update_row_metadata_timestamp(row_id: str, backend: Any, connection: Any) -> None:
+def update_row_metadata_timestamp(id: str, backend: Any, connection: Any) -> None:
     """Update the updated_at timestamp for a row."""
     backend.execute(connection, """
         UPDATE row_metadata 
         SET updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
-        WHERE row_id = ?
-    """, (row_id,))
+        WHERE id = ?
+    """, (id,))
 
 
 def create_table(table_name: str, db_path: str = 'db.db', backend_name: Optional[str] = None) -> int:
@@ -503,8 +503,8 @@ def copy_column_with_data(source_table: str, source_column: str, target_table: s
         
         # Copy values
         backend.execute(connection, f"""
-            INSERT INTO {type_table} (row_id, table_id, column_id, value)
-            SELECT row_id, ?, ?, value
+            INSERT INTO {type_table} (id, table_id, column_id, value)
+            SELECT id, ?, ?, value
             FROM {type_table}
             WHERE table_id = ? AND column_id = ?
         """, (target_table_id, new_column_id, source_table_id, source_column_id))
@@ -630,7 +630,7 @@ def _copy_table_data(source_table_id: int, target_table_id: int,
     
     # 2. Get all source rows
     cur = backend.execute(connection, """
-        SELECT DISTINCT row_id 
+        SELECT DISTINCT id 
         FROM row_metadata
         WHERE table_id = ? AND is_deleted = 0
     """, (source_table_id,))
@@ -643,12 +643,12 @@ def _copy_table_data(source_table_id: int, target_table_id: int,
     import uuid
     row_map = {}
     for row in source_rows:
-        old_row_id = row['row_id']
-        new_row_id = str(uuid.uuid4())
-        row_map[old_row_id] = new_row_id
+        old_id = row['id']
+        new_id = str(uuid.uuid4())
+        row_map[old_id] = new_id
         
         # Create row metadata
-        create_row_metadata(new_row_id, target_table_id, backend, connection)
+        create_row_metadata(new_id, target_table_id, backend, connection)
     
     # 4. Copy values for each data type
     for data_type in ['text', 'integer', 'real', 'timestamp']:
@@ -700,24 +700,24 @@ def _copy_values_by_type(source_table_id: int, target_table_id: int,
         return
     
     cur = backend.execute(connection, f"""
-        SELECT row_id, column_id, version, value, is_current
+        SELECT id, column_id, version, value, is_current
         FROM {table_name}
         WHERE table_id = ? 
           AND column_id IN ({source_col_ids})
-          AND row_id IN ({','.join(['?' for _ in row_map])})
+          AND id IN ({','.join(['?' for _ in row_map])})
     """, [source_table_id] + list(row_map.keys()))
     
     values = backend.fetchall(cur)
     
     # Insert values with new IDs
     for val in values:
-        new_row_id = row_map[val['row_id']]
+        new_id = row_map[val['id']]
         new_col_id = column_map[val['column_id']]
         
         backend.execute(connection, f"""
-            INSERT INTO {table_name} (row_id, table_id, column_id, version, value, is_current)
+            INSERT INTO {table_name} (id, table_id, column_id, version, value, is_current)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (new_row_id, target_table_id, new_col_id, 
+        """, (new_id, target_table_id, new_col_id, 
               val['version'], val['value'], val['is_current']))
 
 

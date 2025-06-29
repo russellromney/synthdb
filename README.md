@@ -15,7 +15,7 @@ A flexible database system with schema-on-write capabilities. SynthDB makes it e
 - **Branch Support**: Create and switch between database branches for development workflows
 - **Safe SQL Execution**: Execute custom SELECT queries with built-in safety validation
 - **SQL Keyword Protection**: Prevents table/column names that conflict with SQL keywords
-- **ID Aliasing**: Modern 'id' interface with full backward compatibility for 'row_id'
+- **Clean ID Interface**: Simple 'id' field for all row identifiers
 
 ## Installation
 
@@ -197,7 +197,7 @@ product_id = db.insert('products', {
 })
 
 # Insert with explicit ID
-db.insert('products', {'name': 'Special Item'}, row_id="1000")
+db.insert('products', {'name': 'Special Item'}, id="1000")
 
 # Single column inserts
 db.insert('products', 'name', 'Quick Add')
@@ -206,16 +206,16 @@ db.insert('products', 'name', 'Quick Add')
 all_products = db.query('products')
 expensive = db.query('products', 'price > 25')
 
-# Results show 'id' by default (row_id internally)
+# Results include unique ID for each row
 for product in all_products:
     print(f"{product['name']}: ${product['price']} (ID: {product['id']})")
 
-# Upsert (insert or update by row_id)
+# Upsert (insert or update by ID)
 db.upsert('products', {
     'name': 'Updated Widget',
     'sku': 'WIDGET-001',
     'price': 24.99
-}, row_id=product_id)
+}, id=product_id)
 
 # Execute custom SQL queries safely
 results = db.execute_sql("""
@@ -287,40 +287,10 @@ SynthDB uses a flexible data model with the following components:
 
 SynthDB automatically creates SQL views for each table that:
 - Present data in familiar columnar format
-- Include id (aliased from row_id), created_at, and updated_at timestamps
+- Include id, created_at, and updated_at timestamps
 - Handle type conversions (e.g., integer to text)
 - Update automatically when schema changes
 
-### ID Aliasing (New in v0.9+)
-
-SynthDB uses intelligent ID aliasing for a cleaner API while maintaining backward compatibility:
-
-**Default Behavior (Recommended)**:
-```python
-# Query results show 'id' instead of 'row_id'
-users = db.query('users')
-print(users[0]['id'])  # Clean, conventional
-
-# WHERE clauses accept both for compatibility
-db.query('users', 'id = "user-123"')      # Modern
-db.query('users', 'row_id = "user-123"')  # Legacy (still works)
-
-# SQL queries use 'id'
-db.execute_sql("SELECT u.id, u.name FROM users u")
-```
-
-**Backward Compatibility Mode**:
-```python
-# Disable aliasing for legacy code
-db = synthdb.connect('app.db', use_id_alias=False)
-users = db.query('users')
-print(users[0]['row_id'])  # Shows row_id as before
-```
-
-**Why Both?**
-- `id` in results: Cleaner, matches industry conventions
-- `row_id` parameter: Clear that you're specifying the row identifier
-- Both work in WHERE: Smooth migration path
 
 ### Supported Data Types
 

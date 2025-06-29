@@ -17,8 +17,8 @@ def test_query_view(temp_db):
     })
     
     # Insert some data
-    db.insert("products", {"name": "Widget", "price": 19.99}, row_id="0")
-    db.insert("products", {"name": "Gadget", "price": 29.99}, row_id="1")
+    db.insert("products", {"name": "Widget", "price": 19.99}, id="0")
+    db.insert("products", {"name": "Gadget", "price": 29.99}, id="1")
     
     # Test basic query
     results = db.query("products")
@@ -27,7 +27,7 @@ def test_query_view(temp_db):
     assert float(results[0]['price']) == 19.99, "First row price should be 19.99"
     
     # Verify timestamp columns are included
-    assert 'row_id' in results[0], "Should include row_id"
+    assert 'id' in results[0], "Should include id"
     assert 'created_at' in results[0], "Should include created_at"
     assert 'updated_at' in results[0], "Should include updated_at"
     assert results[0]['created_at'] is not None, "created_at should not be null"

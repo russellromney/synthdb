@@ -84,7 +84,7 @@ class TestColumnManagement:
         db.add_columns('users', {'name': 'text'})
         
         with pytest.raises(ValueError, match="protected"):
-            db.rename_column('users', 'name', 'row_id')
+            db.rename_column('users', 'name', 'id')
     
     def test_delete_column(self, db):
         """Test soft deleting a column."""

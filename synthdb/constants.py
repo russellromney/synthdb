@@ -2,7 +2,7 @@
 
 # Protected column names that cannot be used for user-defined columns
 PROTECTED_COLUMN_NAMES = {
-    'row_id',  # Reserved for SynthDB's internal row identifier
+    'id',  # Reserved for SynthDB's internal row identifier
 }
 
 # Core internal table names that cannot be used for user-defined tables
@@ -54,22 +54,22 @@ def validate_table_name(table_name: str) -> None:
         )
 
 
-def validate_row_id(row_id: str) -> None:
+def validate_id(id: str) -> None:
     """
-    Validate that a row_id is a valid UUID format.
+    Validate that an id is a valid UUID format.
     
     Args:
-        row_id: The row ID to validate
+        id: The ID to validate
         
     Raises:
-        ValueError: If the row_id is not a valid UUID format
+        ValueError: If the id is not a valid UUID format
     """
     import uuid
     try:
         # Try to parse as UUID - this will raise ValueError if invalid
-        uuid.UUID(row_id)
+        uuid.UUID(id)
     except (ValueError, AttributeError):
         raise ValueError(
-            f"Row ID '{row_id}' is not a valid UUID format. "
+            f"ID '{id}' is not a valid UUID format. "
             f"Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         )

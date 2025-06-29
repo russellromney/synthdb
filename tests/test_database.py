@@ -55,7 +55,7 @@ def test_make_db():
         # Verify a type-specific table structure (text_values)
         cur.execute("PRAGMA table_info(text_values)")
         columns = [row[1] for row in cur.fetchall()]
-        expected_columns = ['row_id', 'table_id', 'column_id', 'version', 'created_at', 'value', 'is_current']
+        expected_columns = ['id', 'table_id', 'column_id', 'version', 'created_at', 'value', 'is_current']
         for col in expected_columns:
             assert col in columns, f"Column '{col}' should exist in text_values"
         

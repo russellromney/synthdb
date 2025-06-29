@@ -30,34 +30,34 @@ class TestProtectedNames:
         except FileNotFoundError:
             pass
     
-    def test_protected_column_name_row_id(self):
-        """Test that 'row_id' cannot be used as a column name."""
+    def test_protected_column_name_id(self):
+        """Test that 'id' cannot be used as a column name."""
         self.db.create_table('users')
         
         # Test via add_column method
-        with pytest.raises(ValueError, match="Column name 'row_id' is protected"):
-            self.db.add_column('users', 'row_id', 'text')
+        with pytest.raises(ValueError, match="Column name 'id' is protected"):
+            self.db.add_column('users', 'id', 'text')
     
     def test_protected_column_name_case_insensitive(self):
         """Test that protected column names are case insensitive."""
         self.db.create_table('users')
         
         # Test different cases
-        with pytest.raises(ValueError, match="Column name 'ROW_ID' is protected"):
-            self.db.add_column('users', 'ROW_ID', 'text')
+        with pytest.raises(ValueError, match="Column name 'ID' is protected"):
+            self.db.add_column('users', 'ID', 'text')
         
-        with pytest.raises(ValueError, match="Column name 'Row_Id' is protected"):
-            self.db.add_column('users', 'Row_Id', 'text')
+        with pytest.raises(ValueError, match="Column name 'Id' is protected"):
+            self.db.add_column('users', 'Id', 'text')
     
     def test_protected_column_name_add_columns(self):
-        """Test that 'row_id' cannot be used via add_columns method."""
+        """Test that 'id' cannot be used via add_columns method."""
         self.db.create_table('products')
         
         # Test via add_columns method
-        with pytest.raises(ValueError, match="Column name 'row_id' is protected"):
+        with pytest.raises(ValueError, match="Column name 'id' is protected"):
             self.db.add_columns('products', {
                 'name': 'text',
-                'row_id': 'integer'  # This should fail
+                'id': 'integer'  # This should fail
             })
     
     def test_protected_table_name_table_definitions(self):
@@ -122,9 +122,9 @@ class TestProtectedNames:
         
         # These should all work fine
         valid_names = [
-            'id',          # Similar but not 'row_id'
-            'user_id',     # Contains 'id' but not 'row_id'
-            'row_data',    # Contains 'row' but not 'row_id'  
+            'record_id',   # Similar but not 'id'
+            'user_id',     # Contains 'id' but not reserved 'id'
+            'row_data',    # Contains 'row' but not 'id'  
             'name',
             'email',
             'created_at',
@@ -149,13 +149,13 @@ class TestProtectedNames:
         
         # Test column error message
         try:
-            self.db.add_column('users', 'row_id', 'text')
+            self.db.add_column('users', 'id', 'text')
             assert False, "Should have raised ValueError"
         except ValueError as e:
             error_msg = str(e)
-            assert 'row_id' in error_msg
+            assert 'id' in error_msg
             assert 'protected' in error_msg
-            assert 'Protected column names: row_id' in error_msg
+            assert 'Protected column names: id' in error_msg
         
         # Test table error message
         try:
@@ -195,8 +195,8 @@ class TestProtectedNamesAPI:
         assert isinstance(table_id, int)
         
         # Adding protected column should fail
-        with pytest.raises(ValueError, match="Column name 'row_id' is protected"):
-            add_column('users', 'row_id', 'text', self.db_path, 'sqlite')
+        with pytest.raises(ValueError, match="Column name 'id' is protected"):
+            add_column('users', 'id', 'text', self.db_path, 'sqlite')
     
     def test_core_api_table_protection(self):
         """Test table protection via core API functions."""
@@ -215,9 +215,9 @@ class TestProtectedNamesAPI:
         create_table('products', self.db_path, 'sqlite')
         
         # Protected column in bulk add should fail
-        with pytest.raises(ValueError, match="Column name 'row_id' is protected"):
+        with pytest.raises(ValueError, match="Column name 'id' is protected"):
             add_columns('products', {
                 'name': 'text',
                 'price': 'real',
-                'row_id': 'integer'  # This should fail
+                'id': 'integer'  # This should fail
             }, self.db_path, 'sqlite')

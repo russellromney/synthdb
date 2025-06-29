@@ -88,8 +88,8 @@ class TestTableCopy:
         assert source_values == target_values
         
         # Verify row IDs are different (new UUIDs generated)
-        source_ids = {row['row_id'] for row in source_data}
-        target_ids = {row['row_id'] for row in target_data}
+        source_ids = {row['id'] for row in source_data}
+        target_ids = {row['id'] for row in target_data}
         
         assert len(source_ids.intersection(target_ids)) == 0
     

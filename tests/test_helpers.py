@@ -16,8 +16,8 @@ def is_uuid_format(value):
     return isinstance(value, str) and len(value) == 36 and value.count('-') == 4
 
 def assert_uuid_or_custom_id(row_id):
-    """Assert that row_id is either a valid UUID or a custom string ID."""
-    assert isinstance(row_id, str), f"Expected string row_id, got {type(row_id)}: {row_id}"
+    """Assert that id is either a valid UUID or a custom string ID."""
+    assert isinstance(row_id, str), f"Expected string id, got {type(row_id)}: {row_id}"
     # Allow either UUID format or custom string IDs
     if len(row_id) == 36 and row_id.count('-') == 4:
         # Looks like UUID, validate it

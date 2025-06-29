@@ -615,7 +615,7 @@ def insert_cmd(
         
         # Use connection API for single column insert
         db = connect(connection_info, backend)
-        db.insert(table, column, converted_value, row_id=id, force_type=data_type)
+        db.insert(table, column, converted_value, id=id, force_type=data_type)
         console.print(f"[green]Inserted value '{value}' into {table}.{column} for id {id}[/green]")
         
     except ValueError as e:
@@ -1433,7 +1433,7 @@ def _add_implementation(table: str, data: str, path: str, backend: str, id: str)
             table, data_dict, 
             connection_info=connection_info, 
             backend_name=backend,
-            row_id=id
+            id=id
         )
         
         if id is not None:

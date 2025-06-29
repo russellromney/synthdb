@@ -47,11 +47,11 @@ def create_table_views(db_path: str = 'db.db', backend_name: Optional[str] = Non
             drop_view_sql = f"DROP VIEW IF EXISTS {view_name}"
             
             if not columns:
-                # Create a basic view with just row_id for tables with no columns
+                # Create a basic view with just id for tables with no columns
                 create_view_sql = f"""
                     CREATE VIEW {view_name} AS
                     SELECT 
-                        NULL as row_id,
+                        NULL as id,
                         NULL as created_at,
                         NULL as updated_at
                     WHERE 1=0
@@ -72,7 +72,7 @@ def create_table_views(db_path: str = 'db.db', backend_name: Optional[str] = Non
                 # LEFT JOIN to value tables for current values only (no delete filtering needed)
                 table_joins.append(f"""
                     LEFT JOIN {type_table} {alias} ON 
-                        rm.row_id = {alias}.row_id AND 
+                        rm.id = {alias}.id AND 
                         {alias}.table_id = {table_id} AND 
                         {alias}.column_id = {col['id']} AND
                         {alias}.is_current = 1
@@ -84,7 +84,7 @@ def create_table_views(db_path: str = 'db.db', backend_name: Optional[str] = Non
             create_view_sql = f"""
                 CREATE VIEW {view_name} AS
                 SELECT 
-                    rm.row_id,
+                    rm.id,
                     {', '.join(column_selects) if column_selects else 'NULL as placeholder'},
                     rm.created_at,
                     rm.updated_at
