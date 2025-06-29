@@ -109,9 +109,9 @@ class TestSQLExecution:
             'quantity': 1
         })
         
-        # Get user IDs
+        # Get user IDs (using 'id' since aliasing is enabled by default)
         users = self.db.query('users')
-        alice_id = next(u['row_id'] for u in users if u['name'] == 'Alice')
+        alice_id = next(u['id'] for u in users if u['name'] == 'Alice')
         
         # Insert order
         self.db.insert('orders', {
@@ -120,11 +120,11 @@ class TestSQLExecution:
             'quantity': 2
         })
         
-        # Test JOIN
+        # Test JOIN (using 'id' since aliasing is enabled)
         results = self.db.execute_sql("""
             SELECT u.name, o.product_name, o.quantity
             FROM users u
-            JOIN orders o ON u.row_id = o.user_id
+            JOIN orders o ON u.id = o.user_id
         """)
         assert len(results) == 1
         assert results[0]['name'] == 'Alice'

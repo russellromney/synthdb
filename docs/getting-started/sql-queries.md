@@ -134,7 +134,7 @@ sdb sql "SELECT * FROM users" --format json --output users.json
 sdb sql "SELECT department, COUNT(*) as count, AVG(salary) as avg_salary FROM users GROUP BY department"
 
 # Joins
-sdb sql "SELECT u.name, COUNT(o.id) as order_count FROM users u LEFT JOIN orders o ON u.row_id = o.user_id GROUP BY u.row_id"
+sdb sql "SELECT u.name, COUNT(o.id) as order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id"
 
 # Subqueries
 sdb sql "SELECT * FROM users WHERE salary > (SELECT AVG(salary) FROM users)"
@@ -190,11 +190,36 @@ SELECT *, created_at, updated_at FROM users
 -- Find recently updated records
 SELECT * FROM products WHERE updated_at > date('now', '-7 days')
 
--- Access row_id for joining
+-- Access row ID for joining (uses 'id' by default with aliasing)
 SELECT u.*, o.* 
 FROM users u 
-JOIN orders o ON u.row_id = o.user_id
+JOIN orders o ON u.id = o.user_id
+
+-- Note: If ID aliasing is disabled, use 'row_id' instead:
+-- db = synthdb.connect('myapp.db', use_id_alias=False)
+-- Then: JOIN orders o ON u.row_id = o.user_id
 ```
+
+### ID Aliasing
+
+SynthDB uses ID aliasing by default to provide a cleaner API:
+
+```python
+# With ID aliasing (default)
+db = synthdb.connect('myapp.db')
+users = db.execute_sql("SELECT * FROM users WHERE id = ?", ['user-123'])
+# Result: [{'id': 'user-123', 'name': 'Alice', ...}]
+
+# Without ID aliasing
+db = synthdb.connect('myapp.db', use_id_alias=False)
+users = db.execute_sql("SELECT * FROM users WHERE row_id = ?", ['user-123'])
+# Result: [{'row_id': 'user-123', 'name': 'Alice', ...}]
+```
+
+When ID aliasing is enabled:
+- Use `id` in your SQL queries instead of `row_id`
+- Results will show `id` instead of `row_id`
+- Both `id` and `row_id` work in WHERE clauses for compatibility
 
 ### Type Handling
 
@@ -280,11 +305,11 @@ ORDER BY month DESC
 -- Active users by department with order stats
 SELECT 
     u.department,
-    COUNT(DISTINCT u.row_id) as user_count,
-    COUNT(o.row_id) as total_orders,
+    COUNT(DISTINCT u.id) as user_count,
+    COUNT(o.id) as total_orders,
     COALESCE(SUM(o.total), 0) as total_spent
 FROM users u
-LEFT JOIN orders o ON u.row_id = o.user_id
+LEFT JOIN orders o ON u.id = o.user_id
 WHERE u.active = 1
 GROUP BY u.department
 ```

@@ -102,9 +102,9 @@ def demo_branches():
         # 9. Show config structure
         print("9. Project structure:")
         synthdb_dir = config.synthdb_dir
-        print(f"   .synthdb/")
-        print(f"   ├── config")
-        print(f"   └── databases/")
+        print("   .synthdb/")
+        print("   ├── config")
+        print("   └── databases/")
         for db_file in sorted((synthdb_dir / "databases").glob("*.db")):
             print(f"       └── {db_file.name}")
         

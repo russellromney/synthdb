@@ -234,8 +234,91 @@ class Connection:
             
             # Filter rows
             rows = db.query('users', 'age > 25')
+            
+            # With ID aliasing (default):
+            # rows[0]['id'] contains the row identifier
+            
+            # Without ID aliasing:
+            # db = synthdb.connect('app.db', use_id_alias=False)
+            # rows[0]['row_id'] contains the row identifier
         """
-        return query_view(table_name, where, self._get_db_path(), self.backend_name)
+        # If aliasing is enabled and WHERE clause contains 'id', convert to 'row_id'
+        if self.use_id_alias and where:
+            where = self._convert_id_in_where_clause(where)
+        
+        results = query_view(table_name, where, self._get_db_path(), self.backend_name)
+        
+        # Apply ID aliasing if enabled
+        if self.use_id_alias:
+            results = self._apply_id_alias(results)
+        
+        return results
+    
+    def _convert_id_in_where_clause(self, where: str) -> str:
+        """Convert 'id' references to 'row_id' in WHERE clauses."""
+        import re
+        
+        # Pattern to match 'id' as a column name (not part of another word)
+        # Handles cases like: id = "...", id="...", id IN (...), etc.
+        patterns = [
+            (r'\bid\s*=', 'row_id ='),
+            (r'\bid\s*!=', 'row_id !='),
+            (r'\bid\s*<>', 'row_id <>'),
+            (r'\bid\s*<', 'row_id <'),
+            (r'\bid\s*>', 'row_id >'),
+            (r'\bid\s*<=', 'row_id <='),
+            (r'\bid\s*>=', 'row_id >='),
+            (r'\bid\s+IN\s*\(', 'row_id IN ('),
+            (r'\bid\s+NOT\s+IN\s*\(', 'row_id NOT IN ('),
+            (r'\bid\s+LIKE\s+', 'row_id LIKE '),
+            (r'\bid\s+IS\s+', 'row_id IS '),
+            (r'\(\s*id\s*=', '(row_id ='),
+            (r'\(\s*id\s*!=', '(row_id !='),
+        ]
+        
+        result = where
+        for pattern, replacement in patterns:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+        
+        return result
+    
+    def _apply_id_alias(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Apply ID aliasing to query results."""
+        aliased_results = []
+        for row in results:
+            # Create a new dict to avoid modifying the original
+            aliased_row = row.copy()
+            if 'row_id' in aliased_row:
+                # Add 'id' as an alias for 'row_id'
+                aliased_row['id'] = aliased_row.pop('row_id')
+            aliased_results.append(aliased_row)
+        return aliased_results
+    
+    def _convert_id_in_sql(self, sql: str) -> str:
+        """Convert 'id' references to 'row_id' in SQL queries.
+        
+        This handles cases like:
+        - SELECT id FROM users
+        - SELECT u.id FROM users u
+        - JOIN orders o ON u.id = o.user_id
+        - SELECT id as user_id FROM users
+        """
+        import re
+        
+        # Pattern to match table.id or just id in various contexts
+        # This is more comprehensive than WHERE clause conversion
+        patterns = [
+            # Table-qualified id (e.g., u.id, users.id)
+            (r'\b(\w+)\.id\b', r'\1.row_id'),
+            # Standalone id not preceded by a dot (avoid matching things like user_id)
+            (r'(?<![.\w])id\b', 'row_id'),
+        ]
+        
+        result = sql
+        for pattern, replacement in patterns:
+            result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+        
+        return result
     
     def upsert(self, table_name: str, data: Dict[str, Any], row_id: Union[str, int]) -> str:
         """
@@ -561,6 +644,10 @@ class Connection:
         """
         from .sql_validator import SafeQueryExecutor
         
+        # If ID aliasing is enabled, pre-process SQL to convert 'id' to 'row_id'
+        if self.use_id_alias:
+            sql = self._convert_id_in_sql(sql)
+        
         # Create executor with this connection
         executor = SafeQueryExecutor(self)
         
@@ -600,7 +687,8 @@ class Connection:
 
 # Main connection function
 def connect(connection_info: Union[str, Dict[str, Any]] = None, 
-           backend: Optional[str] = None, auto_init: bool = True) -> Connection:
+           backend: Optional[str] = None, auto_init: bool = True,
+           use_id_alias: bool = True) -> Connection:
     """
     Create a SynthDB connection.
     
@@ -610,6 +698,7 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
         connection_info: Database file path or dict. If None, uses local project config
         backend: Database backend ('libsql', 'sqlite')
         auto_init: Automatically initialize database if it doesn't exist
+        use_id_alias: Whether to show row_id as 'id' in query results (default: True)
         
     Returns:
         Connection instance
@@ -623,6 +712,9 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
         
         # Use local project config (if .synthdb exists)
         db = synthdb.connect()
+        
+        # Disable ID aliasing for backward compatibility
+        db = synthdb.connect('app.db', use_id_alias=False)
     """
     # Check for local project config if no connection info provided
     if connection_info is None:
@@ -638,4 +730,4 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
             # Fall back to default
             connection_info = 'db.db'
     
-    return Connection(connection_info, backend, auto_init)
+    return Connection(connection_info, backend, auto_init, use_id_alias)

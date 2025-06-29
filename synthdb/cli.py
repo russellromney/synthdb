@@ -544,7 +544,7 @@ def table_add_column(
 @app.command("insert")  
 def insert_cmd(
     table: str = typer.Argument(..., help="Table name"),
-    row_id: str = typer.Argument(..., help="Row ID"),
+    id: str = typer.Argument(..., help="Row ID"),
     column: str = typer.Argument(..., help="Column name"),
     value: str = typer.Argument(..., help="Value to insert"),
     data_type: str = typer.Argument(None, help="Data type (text, integer, real, timestamp). If not provided, type will be inferred."),
@@ -558,7 +558,7 @@ def insert_cmd(
     
         import synthdb
         db = synthdb.connect('db.db')
-        row_id = db.insert('table', {'col1': 'val1', 'col2': 'val2'})
+        id = db.insert('table', {'col1': 'val1', 'col2': 'val2'})
     
     Or use the 'add' command for JSON input with auto-generated IDs.
     """
@@ -569,9 +569,9 @@ def insert_cmd(
     if auto or data_type is None:
         try:
             inferred_type, converted_value = smart_insert(
-                table, row_id, column, value, connection_info, backend
+                table, id, column, value, connection_info, backend
             )
-            console.print(f"[green]Inserted value '{value}' into {table}.{column} for row {row_id}[/green]")
+            console.print(f"[green]Inserted value '{value}' into {table}.{column} for id {id}[/green]")
             console.print(f"[blue]Inferred type: {inferred_type}[/blue]")
             return
         except Exception as e:
@@ -615,8 +615,8 @@ def insert_cmd(
         
         # Use connection API for single column insert
         db = connect(connection_info, backend)
-        db.insert(table, column, converted_value, row_id=row_id, force_type=data_type)
-        console.print(f"[green]Inserted value '{value}' into {table}.{column} for row {row_id}[/green]")
+        db.insert(table, column, converted_value, row_id=id, force_type=data_type)
+        console.print(f"[green]Inserted value '{value}' into {table}.{column} for id {id}[/green]")
         
     except ValueError as e:
         console.print(f"[red]Invalid value for type {data_type}: {e}[/red]")
@@ -691,7 +691,6 @@ def sql_cmd(
     """
     try:
         import json
-        from .sql_validator import SafeQueryExecutor
         
         # Parse parameters if provided
         query_params = None
@@ -1370,10 +1369,10 @@ def add_cmd(
     data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
     backend: str = typer.Option(None, "--backend", "-b", help="Database backend"),
-    row_id: str = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
+    id: str = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
 ):
     """Add data using the modern API (auto-generated IDs, type inference)."""
-    _add_implementation(table, data, path, backend, row_id)
+    _add_implementation(table, data, path, backend, id)
 
 
 
@@ -1411,7 +1410,7 @@ def _export_table_structure(db, table_name: str) -> str:
     return create_statement
 
 
-def _add_implementation(table: str, data: str, path: str, backend: str, row_id: str) -> None:
+def _add_implementation(table: str, data: str, path: str, backend: str, id: str) -> None:
     """Implementation for add/insert commands."""
     import json
     
@@ -1434,11 +1433,11 @@ def _add_implementation(table: str, data: str, path: str, backend: str, row_id: 
             table, data_dict, 
             connection_info=connection_info, 
             backend_name=backend,
-            row_id=row_id
+            row_id=id
         )
         
-        if row_id is not None:
-            console.print(f"[green]Added data to row {result_id} in table '{table}'[/green]")
+        if id is not None:
+            console.print(f"[green]Added data to id {result_id} in table '{table}'[/green]")
         else:
             console.print(f"[green]Added data with auto-generated ID {result_id} in table '{table}'[/green]")
             

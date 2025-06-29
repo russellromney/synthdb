@@ -4,7 +4,6 @@ import os
 import shutil
 from pathlib import Path
 import synthdb
-from synthdb.api import insert, query
 from synthdb.local_config import get_local_config, init_local_project
 
 

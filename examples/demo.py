@@ -228,7 +228,7 @@ def main_demo():
     visible_cols = db.list_columns('products')
     all_cols = db.list_columns('products', include_deleted=True)
     
-    print(f"\n📊 Column Listing Results:")
+    print("\n📊 Column Listing Results:")
     print(f"   • Visible columns: {[c['name'] for c in visible_cols]}")
     print(f"   • All columns (including deleted): {[c['name'] for c in all_cols]}")
     print(f"   • Soft deleted columns: {[c['name'] for c in all_cols if c['deleted_at']]}")

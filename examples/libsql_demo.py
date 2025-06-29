@@ -26,7 +26,7 @@ def libsql_demo():
     print("-" * 35)
     
     db = synthdb.connect('libsql_demo.db')
-    print(f"✅ Connected to local database")
+    print("✅ Connected to local database")
     print(f"🔧 Backend: {db.backend.get_name()}")
     
     # Create a simple table
@@ -58,7 +58,7 @@ def libsql_demo():
         try:
             print(f"🌐 Connecting to: {remote_url}")
             remote_db = synthdb.connect(remote_url)
-            print(f"✅ Connected to remote LibSQL database!")
+            print("✅ Connected to remote LibSQL database!")
             print(f"🔧 Backend: {remote_db.backend.get_name()}")
             
             # You can work with remote databases just like local ones

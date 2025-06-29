@@ -245,7 +245,7 @@ def main():
             'office_location': random.choice(['New York', 'San Francisco', 'Chicago', 'Remote'])
         }
         
-        emp_id = db.insert('employees', employee)
+        db.insert('employees', employee)
         employees.append(employee)
         print(f"  Added employee: {employee['first_name']} {employee['last_name']} - {employee['position']}")
     

@@ -320,6 +320,10 @@ class SafeQueryExecutor:
                 else:
                     results.append(dict(zip(columns, row)))
             
+            # Apply ID aliasing if enabled on the connection
+            if hasattr(self.connection, 'use_id_alias') and self.connection.use_id_alias:
+                results = self.connection._apply_id_alias(results)
+            
             return results
         finally:
             backend.close(db)
