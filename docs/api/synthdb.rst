@@ -36,14 +36,6 @@ synthdb.cli module
    :show-inheritance:
    :undoc-members:
 
-synthdb.completion module
--------------------------
-
-.. automodule:: synthdb.completion
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
 synthdb.config module
 ---------------------
 
@@ -104,6 +96,14 @@ synthdb.inference module
 ------------------------
 
 .. automodule:: synthdb.inference
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+synthdb.local\_config module
+----------------------------
+
+.. automodule:: synthdb.local_config
    :members:
    :show-inheritance:
    :undoc-members:

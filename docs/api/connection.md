@@ -100,11 +100,6 @@ columns = db.list_columns('users')
     options:
       show_source: true
 
-#### refresh_views()
-
-::: synthdb.Connection.refresh_views
-    options:
-      show_source: true
 
 ## Examples
 

@@ -140,8 +140,6 @@ class TestSynthDBConnection:
         self.db.insert('products', {'name': 'Product B', 'price': 20.0, 'active': False})
         self.db.insert('products', {'name': 'Product C', 'price': 30.0, 'active': True})
         
-        # Refresh views to ensure data is visible
-        self.db.refresh_views()
         
         # Query all products
         all_products = self.db.query('products')

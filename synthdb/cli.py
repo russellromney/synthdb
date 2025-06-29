@@ -1175,6 +1175,101 @@ def branch_delete(
         raise typer.Exit(1)
 
 
+@branch_app.command("merge")
+def branch_merge(
+    source: str = typer.Argument(..., help="Source branch to merge from"),
+    target: str = typer.Option(None, "--into", "-i", help="Target branch to merge into (default: current branch)"),
+    dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Show what would be merged without making changes"),
+):
+    """Merge table structure changes from one branch to another.
+    
+    This command merges new tables and columns from the source branch into the target branch.
+    It does NOT merge data, only structure. Existing columns are never modified.
+    
+    Type conflicts (where a column exists in both branches with different types) are reported
+    but not merged.
+    """
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[red]No .synthdb directory found[/red]")
+            raise typer.Exit(1)
+        
+        # Validate branches exist
+        branches = local_config.list_branches()
+        if source not in branches:
+            console.print(f"[red]Source branch '{source}' does not exist[/red]")
+            raise typer.Exit(1)
+        
+        # Determine target branch
+        if target is None:
+            target = local_config.get_active_branch()
+            console.print(f"[blue]Merging into current branch: {target}[/blue]")
+        elif target not in branches:
+            console.print(f"[red]Target branch '{target}' does not exist[/red]")
+            raise typer.Exit(1)
+        
+        # Can't merge branch into itself
+        if source == target:
+            console.print(f"[red]Cannot merge branch '{source}' into itself[/red]")
+            raise typer.Exit(1)
+        
+        # Show what we're doing
+        if dry_run:
+            console.print(f"[yellow]DRY RUN: Showing what would be merged from '{source}' into '{target}'[/yellow]")
+        else:
+            console.print(f"[blue]Merging structure from '{source}' into '{target}'...[/blue]")
+        
+        # Perform the merge
+        results = local_config.merge_structure(source, target, dry_run=dry_run)
+        
+        # Display results
+        if not results['new_tables'] and not results['new_columns'] and not results['type_conflicts']:
+            console.print(f"[green]No structure changes to merge from '{source}' to '{target}'[/green]")
+            return
+        
+        # Show new tables
+        if results['new_tables']:
+            console.print(f"\n[bold]New Tables:[/bold]")
+            for table in results['new_tables']:
+                if dry_run:
+                    console.print(f"  [yellow]+ {table}[/yellow] (would be created)")
+                else:
+                    console.print(f"  [green]+ {table}[/green] (created)")
+        
+        # Show new columns
+        if results['new_columns']:
+            console.print(f"\n[bold]New Columns:[/bold]")
+            for table, columns in results['new_columns'].items():
+                console.print(f"  Table: {table}")
+                for column in columns:
+                    if dry_run:
+                        console.print(f"    [yellow]+ {column}[/yellow] (would be added)")
+                    else:
+                        console.print(f"    [green]+ {column}[/green] (added)")
+        
+        # Show type conflicts
+        if results['type_conflicts']:
+            console.print(f"\n[bold red]Type Conflicts (not merged):[/bold red]")
+            for conflict in results['type_conflicts']:
+                console.print(f"  Table: {conflict['table']}")
+                console.print(f"    Column: {conflict['column']}")
+                console.print(f"    Source type: {conflict['source_type']}")
+                console.print(f"    Target type: {conflict['target_type']}")
+        
+        # Summary
+        if dry_run:
+            console.print(f"\n[yellow]DRY RUN completed. No changes were made.[/yellow]")
+            console.print("[blue]Run without --dry-run to apply these changes.[/blue]")
+        else:
+            console.print(f"\n[green]✓ Structure merge completed successfully![/green]")
+        
+    except Exception as e:
+        console.print(f"[red]Error merging branches: {e}[/red]")
+        raise typer.Exit(1)
+
+
 @app.command("add")
 def add_cmd(
     table: str = typer.Argument(..., help="Table name"),

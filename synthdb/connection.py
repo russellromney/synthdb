@@ -450,11 +450,6 @@ class Connection:
         return get_table_history(table_name, str(row_id), column_name, include_deleted, 
                                 self._get_db_path(), self.backend_name)
     
-    def refresh_views(self) -> None:
-        """
-        Refresh all table views in the database.
-        """
-        create_table_views(self._get_db_path(), self.backend_name)
     
     def rename_column(self, table_name: str, old_column_name: str, new_column_name: str) -> None:
         """

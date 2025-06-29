@@ -83,6 +83,11 @@ sdb branch delete old-branch  # Delete a branch
 sdb branch create hotfix --from production  # Create from specific branch
 sdb branch create test --no-switch         # Create without switching
 sdb branch delete temp --force              # Delete without confirmation
+
+# Merge structure changes between branches
+sdb branch merge feature-x              # Merge feature-x into current branch
+sdb branch merge feature-x --into main  # Merge feature-x into main
+sdb branch merge feature-x --dry-run    # Preview changes without merging
 ```
 
 #### How Branches Work
@@ -92,6 +97,28 @@ sdb branch delete temp --force              # Delete without confirmation
 - Switching branches automatically points `synthdb.connect()` to the right database
 - Changes in one branch don't affect other branches
 - Perfect for testing features, migrations, or experiments
+
+#### Structure Merging
+
+SynthDB supports merging table structures between branches:
+
+- **What gets merged**: New tables and new columns only
+- **What doesn't merge**: Data, column type changes, column deletions
+- **Type safety**: If a column exists in both branches with different types, it's reported but not merged
+- **Dry run support**: Preview changes before applying them
+
+Example workflow:
+```bash
+# Create feature branch and add new structure
+sdb branch create feature-analytics
+sdb branch switch feature-analytics
+# ... add new analytics tables and columns ...
+
+# Merge structure back to main
+sdb branch switch main
+sdb branch merge feature-analytics --dry-run  # Preview first
+sdb branch merge feature-analytics             # Apply changes
+```
 
 ### CLI Usage
 
@@ -321,8 +348,16 @@ db.insert("user_profiles", {
 config.create_branch("staging", from_branch="main")
 config.set_active_branch("staging")
 
-# 5. When ready, manually migrate changes to production
-# (Future versions will include merge capabilities)
+# 5. Merge structure changes back to main
+config.set_active_branch("main")
+results = config.merge_structure("feature-user-profiles", dry_run=True)
+print(f"Would add tables: {results['new_tables']}")
+print(f"Would add columns: {results['new_columns']}")
+
+# 6. Apply the merge
+if input("Apply changes? (y/n): ").lower() == 'y':
+    results = config.merge_structure("feature-user-profiles")
+    print("Structure merged successfully!")
 ```
 
 ## Examples
@@ -338,6 +373,9 @@ python examples/local_project_demo.py
 
 # Comprehensive branch workflow demo
 python examples/branch_demo.py
+
+# Branch structure merging demo
+python examples/merge_demo.py
 ```
 
 **Modern Demo** (`demo.py`) demonstrates:
@@ -363,6 +401,13 @@ python examples/branch_demo.py
 - Working with multiple branches simultaneously
 - Branch-specific data modifications
 - Comparing data across branches
+
+**Merge Demo** (`merge_demo.py`) demonstrates:
+- Creating branches with different schema changes
+- Merging new tables and columns between branches
+- Handling type conflicts safely
+- Dry-run previews before merging
+- Non-destructive merge operations
 
 ## Documentation
 
@@ -435,8 +480,6 @@ synthdb/
 - `db.list_tables()` - List all tables with metadata
 - `db.list_columns(table)` - List columns in table with types and IDs
 
-#### Utility Methods
-- `db.refresh_views()` - Regenerate all views
 
 
 ## CLI Commands

@@ -229,6 +229,99 @@ class LocalConfig:
             return self.config.get('database', 'backend')
         except (configparser.NoSectionError, configparser.NoOptionError):
             return 'sqlite'
+    
+    def merge_structure(self, from_branch: str, to_branch: Optional[str] = None,
+                       dry_run: bool = False) -> Dict[str, Any]:
+        """Merge table structure changes from one branch to another.
+        
+        Only adds new tables and columns. Does not modify existing columns
+        or change data types.
+        
+        Args:
+            from_branch: Source branch to merge from
+            to_branch: Target branch to merge to (default: current branch)
+            dry_run: If True, only show what would be merged without making changes
+            
+        Returns:
+            Dictionary with merge results including added tables and columns
+        """
+        if not self.synthdb_dir:
+            raise ValueError("No .synthdb directory initialized")
+        
+        if to_branch is None:
+            to_branch = self.get_active_branch()
+        
+        # Get database paths
+        from_db = self.get_database_path(from_branch)
+        to_db = self.get_database_path(to_branch)
+        
+        if not from_db or not Path(from_db).exists():
+            raise ValueError(f"Source branch '{from_branch}' database not found")
+        if not to_db or not Path(to_db).exists():
+            raise ValueError(f"Target branch '{to_branch}' database not found")
+        
+        # Import synthdb to work with databases
+        import synthdb
+        
+        # Connect to both databases
+        source_db = synthdb.connect(from_db, backend=self.get_default_backend())
+        target_db = synthdb.connect(to_db, backend=self.get_default_backend())
+        
+        # Get structure from both databases
+        source_tables = {t['name']: t for t in source_db.list_tables()}
+        target_tables = {t['name']: t for t in target_db.list_tables()}
+        
+        merge_results = {
+            'from_branch': from_branch,
+            'to_branch': to_branch,
+            'new_tables': [],
+            'new_columns': {},
+            'type_conflicts': [],
+            'dry_run': dry_run
+        }
+        
+        # Find new tables in source
+        for table_name, table_info in source_tables.items():
+            if table_name not in target_tables:
+                merge_results['new_tables'].append(table_name)
+                
+                if not dry_run:
+                    # Create the table in target
+                    target_db.create_table(table_name)
+                    
+                    # Get all columns from source table
+                    source_columns = source_db.list_columns(table_name)
+                    
+                    # Add columns to target table
+                    column_types = {col['name']: col['data_type'] for col in source_columns}
+                    if column_types:
+                        target_db.add_columns(table_name, column_types)
+            else:
+                # Table exists, check for new columns
+                source_columns = {c['name']: c for c in source_db.list_columns(table_name)}
+                target_columns = {c['name']: c for c in target_db.list_columns(table_name)}
+                
+                new_cols = {}
+                for col_name, col_info in source_columns.items():
+                    if col_name not in target_columns:
+                        new_cols[col_name] = col_info['data_type']
+                    elif col_info['data_type'] != target_columns[col_name]['data_type']:
+                        # Type conflict - don't merge this column
+                        merge_results['type_conflicts'].append({
+                            'table': table_name,
+                            'column': col_name,
+                            'source_type': col_info['data_type'],
+                            'target_type': target_columns[col_name]['data_type']
+                        })
+                
+                if new_cols:
+                    merge_results['new_columns'][table_name] = list(new_cols.keys())
+                    
+                    if not dry_run:
+                        # Add new columns to target table
+                        target_db.add_columns(table_name, new_cols)
+        
+        return merge_results
 
 
 # Global instance for convenience
