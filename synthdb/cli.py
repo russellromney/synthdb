@@ -12,11 +12,6 @@ from .inference import smart_insert
 from .bulk import load_csv, load_json, export_csv, export_json
 from .errors import TableNotFoundError, ColumnNotFoundError
 from .config_file import config_manager, get_connection_info
-from .completion import (
-    get_table_names, get_column_names, get_data_types, get_backends,
-    get_config_formats, get_connection_names, get_csv_files, get_json_files,
-    get_config_files, complete_file_path, get_output_formats
-)
 
 
 def build_connection_info(path: str, backend: Optional[str] = None, connection_name: Optional[str] = None) -> Union[str, Dict[str, Any]]:
@@ -43,8 +38,8 @@ def build_connection_info(path: str, backend: Optional[str] = None, connection_n
 app = typer.Typer(
     name="synthdb",
     help="SynthDB - A flexible database system with schema-on-write capabilities",
-    add_completion=True,
     invoke_without_command=True,
+    add_completion=False,
 )
 console = Console()
 
@@ -106,7 +101,7 @@ app.add_typer(config_app, name="config")
 def database_init(
     path: str = typer.Option("db.db", "--path", "-p", help="Database file path or connection string"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing database"),
-    backend: str = typer.Option("sqlite", "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    backend: str = typer.Option("sqlite", "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ) -> None:
     """Initialize a new SynthDB database."""
     
@@ -139,8 +134,8 @@ def database_init(
 
 @database_app.command("info")
 def database_info(
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ) -> None:
     """Show database information."""
     try:
@@ -178,8 +173,8 @@ def database_info(
 @table_app.command("create")
 def table_create(
     name: str = typer.Argument(..., help="Table name"),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ) -> None:
     """Create a new table."""
     try:
@@ -194,9 +189,9 @@ def table_create(
 
 @table_app.command("list")
 def table_list(
-    columns: Optional[str] = typer.Argument(None, help="Show columns for specific table", autocompletion=get_table_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    columns: Optional[str] = typer.Argument(None, help="Show columns for specific table"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
     include_deleted: bool = typer.Option(False, "--include-deleted", "-d", help="Include soft-deleted columns"),
 ) -> None:
     """List all tables or columns in a specific table."""
@@ -275,9 +270,9 @@ def _list_implementation(columns: Optional[str], path: str, backend: str, includ
 
 @table_app.command("show")
 def table_show(
-    name: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    name: str = typer.Argument(..., help="Table name"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ) -> None:
     """Show detailed table information."""
     try:
@@ -324,9 +319,9 @@ def table_show(
 
 @table_app.command("export")
 def table_export(
-    name: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    name: str = typer.Argument(..., help="Table name"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ) -> None:
     """Export table structure as CREATE TABLE SQL."""
     try:
@@ -349,11 +344,11 @@ def table_export(
 
 @table_app.command("copy")
 def table_copy(
-    source: str = typer.Argument(..., help="Source table name", autocompletion=get_table_names),
+    source: str = typer.Argument(..., help="Source table name"),
     target: str = typer.Argument(..., help="Target table name"),
     with_data: bool = typer.Option(False, "--with-data", help="Copy data along with structure"),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ) -> None:
     """Copy a table's structure and optionally its data."""
     try:
@@ -378,11 +373,11 @@ def table_copy(
 
 @table_app.command("rename-column")
 def table_rename_column(
-    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    old_name: str = typer.Argument(..., help="Current column name", autocompletion=get_column_names),
+    table: str = typer.Argument(..., help="Table name"),
+    old_name: str = typer.Argument(..., help="Current column name"),
     new_name: str = typer.Argument(..., help="New column name"),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ):
     """Rename a column in a table."""
     try:
@@ -402,10 +397,10 @@ def table_rename_column(
 
 @table_app.command("delete-column")
 def table_delete_column(
-    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
-    column: str = typer.Argument(..., help="Column name to delete", autocompletion=get_column_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    table: str = typer.Argument(..., help="Table name"),
+    column: str = typer.Argument(..., help="Column name to delete"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
     hard: bool = typer.Option(False, "--hard", help="Permanently delete all column data (cannot be recovered)"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
@@ -439,10 +434,10 @@ def table_delete_column(
 
 @table_app.command("delete")
 def table_delete(
-    name: str = typer.Argument(..., help="Table name to delete", autocompletion=get_table_names),
+    name: str = typer.Argument(..., help="Table name to delete"),
     hard: bool = typer.Option(False, "--hard", help="Permanently delete all data (cannot be recovered)"),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
     """Delete a table and all its data."""
@@ -492,11 +487,11 @@ table_app.add_typer(table_add_app)
 
 @table_add_app.command("column")
 def table_add_column(
-    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    table: str = typer.Argument(..., help="Table name"),
     name: str = typer.Argument(..., help="Column name"),
-    data_type: str = typer.Argument(..., help="Data type (text, integer, real, timestamp)", autocompletion=get_data_types),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    data_type: str = typer.Argument(..., help="Data type (text, integer, real, timestamp)"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ):
     """Add a column to an existing table."""
     valid_types = ["text", "integer", "real", "timestamp"]
@@ -521,14 +516,14 @@ def table_add_column(
 # Data commands (moved to main app level)
 @app.command("insert")  
 def insert_cmd(
-    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    table: str = typer.Argument(..., help="Table name"),
     row_id: str = typer.Argument(..., help="Row ID"),
-    column: str = typer.Argument(..., help="Column name", autocompletion=get_column_names),
+    column: str = typer.Argument(..., help="Column name"),
     value: str = typer.Argument(..., help="Value to insert"),
-    data_type: str = typer.Argument(None, help="Data type (text, integer, real, timestamp). If not provided, type will be inferred.", autocompletion=get_data_types),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
+    data_type: str = typer.Argument(None, help="Data type (text, integer, real, timestamp). If not provided, type will be inferred."),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
     auto: bool = typer.Option(False, "--auto", "-a", help="Automatically infer data type"),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ):
     """Insert a value into a specific table/row/column.
     
@@ -606,11 +601,11 @@ def insert_cmd(
 
 @app.command("query")
 def query_cmd(
-    table: str = typer.Argument(..., help="Table name to query", autocompletion=get_table_names),
+    table: str = typer.Argument(..., help="Table name to query"),
     where: Optional[str] = typer.Option(None, "--where", "-w", help="WHERE clause"),
-    format: str = typer.Option("table", "--format", "-f", help="Output format: table, json", autocompletion=get_output_formats),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)", autocompletion=get_backends),
+    format: str = typer.Option("table", "--format", "-f", help="Output format: table, json"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
 ):
     """Query data from a table."""
     _query_implementation(table, where, format, path, backend)
@@ -654,10 +649,10 @@ def _query_implementation(table: str, where: Optional[str], format: str, path: s
 # Load/Export commands
 @app.command("load-csv")
 def load_csv_cmd(
-    file_path: str = typer.Argument(..., help="Path to CSV file", autocompletion=get_csv_files),
-    table: str = typer.Option(None, "--table", "-t", help="Table name (defaults to filename)", autocompletion=get_table_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    file_path: str = typer.Argument(..., help="Path to CSV file"),
+    table: str = typer.Option(None, "--table", "-t", help="Table name (defaults to filename)"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend"),
     create_table: bool = typer.Option(True, "--create-table/--no-create-table", help="Create table if it doesn't exist"),
     delimiter: str = typer.Option(",", "--delimiter", "-d", help="CSV delimiter"),
 ):
@@ -685,10 +680,10 @@ def load_csv_cmd(
 
 @app.command("load-json")
 def load_json_cmd(
-    file_path: str = typer.Argument(..., help="Path to JSON file", autocompletion=get_json_files),
-    table: str = typer.Option(None, "--table", "-t", help="Table name (defaults to filename)", autocompletion=get_table_names),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    file_path: str = typer.Argument(..., help="Path to JSON file"),
+    table: str = typer.Option(None, "--table", "-t", help="Table name (defaults to filename)"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend"),
     create_table: bool = typer.Option(True, "--create-table/--no-create-table", help="Create table if it doesn't exist"),
     json_key: str = typer.Option(None, "--key", "-k", help="JSON key containing array data"),
 ):
@@ -716,10 +711,10 @@ def load_json_cmd(
 
 @app.command("export-csv")
 def export_csv_cmd(
-    table: str = typer.Argument(..., help="Table name to export", autocompletion=get_table_names),
-    file_path: str = typer.Argument(..., help="Output CSV file path", autocompletion=complete_file_path),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    table: str = typer.Argument(..., help="Table name to export"),
+    file_path: str = typer.Argument(..., help="Output CSV file path"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend"),
     where: str = typer.Option(None, "--where", "-w", help="WHERE clause for filtering"),
     delimiter: str = typer.Option(",", "--delimiter", "-d", help="CSV delimiter"),
 ):
@@ -744,10 +739,10 @@ def export_csv_cmd(
 
 @app.command("export-json")
 def export_json_cmd(
-    table: str = typer.Argument(..., help="Table name to export", autocompletion=get_table_names),
-    file_path: str = typer.Argument(..., help="Output JSON file path", autocompletion=complete_file_path),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    table: str = typer.Argument(..., help="Table name to export"),
+    file_path: str = typer.Argument(..., help="Output JSON file path"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend"),
     where: str = typer.Option(None, "--where", "-w", help="WHERE clause for filtering"),
     indent: int = typer.Option(2, "--indent", help="JSON indentation"),
 ):
@@ -773,8 +768,8 @@ def export_json_cmd(
 # Config commands
 @config_app.command("init")
 def config_init(
-    path: str = typer.Option(".synthdb.json", "--path", "-p", help="Config file path", autocompletion=complete_file_path),
-    format: str = typer.Option("json", "--format", "-f", help="Config format (json, yaml, toml)", autocompletion=get_config_formats),
+    path: str = typer.Option(".synthdb.json", "--path", "-p", help="Config file path"),
+    format: str = typer.Option("json", "--format", "-f", help="Config format (json, yaml, toml)"),
     force: bool = typer.Option(False, "--force", help="Overwrite existing config"),
 ):
     """Create a sample configuration file."""
@@ -795,7 +790,7 @@ def config_init(
 
 @config_app.command("show")
 def config_show(
-    config_path: str = typer.Option(None, "--config", "-c", help="Specific config file to show", autocompletion=get_config_files),
+    config_path: str = typer.Option(None, "--config", "-c", help="Specific config file to show"),
 ):
     """Show current configuration."""
     try:
@@ -855,7 +850,7 @@ def config_connections() -> None:
 
 @config_app.command("test")
 def config_test(
-    connection: str = typer.Argument(None, help="Connection name to test (tests default if not specified)", autocompletion=get_connection_names),
+    connection: str = typer.Argument(None, help="Connection name to test (tests default if not specified)"),
 ):
     """Test a database connection."""
     try:
@@ -889,10 +884,10 @@ def config_test(
 
 @app.command("add")
 def add_cmd(
-    table: str = typer.Argument(..., help="Table name", autocompletion=get_table_names),
+    table: str = typer.Argument(..., help="Table name"),
     data: str = typer.Argument(..., help="JSON data to insert (e.g., '{\"name\": \"Widget\", \"price\": 19.99}')"),
-    path: str = typer.Option("db.db", "--path", "-p", help="Database file path", autocompletion=complete_file_path),
-    backend: str = typer.Option(None, "--backend", "-b", help="Database backend", autocompletion=get_backends),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend"),
     row_id: str = typer.Option(None, "--id", help="Explicit row ID (auto-generated if not provided)"),
 ):
     """Add data using the modern API (auto-generated IDs, type inference)."""
@@ -970,29 +965,6 @@ def _add_implementation(table: str, data: str, path: str, backend: str, row_id: 
         raise typer.Exit(1)
 
 
-@app.command("completion")
-def completion_cmd(
-    shell: str = typer.Option(None, "--shell", help="Shell type (bash, zsh, fish)"),
-    install: bool = typer.Option(False, "--install", help="Install completion for your shell"),
-):
-    """Set up shell completion for SynthDB CLI."""
-    from .completion import setup_completion, install_completion
-    
-    if install:
-        console.print("[blue]Installing shell completion...[/blue]")
-        success = install_completion(shell)
-        if success:
-            console.print("[green]✓ Completion installed successfully![/green]")
-        else:
-            console.print("[red]✗ Failed to install completion[/red]")
-            raise typer.Exit(1)
-    else:
-        # Show setup instructions
-        setup_script = setup_completion()
-        console.print("[bold]Shell Completion Setup[/bold]")
-        syntax = Syntax(setup_script, "bash", theme="monokai", line_numbers=False)
-        console.print(syntax)
-        console.print("\n[blue]Tip: Use --install to automatically add completion to your shell configuration[/blue]")
 
 
 if __name__ == "__main__":
