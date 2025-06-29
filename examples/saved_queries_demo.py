@@ -12,6 +12,7 @@ This example shows how to:
 import tempfile
 import os
 from synthdb import connect
+from synthdb.connection import Connection
 
 
 def main():
@@ -123,7 +124,7 @@ def setup_sample_data(db):
     print(f"   ✓ Created {len(orders_data)} orders")
 
 
-def demonstrate_saved_queries(db):
+def demonstrate_saved_queries(db: Connection):
     """Demonstrate various saved query features."""
     print("\n💾 Creating and executing saved queries...")
     

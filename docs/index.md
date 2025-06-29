@@ -62,12 +62,16 @@ results = db.execute_sql("""
 
 1. **[Installation](getting-started/installation.md)** - Install SynthDB and its dependencies
 2. **[Quick Start](getting-started/quickstart.md)** - Get up and running in minutes
-3. **[SQL Queries](getting-started/sql-queries.md)** - Execute safe SQL queries on your data
+3. **[CLI Quick Start](getting-started/cli-quickstart.md)** - Learn the command-line interface
+4. **[SQL Queries](getting-started/sql-queries.md)** - Execute safe SQL queries on your data
 
 ## Documentation Sections
 
+### 📟 [CLI Reference](cli-reference.md)
+Complete command-line interface reference with examples for all commands.
+
 ### 🔧 [API Reference](api/connection.md)
-Complete reference for all SynthDB classes, functions, and CLI commands.
+Complete reference for all SynthDB classes and functions.
 
 ### 🛠️ [Development](development/feature-proposals.md)
 Information for contributors and developers working on SynthDB itself.

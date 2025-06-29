@@ -2,7 +2,7 @@
 """
 SynthDB Demo - Modern Connection-Based API
 
-This demo showcases SynthDB's modern, connection-based API that provides
+This demo showcases SynthDB's API that provides
 a clean, intuitive interface for working with schema-on-write databases.
 """
 
