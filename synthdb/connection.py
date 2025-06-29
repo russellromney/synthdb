@@ -520,6 +520,53 @@ class Connection:
         from .api import delete_table
         delete_table(table_name, hard_delete, self._get_db_path(), self.backend_name)
     
+    def execute_sql(self, sql: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Execute a safe SQL query on the database.
+        
+        Only SELECT queries are allowed. The query is validated for safety before execution.
+        Access to internal SynthDB tables is blocked.
+        
+        Args:
+            sql: The SELECT query to execute
+            params: Optional parameters for the query (for safe parameter binding)
+            
+        Returns:
+            List of dictionaries containing query results
+            
+        Raises:
+            ValueError: If the query is unsafe or invalid
+            Exception: If query execution fails
+            
+        Examples:
+            # Simple query
+            users = db.execute_sql("SELECT * FROM users WHERE age > 25")
+            
+            # Query with parameters (safe from SQL injection)
+            results = db.execute_sql(
+                "SELECT * FROM orders WHERE status = ? AND total > ?",
+                ['completed', 100.0]
+            )
+            
+            # Complex analytical query
+            analytics = db.execute_sql('''
+                SELECT 
+                    category,
+                    COUNT(*) as product_count,
+                    AVG(price) as avg_price
+                FROM products 
+                GROUP BY category
+                ORDER BY avg_price DESC
+            ''')
+        """
+        from .sql_validator import SafeQueryExecutor
+        
+        # Create executor with this connection
+        executor = SafeQueryExecutor(self)
+        
+        # Execute the query
+        return executor.execute_query(sql, params)
+    
     def __repr__(self) -> str:
         """String representation of the connection."""
         backend = self.backend_name or 'auto'

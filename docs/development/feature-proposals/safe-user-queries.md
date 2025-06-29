@@ -1,15 +1,39 @@
 # Feature Proposal: Safe User Query Execution
 
-<div class="status-badge status-proposed">Proposed</div>
+<div class="status-badge status-implemented">Implemented</div>
 
 **Authors**: SynthDB Development Team  
 **Created**: 2024-06-26  
-**Status**: Proposal  
+**Status**: Implemented (2025-06-29)  
 **Complexity**: Medium  
 
 ## Summary
 
 Add the ability for users to execute custom SQL queries on SynthDB databases with built-in safety mechanisms that prevent modification of database structure or access to internal tables. This would enable advanced users to leverage SQL for complex queries while maintaining data integrity and security.
+
+## Implementation Notes
+
+This feature has been implemented with the following components:
+
+1. **SQL Validator** (`synthdb/sql_validator.py`):
+   - `SQLValidator` class for query and identifier validation
+   - Reserved keyword checking for table/column names
+   - Query safety validation (SELECT-only, no internal tables)
+   - `SafeQueryExecutor` for secure query execution
+
+2. **Connection API** (`synthdb.Connection.execute_sql()`):
+   - Simple interface for executing safe SQL queries
+   - Support for parameterized queries
+   - Automatic safety validation
+
+3. **Table/Column Protection**:
+   - SQL keywords cannot be used as table or column names
+   - Internal SynthDB tables are protected from user queries
+   - Validation integrated into `create_table()` and `add_column()` methods
+
+4. **Comprehensive Testing** (`tests/test_sql_execution.py`):
+   - Tests for query execution, safety features, and keyword validation
+   - Example demonstrations in `examples/sql_execution_demo.py`
 
 ## Motivation
 

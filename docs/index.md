@@ -13,6 +13,7 @@ SynthDB is a modern database system that adapts to your data as it evolves. Unli
 - **Schema Evolution**: Add columns to existing tables without migration scripts
 - **Type Safety**: Type-specific storage tables for optimal performance and data integrity
 - **History Tracking**: Built-in audit trail with creation and update timestamps
+- **Safe SQL Execution**: Execute custom SELECT queries with built-in safety validation
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
 - **SQLite Backend**: Built on SQLite - the world's most widely deployed database engine
@@ -48,12 +49,20 @@ user_id = db.insert('users', {
 
 # Query data
 users = db.query('users', 'age > 25')
+
+# Execute custom SQL queries
+results = db.execute_sql("""
+    SELECT name, age, AVG(score) OVER () as avg_score
+    FROM users
+    WHERE active = 1
+""")
 ```
 
 ## Getting Started
 
 1. **[Installation](getting-started/installation.md)** - Install SynthDB and its dependencies
 2. **[Quick Start](getting-started/quickstart.md)** - Get up and running in minutes
+3. **[SQL Queries](getting-started/sql-queries.md)** - Execute safe SQL queries on your data
 
 ## Documentation Sections
 

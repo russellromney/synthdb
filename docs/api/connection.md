@@ -86,6 +86,12 @@ columns = db.list_columns('users')
     options:
       show_source: true
 
+#### execute_sql()
+
+::: synthdb.Connection.execute_sql
+    options:
+      show_source: true
+
 ### Database Inspection
 
 #### list_tables()

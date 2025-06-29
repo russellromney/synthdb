@@ -10,6 +10,7 @@ nav:
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
+    - SQL Queries: getting-started/sql-queries.md
   - API Reference:
     - Connection Class: api/connection.md
   - Development:

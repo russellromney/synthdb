@@ -673,6 +673,100 @@ def _query_implementation(table: str, where: Optional[str], format: str, path: s
         raise typer.Exit(1)
 
 
+@app.command("sql")
+def sql_cmd(
+    query: str = typer.Argument(..., help="SQL query to execute (SELECT only)"),
+    params: Optional[str] = typer.Option(None, "--params", "-p", help="Query parameters as JSON array"),
+    format: str = typer.Option("table", "--format", "-f", help="Output format: table, json, csv"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+    path: str = typer.Option("db.db", "--path", help="Database file path"),
+    backend: str = typer.Option(None, "--backend", "-b", help="Database backend (sqlite, libsql)"),
+):
+    """Execute a safe SQL query (SELECT only).
+    
+    Examples:
+        sdb sql "SELECT * FROM users WHERE age > 25"
+        sdb sql "SELECT * FROM users WHERE age > ?" --params "[25]"
+        sdb sql "SELECT name, COUNT(*) FROM users GROUP BY name" --format json
+    """
+    try:
+        import json
+        from .sql_validator import SafeQueryExecutor
+        
+        # Parse parameters if provided
+        query_params = None
+        if params:
+            try:
+                query_params = json.loads(params)
+                if not isinstance(query_params, list):
+                    console.print("[red]Error: --params must be a JSON array[/red]")
+                    raise typer.Exit(1)
+            except json.JSONDecodeError:
+                console.print("[red]Error: Invalid JSON in --params[/red]")
+                raise typer.Exit(1)
+        
+        # Connect and execute
+        connection_info = build_connection_info(path, backend)
+        db = connect(connection_info, backend)
+        
+        try:
+            results = db.execute_sql(query, query_params)
+        except ValueError as e:
+            console.print(f"[red]Query validation error: {e}[/red]")
+            raise typer.Exit(1)
+        
+        if not results:
+            console.print("[yellow]No results found[/yellow]")
+            return
+        
+        # Format output
+        if format == "json":
+            output_text = json.dumps(results, indent=2, default=str)
+            if output:
+                with open(output, 'w') as f:
+                    f.write(output_text)
+                console.print(f"[green]Results written to {output}[/green]")
+            else:
+                console.print(output_text)
+                
+        elif format == "csv":
+            import csv
+            import io
+            
+            if results:
+                output_buffer = io.StringIO()
+                writer = csv.DictWriter(output_buffer, fieldnames=results[0].keys())
+                writer.writeheader()
+                writer.writerows(results)
+                output_text = output_buffer.getvalue()
+                
+                if output:
+                    with open(output, 'w') as f:
+                        f.write(output_text)
+                    console.print(f"[green]Results written to {output}[/green]")
+                else:
+                    console.print(output_text)
+                    
+        else:  # table format
+            # Create a rich table
+            table_display = Table(title="Query Results")
+            
+            # Add columns
+            for column in results[0].keys():
+                table_display.add_column(column, style="cyan")
+            
+            # Add rows
+            for row in results:
+                table_display.add_row(*[str(value) for value in row.values()])
+            
+            console.print(table_display)
+            console.print(f"\n[dim]Returned {len(results)} row(s)[/dim]")
+            
+    except Exception as e:
+        console.print(f"[red]Error executing SQL: {e}[/red]")
+        raise typer.Exit(1)
+
+
 # Load/Export commands
 @app.command("load-csv")
 def load_csv_cmd(
@@ -927,7 +1021,7 @@ def project_init(
         # Initialize the project
         project_path = init_local_project(target_dir)
         console.print(f"[green]✓ Initialized SynthDB project in {project_path}[/green]")
-        console.print(f"[blue]Created .synthdb/config with default database at .synthdb/databases/main.db[/blue]")
+        console.print("[blue]Created .synthdb/config with default database at .synthdb/databases/main.db[/blue]")
         
     except Exception as e:
         console.print(f"[red]Error initializing project: {e}[/red]")
@@ -1231,7 +1325,7 @@ def branch_merge(
         
         # Show new tables
         if results['new_tables']:
-            console.print(f"\n[bold]New Tables:[/bold]")
+            console.print("\n[bold]New Tables:[/bold]")
             for table in results['new_tables']:
                 if dry_run:
                     console.print(f"  [yellow]+ {table}[/yellow] (would be created)")
@@ -1240,7 +1334,7 @@ def branch_merge(
         
         # Show new columns
         if results['new_columns']:
-            console.print(f"\n[bold]New Columns:[/bold]")
+            console.print("\n[bold]New Columns:[/bold]")
             for table, columns in results['new_columns'].items():
                 console.print(f"  Table: {table}")
                 for column in columns:
@@ -1251,7 +1345,7 @@ def branch_merge(
         
         # Show type conflicts
         if results['type_conflicts']:
-            console.print(f"\n[bold red]Type Conflicts (not merged):[/bold red]")
+            console.print("\n[bold red]Type Conflicts (not merged):[/bold red]")
             for conflict in results['type_conflicts']:
                 console.print(f"  Table: {conflict['table']}")
                 console.print(f"    Column: {conflict['column']}")
@@ -1260,10 +1354,10 @@ def branch_merge(
         
         # Summary
         if dry_run:
-            console.print(f"\n[yellow]DRY RUN completed. No changes were made.[/yellow]")
+            console.print("\n[yellow]DRY RUN completed. No changes were made.[/yellow]")
             console.print("[blue]Run without --dry-run to apply these changes.[/blue]")
         else:
-            console.print(f"\n[green]✓ Structure merge completed successfully![/green]")
+            console.print("\n[green]✓ Structure merge completed successfully![/green]")
         
     except Exception as e:
         console.print(f"[red]Error merging branches: {e}[/red]")

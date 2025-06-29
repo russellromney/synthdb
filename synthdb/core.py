@@ -4,6 +4,7 @@ from .types import get_type_table_name
 from .backends import get_backend
 from .config import config
 from .constants import validate_column_name, validate_table_name
+from .sql_validator import SQLValidator
 from typing import Optional, Any, cast
 
 
@@ -296,6 +297,12 @@ def create_table(table_name: str, db_path: str = 'db.db', backend_name: Optional
     # Validate table name is not protected
     validate_table_name(table_name)
     
+    # Validate table name against SQL keywords
+    validator = SQLValidator()
+    validation = validator.validate_table_name(table_name)
+    if not validation.is_safe:
+        raise ValueError(f"Invalid table name: {'; '.join(validation.errors)}")
+    
     # Get the appropriate backend
     backend_to_use = backend_name or config.get_backend_for_path(db_path)
     backend = get_backend(backend_to_use)
@@ -362,6 +369,12 @@ def _add_column_with_connection(backend: Any, connection: Any, table_name: str, 
     """Add a column using provided backend and connection."""
     # Validate column name is not protected
     validate_column_name(column_name)
+    
+    # Validate column name against SQL keywords
+    validator = SQLValidator()
+    validation = validator.validate_column_name(column_name)
+    if not validation.is_safe:
+        raise ValueError(f"Invalid column name: {'; '.join(validation.errors)}")
     
     # Get table ID
     cur = backend.execute(connection, "SELECT id FROM table_definitions WHERE name = ? AND deleted_at IS NULL", (table_name,))

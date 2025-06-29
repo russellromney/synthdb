@@ -13,6 +13,8 @@ A flexible database system with schema-on-write capabilities. SynthDB makes it e
 - **SQLite Backend**: Built on SQLite, the world's most widely deployed database engine
 - **Local Project Management**: Built-in `.synthdb` directory for project-local databases
 - **Branch Support**: Create and switch between database branches for development workflows
+- **Safe SQL Execution**: Execute custom SELECT queries with built-in safety validation
+- **SQL Keyword Protection**: Prevents table/column names that conflict with SQL keywords
 
 ## Installation
 
@@ -210,6 +212,19 @@ db.upsert('products', {
     'price': 24.99
 }, row_id=product_id)
 
+# Execute custom SQL queries safely
+results = db.execute_sql("""
+    SELECT category, COUNT(*) as count, AVG(price) as avg_price
+    FROM products
+    GROUP BY category
+""")
+
+# Parameterized queries (SQL injection safe)
+expensive_products = db.execute_sql(
+    "SELECT * FROM products WHERE price > ? AND active = ?",
+    [100.0, True]
+)
+
 # Database inspection
 tables = db.list_tables()
 columns = db.list_columns('products')
@@ -388,6 +403,14 @@ python examples/merge_demo.py
 - Different connection methods
 - API benefits and best practices
 
+**SQL Execution Demo** (`sql_execution_demo.py`) demonstrates:
+- Safe execution of custom SELECT queries
+- Parameterized queries to prevent SQL injection
+- Complex analytical queries with aggregations
+- JOIN operations across tables
+- Safety validations and restrictions
+- Working with timestamps and SQL functions
+
 **Local Project Demo** (`local_project_demo.py`) demonstrates:
 - Initializing a `.synthdb` project directory
 - Working with the local configuration
@@ -514,6 +537,7 @@ synthdb/
 - `sdb query <table> [--where <clause>]` - Query table data
 - `sdb q <table>` - Shortcut for query
 - `sdb insert <table> <row_id> <column> <value> <type>` - Insert value into specific row/column
+- `sdb sql <query> [--params <json>] [--format <format>]` - Execute safe SQL queries (SELECT only)
 
 > 💡 **Tip**: Use shortcuts for faster development: `sdb db init`, `sdb t create users`, `sdb i users '{"name":"John"}'`, `sdb q users`
 
@@ -533,6 +557,25 @@ sdb query products --path "libsql://your-database.turso.io"
 # Explicitly specify backend
 sdb query products --path myapp.db --backend sqlite  # Default
 sdb query products --path myapp.db --backend libsql  # For LibSQL features
+```
+
+**SQL Query Examples:**
+```bash
+# Simple SELECT query
+sdb sql "SELECT * FROM users WHERE age > 25"
+
+# Query with parameters (safe from SQL injection)
+sdb sql "SELECT * FROM users WHERE age > ? AND active = ?" --params "[25, true]"
+
+# Aggregation queries
+sdb sql "SELECT department, COUNT(*) as count, AVG(salary) as avg FROM users GROUP BY department"
+
+# Output formats
+sdb sql "SELECT * FROM products" --format json
+sdb sql "SELECT * FROM products" --format csv --output products.csv
+
+# Join queries
+sdb sql "SELECT u.name, COUNT(o.id) as orders FROM users u LEFT JOIN orders o ON u.row_id = o.user_id GROUP BY u.row_id"
 ```
 
 ## License
