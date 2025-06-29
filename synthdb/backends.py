@@ -87,8 +87,31 @@ class SqliteBackend(LocalBackend):
     """SQLite database backend."""
     
     def _connect_file(self, db_path: str) -> sqlite3.Connection:
-        """Connect to SQLite database."""
-        return sqlite3.connect(db_path)
+        """Connect to SQLite database with performance optimizations."""
+        import os
+        
+        # Check if this is a new database
+        is_new_db = not os.path.exists(db_path)
+        
+        conn = sqlite3.connect(db_path)
+        
+        # Performance optimizations
+        
+        # Set page size FIRST for new databases (must be done before any tables)
+        if is_new_db:
+            conn.execute("PRAGMA page_size=8192")
+            conn.commit()
+        
+        # Enable WAL mode for better concurrency
+        conn.execute("PRAGMA journal_mode=WAL")
+        
+        # Set synchronous to NORMAL (faster than FULL, still safe)
+        conn.execute("PRAGMA synchronous=NORMAL")
+        
+        # Increase cache size to 64MB (negative = KB, so -64000 = 64MB)
+        conn.execute("PRAGMA cache_size=-64000")
+        
+        return conn
     
     def execute(self, connection: sqlite3.Connection, query: str, params: Optional[Tuple[Any, ...]] = None) -> sqlite3.Cursor:
         """Execute a query on SQLite."""
@@ -162,14 +185,41 @@ class LibSQLBackend(LocalBackend):
             )
     
     def _connect_file(self, db_path: str) -> Any:
-        """Connect to LibSQL database."""
+        """Connect to LibSQL database with performance optimizations."""
+        import os
+        
+        # Check if this is a remote database
+        is_remote = db_path.startswith(('http://', 'https://', 'libsql://'))
+        
         # LibSQL can connect to local files or remote databases
-        if db_path.startswith(('http://', 'https://', 'libsql://')):
+        if is_remote:
             # Remote database
-            return self._libsql.connect(db_path)
+            conn = self._libsql.connect(db_path)
         else:
             # Local file
-            return self._libsql.connect(f"file:{db_path}")
+            is_new_db = not os.path.exists(db_path)
+            conn = self._libsql.connect(f"file:{db_path}")
+        
+        # Apply performance optimizations (for local databases)
+        try:
+            # Set page size FIRST for new local databases (must be done before any tables)
+            if not is_remote and is_new_db:
+                conn.execute("PRAGMA page_size=8192")
+                conn.commit()
+            
+            # Enable WAL mode for better concurrency
+            conn.execute("PRAGMA journal_mode=WAL")
+            
+            # Set synchronous to NORMAL (faster than FULL, still safe)
+            conn.execute("PRAGMA synchronous=NORMAL")
+            
+            # Increase cache size to 64MB (negative = KB, so -64000 = 64MB)
+            conn.execute("PRAGMA cache_size=-64000")
+        except:
+            # Remote databases may not support these pragmas
+            pass
+        
+        return conn
     
     def execute(self, connection: Any, query: str, params: Optional[Tuple[Any, ...]] = None) -> Any:
         """Execute a query on LibSQL."""
