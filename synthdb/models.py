@@ -129,11 +129,20 @@ class ModelGenerator:
     def __init__(self, connection: Connection):
         self.connection = connection
     
-    def generate_model(self, table_name: str, model_name: Optional[str] = None) -> Type[SynthDBModel]:
-        """Generate a Pydantic model for a specific table."""
+    def generate_model(self, table_name: str, model_name: Optional[str] = None, as_base: bool = False) -> Type[SynthDBModel]:
+        """Generate a Pydantic model for a specific table.
+        
+        Args:
+            table_name: Name of the table
+            model_name: Optional custom model name
+            as_base: If True, appends 'Base' to the model name for inheritance
+        """
         if model_name is None:
             # Convert table name to PascalCase
             model_name = self._table_name_to_class_name(table_name)
+        
+        if as_base:
+            model_name = f"{model_name}Base"
         
         # Get table columns
         columns = self.connection.list_columns(table_name)
@@ -164,14 +173,18 @@ class ModelGenerator:
         
         return model
     
-    def generate_all_models(self) -> Dict[str, Type[SynthDBModel]]:
-        """Generate models for all tables in the database."""
+    def generate_all_models(self, as_base: bool = False) -> Dict[str, Type[SynthDBModel]]:
+        """Generate models for all tables in the database.
+        
+        Args:
+            as_base: If True, generates base models with 'Base' suffix
+        """
         tables = self.connection.list_tables()
         models = {}
         
         for table in tables:
             table_name = table['name']
-            model = self.generate_model(table_name)
+            model = self.generate_model(table_name, as_base=as_base)
             models[model.__name__] = model
         
         return models
@@ -186,34 +199,37 @@ class ModelGenerator:
         if not query_def:
             raise ValueError(f"Saved query '{query_name}' not found")
         
-        # Execute the query with LIMIT 0 to get column information
-        # This is a trick to get column info without actual data
-        limited_query = f"SELECT * FROM ({query_def.query_text}) LIMIT 0"
+        # For saved queries, we'll create a flexible model that accepts any fields
+        # This is because we can't always reliably determine the schema without executing the query
         
-        try:
-            # Try to execute the query to get column information
-            # Since we limited to 0, we won't get any rows, but we need to infer from the actual query
-            # For now, we'll create a generic model and let runtime validation handle it
-            
-            # Create a model with flexible fields
-            field_definitions = {
-                '__query_name__': (str, query_name),
-            }
-            
-            # Create the model with the base fields only for now
-            # In a more sophisticated implementation, we could parse the SQL to determine columns
-            model = create_model(
-                model_name,
-                __base__=SynthDBModel,
-                __query_name__=(str, query_name),
-                **field_definitions
+        # Create a flexible base class for query results
+        class FlexibleQueryModel(SynthDBModel):
+            model_config = ConfigDict(
+                extra='allow',  # Allow any extra fields
+                validate_assignment=True,
+                str_strip_whitespace=True,
+                populate_by_name=True
             )
-            
-            model.set_connection(self.connection)
-            return model
-            
-        except Exception as e:
-            raise ValueError(f"Could not analyze query '{query_name}': {e}")
+        
+        # Create the model
+        model = create_model(
+            model_name,
+            __base__=FlexibleQueryModel,
+            __query_name__=(str, query_name)
+        )
+        
+        # Add the execute method after model creation
+        @classmethod
+        def execute(cls, **params):
+            """Execute the saved query with the given parameters."""
+            results = cls.__connection__.queries.execute_query(cls.__query_name__, **params)
+            return [cls(**row) for row in results]
+        
+        # Attach the method to the model
+        model.execute = execute
+        
+        model.set_connection(self.connection)
+        return model
     
     def _map_synthdb_type(self, synthdb_type: str) -> Type:
         """Map SynthDB types to Python types."""
@@ -238,66 +254,8 @@ class ModelGenerator:
         return ''.join(word.capitalize() for word in parts) + 'Result'
 
 
-class Relationship:
-    """Define relationships between models."""
-    
-    def __init__(self, related_model: Type[SynthDBModel], foreign_key: str, 
-                 related_key: str = 'id', relationship_type: str = 'one_to_many'):
-        self.related_model = related_model
-        self.foreign_key = foreign_key
-        self.related_key = related_key
-        self.relationship_type = relationship_type  # 'one_to_many', 'many_to_one', 'one_to_one'
-    
-    def get_related(self, instance: SynthDBModel) -> List[SynthDBModel]:
-        """Get related model instances."""
-        if not instance.__connection__:
-            raise ValueError("No database connection set")
-        
-        if self.relationship_type == 'one_to_many':
-            # Get related records where foreign_key matches this instance's related_key
-            key_value = getattr(instance, self.related_key)
-            if key_value is None:
-                return []
-            
-            where_clause = f"{self.foreign_key} = '{key_value}'"
-            return self.related_model.find_all(where_clause)
-            
-        elif self.relationship_type == 'many_to_one':
-            # Get the single related record
-            foreign_key_value = getattr(instance, self.foreign_key)
-            if foreign_key_value is None:
-                return []
-            
-            related = self.related_model.find_by_id(foreign_key_value)
-            return [related] if related else []
-            
-        elif self.relationship_type == 'one_to_one':
-            # Similar to many_to_one but expects exactly one result
-            return self.get_related_one_to_one(instance)
-        
-        return []
-    
-    def get_related_one_to_one(self, instance: SynthDBModel) -> List[SynthDBModel]:
-        """Get related model for one-to-one relationship."""
-        foreign_key_value = getattr(instance, self.foreign_key)
-        if foreign_key_value is None:
-            return []
-        
-        where_clause = f"{self.related_key} = '{foreign_key_value}'"
-        results = self.related_model.find_all(where_clause)
-        return results[:1]  # Return at most one result
-
-
-def add_relationship(model_class: Type[SynthDBModel], relationship_name: str, 
-                    relationship: Relationship) -> None:
-    """Add a relationship property to a model class."""
-    
-    def get_related_instances(self) -> List[SynthDBModel]:
-        """Get instances related through the defined relationship."""
-        return relationship.get_related(self)
-    
-    # Add the property to the model class
-    setattr(model_class, relationship_name, property(get_related_instances))
+# Relationship functionality removed in favor of manual property-based relationships
+# See examples/api_and_models_demo.py for the recommended approach
 
 
 # Connection extension methods
@@ -332,15 +290,34 @@ def extend_connection_with_models(connection: Connection) -> None:
         results = self.queries.execute_query(query_name, **params)
         return [model_class.from_dict(row) for row in results]
     
-    def generate_models(self) -> Dict[str, Type[SynthDBModel]]:
-        """Generate models for all tables."""
+    def generate_models(self, as_base: bool = False) -> Dict[str, Type[SynthDBModel]]:
+        """Generate models for all tables.
+        
+        Args:
+            as_base: If True, generates base models with 'Base' suffix
+        """
         generator = ModelGenerator(self)
-        return generator.generate_all_models()
+        return generator.generate_all_models(as_base=as_base)
     
-    def generate_model(self, table_name: str) -> Type[SynthDBModel]:
-        """Generate a model for a specific table."""
+    def generate_model(self, table_name: str, as_base: bool = False) -> Type[SynthDBModel]:
+        """Generate a model for a specific table.
+        
+        Args:
+            table_name: Name of the table
+            as_base: If True, appends 'Base' to the model name
+        """
         generator = ModelGenerator(self)
-        return generator.generate_model(table_name)
+        return generator.generate_model(table_name, as_base=as_base)
+    
+    def generate_query_model(self, query_name: str, model_name: Optional[str] = None) -> Type[SynthDBModel]:
+        """Generate a model for a saved query.
+        
+        Args:
+            query_name: Name of the saved query
+            model_name: Optional custom model name
+        """
+        generator = ModelGenerator(self)
+        return generator.generate_query_model(query_name, model_name)
     
     # Add methods to the connection instance
     connection.query_typed = query_typed.__get__(connection, Connection)
@@ -349,12 +326,15 @@ def extend_connection_with_models(connection: Connection) -> None:
     connection.execute_query_typed = execute_query_typed.__get__(connection, Connection)
     connection.generate_models = generate_models.__get__(connection, Connection)
     connection.generate_model = generate_model.__get__(connection, Connection)
+    connection.generate_query_model = generate_query_model.__get__(connection, Connection)
 
 
-# Automatically extend connections when this module is imported
 def connect_with_models(*args, **kwargs) -> Connection:
-    """Create a connection with model support enabled."""
+    """Create a connection with model support enabled.
+    
+    This is a convenience function that ensures models=True.
+    Equivalent to calling connect(..., models=True).
+    """
     from . import connect
-    connection = connect(*args, **kwargs)
-    extend_connection_with_models(connection)
-    return connection
+    kwargs['models'] = True
+    return connect(*args, **kwargs)

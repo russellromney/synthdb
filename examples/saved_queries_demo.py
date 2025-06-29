@@ -23,8 +23,8 @@ def main():
         print("🚀 SynthDB Saved Queries Demo")
         print("=" * 50)
         
-        # Connect to database
-        db = connect(db_path)
+        # Connect to database with models enabled
+        db = connect(db_path, models=True)
         print(f"📁 Connected to database: {db_path}")
         
         # Create sample tables and data
@@ -32,6 +32,9 @@ def main():
         
         # Demonstrate saved queries
         demonstrate_saved_queries(db)
+        
+        # Demonstrate typed models for saved queries
+        demonstrate_query_models(db)
         
         # Demonstrate CLI usage
         demonstrate_cli_usage(db_path)
@@ -249,6 +252,93 @@ def demonstrate_saved_queries(db):
     for query in all_queries:
         param_count = len(query.parameters) if query.parameters else 0
         print(f"   - {query.name}: {query.description} ({param_count} parameters)")
+
+
+def demonstrate_query_models(db):
+    """Demonstrate type-safe Pydantic models for saved queries."""
+    print("\n🎯 Type-Safe Models for Saved Queries")
+    print("="*40)
+    
+    # Generate models for existing saved queries
+    print("\n1️⃣ Generating Pydantic models for saved queries:")
+    
+    # Generate model for active customers query
+    ActiveCustomers = db.generate_query_model('active_customers')
+    print("   ✓ Generated model: ActiveCustomers")
+    
+    # Generate model for customers by age query
+    CustomersByAge = db.generate_query_model('customers_by_age')
+    print("   ✓ Generated model: CustomersByAge")
+    
+    # Generate model for customer lifetime value query
+    CustomerLifetimeValue = db.generate_query_model('customer_lifetime_value')
+    print("   ✓ Generated model: CustomerLifetimeValue")
+    
+    # Use the typed models
+    print("\n2️⃣ Using typed models with full IDE support:")
+    
+    # Execute query using the model's execute method
+    active_customers = ActiveCustomers.execute()
+    print(f"   ✓ Found {len(active_customers)} active customers using typed model")
+    
+    # Access fields with type safety
+    for customer in active_customers[:2]:
+        print(f"     - {customer.name} ({customer.email}) - Age: {customer.age}")
+    
+    # Execute parameterized query with type-safe results
+    print("\n3️⃣ Parameterized query with typed results:")
+    young_customers = CustomersByAge.execute(min_age=20, max_age=30)
+    print(f"   ✓ Found {len(young_customers)} customers aged 20-30")
+    for customer in young_customers:
+        print(f"     - {customer.name}: {customer.age} years old")
+    
+    # Complex query with computed fields
+    print("\n4️⃣ Complex analytics with computed fields:")
+    customer_analytics = CustomerLifetimeValue.execute()
+    for stats in customer_analytics[:3]:
+        print(f"   📊 {stats.name}:")
+        print(f"      - Orders: {stats.total_orders}")
+        print(f"      - Lifetime value: ${stats.lifetime_value:.2f}")
+        print(f"      - Average order: ${stats.avg_order_value:.2f}")
+    
+    # Create a new saved query and generate its model
+    print("\n5️⃣ Creating new query and generating model:")
+    
+    # Create a query for high-value customers
+    db.queries.create_query(
+        name='high_value_customers',
+        query_text='''
+            SELECT 
+                c.name,
+                c.email,
+                SUM(o.total) as total_spent
+            FROM customers c
+            JOIN orders o ON c.id = o.customer_id
+            WHERE o.status = 'completed'
+            GROUP BY c.id, c.name, c.email
+            HAVING SUM(o.total) > :min_value
+            ORDER BY total_spent DESC
+        ''',
+        description='Find customers who have spent above a threshold',
+        parameters={'min_value': {'type': 'real', 'default': 100.0}}
+    )
+    
+    # Generate model for the new query
+    HighValueCustomers = db.generate_query_model('high_value_customers')
+    print("   ✓ Created and generated model: HighValueCustomers")
+    
+    # Use the new model
+    high_spenders = HighValueCustomers.execute(min_value=200.0)
+    print(f"   ✓ Found {len(high_spenders)} customers who spent over $200")
+    for customer in high_spenders:
+        print(f"     - {customer.name}: ${customer.total_spent:.2f}")
+    
+    print("\n✨ Benefits of typed query models:")
+    print("   • Full IDE autocomplete for query result fields")
+    print("   • Type checking at development time")
+    print("   • Pydantic validation for data integrity")
+    print("   • Clean API with model.execute(**params)")
+    print("   • Reusable models across your application")
 
 
 def demonstrate_cli_usage(db_path):

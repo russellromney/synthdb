@@ -298,19 +298,45 @@ with connect_remote('http://localhost:8000', 'myapp.db') as api:
 Generate Pydantic models from your database schema for type safety and validation:
 
 ```python
-from synthdb.models import extend_connection_with_models, Relationship, add_relationship
+# Connect with models enabled
+db = synthdb.connect('app.db', models=True)
 
-# Extend connection with model functionality
-db = synthdb.connect('app.db')
-extend_connection_with_models(db)
+# Step 1: Generate base models (typically saved to generated_models.py)
+# These can be regenerated anytime without losing customizations
+base_models = db.generate_models(as_base=True)
+UserBase = base_models['UsersBase']  # Base model from 'users' table
+PostBase = base_models['PostsBase']  # Base model from 'posts' table
 
-# Generate models from existing tables
-models = db.generate_models()
-User = models['Users']  # Generates from 'users' table
-Post = models['Posts']  # Generates from 'posts' table
+# Step 2: Create saved queries for relationships and generate models
+# This approach provides better performance and type safety
+db.queries.create_query(
+    name='posts_by_user',
+    query_text='SELECT * FROM posts WHERE user_id = :user_id ORDER BY created_at DESC',
+    parameters={'user_id': {'type': 'text', 'required': True}}
+)
 
-# Use type-safe models
-user = User(
+db.queries.create_query(
+    name='user_with_post_count',
+    query_text='''
+        SELECT u.*, COUNT(p.id) as post_count 
+        FROM users u 
+        LEFT JOIN posts p ON u.id = p.user_id 
+        WHERE u.id = :user_id
+        GROUP BY u.id
+    ''',
+    parameters={'user_id': {'type': 'text', 'required': True}}
+)
+
+# Generate typed models for the queries
+PostsByUser = db.generate_query_model('posts_by_user')
+UserWithPostCount = db.generate_query_model('user_with_post_count')
+
+# Use the models with full type safety
+user_posts = PostsByUser.execute(user_id='123')
+user_stats = UserWithPostCount.execute(user_id='123')
+
+# Step 3: Use your models with full type safety
+user = UserBase(
     name="Alice Johnson",
     email="alice@example.com",
     age=28
@@ -320,34 +346,51 @@ user = User(
 user_id = user.save()
 print(f"Created user with ID: {user_id}")
 
-# Query with models
-all_users = User.find_all()
-active_users = User.find_all("is_active = 1")
-specific_user = User.find_by_id(user_id)
+# Use saved queries for relationships
+posts = PostsByUser.execute(user_id=user_id)
+print(f"User has {len(posts)} posts")
+
+# Get user with statistics
+stats = UserWithPostCount.execute(user_id=user_id)
+if stats:
+    print(f"{stats[0].name} has {stats[0].post_count} posts")
 
 # Model validation (Pydantic)
 try:
-    invalid_user = User(name="Bob", age="not-a-number")
+    invalid_user = UserBase(name="Bob", age="not-a-number")
 except ValidationError as e:
     print(f"Validation error: {e}")
 
-# Define relationships between models
-user_posts_rel = Relationship(
-    related_model=Post,
-    foreign_key='user_id',
-    related_key='id',
-    relationship_type='one_to_many'
-)
-add_relationship(User, 'posts', user_posts_rel)
-
-# Use relationships
-user = User.find_by_id(user_id)
-posts = user.posts  # Automatically loads related posts
-print(f"User has {len(posts)} posts")
-
-# Generate model code files
-sdb models generate --output models.py
+# Generate base model code files
+sdb models generate --output generated_models.py
 ```
+
+#### Base Model Pattern
+
+The recommended approach for models is to:
+
+1. **Generate base models** with `db.generate_models(as_base=True)` or `sdb models generate`
+   - Creates classes with 'Base' suffix (e.g., `UserBase`, `PostBase`)
+   - Can be regenerated anytime when schema changes
+   
+2. **Extend base models** in your own code:
+   ```python
+   # generated_models.py (auto-generated, don't edit)
+   class UserBase(SynthDBModel):
+       __table_name__ = "users"
+       name: Optional[str]
+       email: Optional[str]
+   
+   # models.py (your code, won't be overwritten)
+   from .generated_models import UserBase, PostBase
+   
+   class User(UserBase):
+       @property
+       def posts(self):
+           return Post.find_all(f"user_id = '{self.id}'")
+   ```
+
+This pattern ensures your custom logic (relationships, computed properties, methods) is preserved when regenerating models after schema changes.
 
 #### Model CLI Commands
 

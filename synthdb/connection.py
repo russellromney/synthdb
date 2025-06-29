@@ -47,7 +47,7 @@ class Connection:
     """
     
     def __init__(self, connection_info: Union[str, Dict[str, Any]] = 'db.db', 
-                 backend: Optional[str] = None, auto_init: bool = True):
+                 backend: Optional[str] = None, auto_init: bool = True, models: bool = False):
         """
         Initialize SynthDB connection.
         
@@ -55,6 +55,7 @@ class Connection:
             connection_info: Database file path or dict
             backend: Database backend ('sqlite', 'libsql')
             auto_init: Automatically initialize database if it doesn't exist
+            models: Enable type-safe model support with Pydantic
         
         Examples:
             # File databases
@@ -75,7 +76,8 @@ class Connection:
         """
         self.connection_info = connection_info
         self.backend_name = backend
-        self._query_manager = None
+        self._query_manager: Optional[QueryManager] = None
+        self.models_enabled = models
         
         # Auto-detect backend from connection string if not specified
         if backend is None and isinstance(connection_info, str) and '://' in connection_info:
@@ -89,6 +91,11 @@ class Connection:
             except Exception:
                 # Database might already exist, which is fine
                 pass
+        
+        # Enable models if requested
+        if models:
+            from .models import extend_connection_with_models
+            extend_connection_with_models(self)
     
     def _get_db_path(self) -> str:
         """
@@ -108,7 +115,17 @@ class Connection:
         Access the query manager for saved queries.
         
         Returns:
-            QueryManager instance
+            QueryManager instance for creating and executing saved queries
+            
+        Examples:
+            # Create a saved query
+            db.queries.create_query(
+                name='active_users',
+                query_text='SELECT * FROM users WHERE is_active = 1'
+            )
+            
+            # Execute the query
+            results = db.queries.execute_query('active_users')
         """
         if self._query_manager is None:
             self._query_manager = QueryManager(self._get_db_path(), self.backend_name)
@@ -620,7 +637,7 @@ class Connection:
 
 # Main connection function
 def connect(connection_info: Union[str, Dict[str, Any]] = None, 
-           backend: Optional[str] = None, auto_init: bool = True) -> Connection:
+           backend: Optional[str] = None, auto_init: bool = True, models: bool = False) -> Connection:
     """
     Create a SynthDB connection.
     
@@ -630,6 +647,7 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
         connection_info: Database file path or dict. If None, uses local project config
         backend: Database backend ('libsql', 'sqlite')
         auto_init: Automatically initialize database if it doesn't exist
+        models: Enable type-safe model support with Pydantic
         
     Returns:
         Connection instance
@@ -658,4 +676,4 @@ def connect(connection_info: Union[str, Dict[str, Any]] = None,
             # Fall back to default
             connection_info = 'db.db'
     
-    return Connection(connection_info, backend, auto_init)
+    return Connection(connection_info, backend, auto_init, models)

@@ -7,8 +7,7 @@ from datetime import datetime
 
 from synthdb import connect
 from synthdb.models import (
-    SynthDBModel, ModelGenerator, extend_connection_with_models,
-    Relationship, add_relationship
+    SynthDBModel, ModelGenerator
 )
 
 
@@ -21,9 +20,8 @@ class TestTypeafeModels:
         self.db_path = self.temp_file.name
         self.temp_file.close()
         
-        # Create database with test data
-        self.db = connect(self.db_path)
-        extend_connection_with_models(self.db)
+        # Create database with test data and models enabled
+        self.db = connect(self.db_path, models=True)
         
         # Create test tables
         self.db.create_table('users')
@@ -73,10 +71,10 @@ class TestTypeafeModels:
         
         assert User.__name__ == 'Users'
         assert User.get_table_name() == 'users'
-        assert hasattr(User, 'name')
-        assert hasattr(User, 'email')
-        assert hasattr(User, 'age')
-        assert hasattr(User, 'is_active')
+        assert 'name' in User.model_fields
+        assert 'email' in User.model_fields
+        assert 'age' in User.model_fields
+        assert 'is_active' in User.model_fields
         
         # Test model instantiation
         user = User(name="Bob", email="bob@example.com", age=30)
@@ -156,6 +154,34 @@ class TestTypeafeModels:
         assert user_with_string_age.age == 30
         assert isinstance(user_with_string_age.age, int)
     
+    def test_base_model_generation(self):
+        """Test generating base models with Base suffix."""
+        # Generate base models
+        base_models = self.db.generate_models(as_base=True)
+        
+        # Check that base models have correct names
+        assert 'UsersBase' in base_models
+        assert 'PostsBase' in base_models
+        
+        UserBase = base_models['UsersBase']
+        PostBase = base_models['PostsBase']
+        
+        # Base models should work normally
+        assert UserBase.__name__ == 'UsersBase'
+        assert UserBase.get_table_name() == 'users'
+        
+        # Can create instances
+        user = UserBase(name="Test User", email="test@example.com")
+        assert user.name == "Test User"
+        
+        # Can extend base models
+        class User(UserBase):
+            def custom_method(self):
+                return f"Hello, {self.name}"
+        
+        extended_user = User(name="Extended User")
+        assert extended_user.custom_method() == "Hello, Extended User"
+    
     def test_generate_all_models(self):
         """Test generating models for all tables."""
         models = self.db.generate_models()
@@ -208,30 +234,67 @@ class TestTypeafeModels:
         assert user.email == 'dict@example.com'
         assert user.age == 30
     
-    def test_relationship_support(self):
-        """Test relationship functionality between models."""
-        User = self.db.generate_model('users')
-        Post = self.db.generate_model('posts')
-        
-        # Define relationship: User has many Posts
-        user_posts_relationship = Relationship(
-            related_model=Post,
-            foreign_key='user_id',
-            related_key='id',
-            relationship_type='one_to_many'
+    def test_saved_query_models(self):
+        """Test generating models for saved queries."""
+        # Create a saved query for posts by user
+        self.db.queries.create_query(
+            name='posts_by_user',
+            query_text='SELECT * FROM posts WHERE user_id = :user_id ORDER BY created_at DESC',
+            description='Get all posts by a specific user',
+            parameters={'user_id': {'type': 'text', 'required': True}}
         )
         
-        add_relationship(User, 'posts', user_posts_relationship)
+        # Create a saved query for user with post count
+        self.db.queries.create_query(
+            name='user_with_stats',
+            query_text='''
+                SELECT u.*, COUNT(p.id) as post_count 
+                FROM users u 
+                LEFT JOIN posts p ON u.id = p.user_id 
+                WHERE u.id = :user_id
+                GROUP BY u.id
+            ''',
+            description='Get user details with post count',
+            parameters={'user_id': {'type': 'text', 'required': True}}
+        )
         
-        # Get user
-        user = User.find_by_id(self.user_id)
-        assert user is not None
+        # Generate models for the saved queries
+        PostsByUser = self.db.generate_query_model('posts_by_user')
+        UserWithStats = self.db.generate_query_model('user_with_stats')
         
-        # Access related posts
-        posts = user.posts  # This should work due to the relationship
+        # Test using the query models
+        posts = PostsByUser.execute(user_id=self.user_id)
         assert len(posts) == 1
         assert posts[0].title == 'Test Post'
         assert posts[0].user_id == self.user_id
+        
+        # Test user with stats query
+        user_stats = UserWithStats.execute(user_id=self.user_id)
+        assert len(user_stats) == 1
+        stats = user_stats[0]
+        assert stats.name == 'Alice'
+        assert stats.post_count == 1
+    
+    def test_query_model_with_no_results(self):
+        """Test query models handle empty results properly."""
+        # Create a query
+        self.db.queries.create_query(
+            name='active_users',
+            query_text='SELECT * FROM users WHERE is_active = :is_active',
+            parameters={'is_active': {'type': 'integer', 'required': True}}
+        )
+        
+        # Generate model
+        ActiveUsers = self.db.generate_query_model('active_users')
+        
+        # Query for inactive users (should be empty)
+        results = ActiveUsers.execute(is_active=0)
+        assert results == []
+        
+        # Query for active users
+        results = ActiveUsers.execute(is_active=1)
+        assert len(results) == 1
+        assert results[0].name == 'Alice'
     
     def test_connection_extension_methods(self):
         """Test connection methods added by model extension."""

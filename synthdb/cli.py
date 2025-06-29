@@ -1829,12 +1829,13 @@ def models_generate(
             # Get columns
             columns = db.list_columns(table_name)
             
-            # Generate class
+            # Generate base class with 'Base' suffix
             class_name = generator._table_name_to_class_name(table_name)
+            base_class_name = f"{class_name}Base"
             
             code_lines.extend([
-                f'class {class_name}(SynthDBModel):',
-                f'    """Model for {table_name} table."""',
+                f'class {base_class_name}(SynthDBModel):',
+                f'    """Base model for {table_name} table (auto-generated)."""',
                 f'    __table_name__ = "{table_name}"',
                 '',
             ])
@@ -1874,6 +1875,33 @@ def models_generate(
             except Exception as e:
                 console.print(f"[yellow]Warning: Could not process saved queries: {e}[/yellow]")
         
+        # Add usage example at the end
+        code_lines.extend([
+            '',
+            '# Example: Extending base models with relationships',
+            '# Create a separate file (e.g., models.py) with your customizations:',
+            '#',
+            '# from .generated_models import UserBase, PostBase',
+            '# ',
+            '# class User(UserBase):',
+            '#     @property',
+            '#     def posts(self):',
+            '#         """Get all posts by this user."""',
+            '#         from . import Post',
+            '#         if not self.id:',
+            '#             return []',
+            '#         return Post.find_all(f"user_id = \'{self.id}\'")',
+            '# ',
+            '# class Post(PostBase):',
+            '#     @property',
+            '#     def user(self):',
+            '#         """Get the author of this post."""',
+            '#         from . import User',
+            '#         if not self.user_id:',
+            '#             return None',
+            '#         return User.find_by_id(self.user_id)',
+        ])
+        
         # Write to file
         output_path = Path(output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1897,15 +1925,11 @@ def models_test(
 ) -> None:
     """Test type-safe models functionality."""
     try:
-        # Build connection
+        # Build connection with models enabled
         connection_info = build_connection_info(path, backend, connection_name)
-        db = connect(connection_info, backend)
+        db = connect(connection_info, backend, models=True)
         
         console.print(f"[blue]Testing models functionality with database: {path}[/blue]")
-        
-        # Extend connection with models
-        from .models import extend_connection_with_models
-        extend_connection_with_models(db)
         
         # Generate models
         models = db.generate_models()

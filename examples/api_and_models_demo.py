@@ -16,11 +16,11 @@ import time
 import tempfile
 import os
 from pathlib import Path
+from typing import List, Optional
 
 import uvicorn
 from synthdb import connect
 from synthdb.api_client import connect_remote
-from synthdb.models import extend_connection_with_models, Relationship, add_relationship
 
 
 def start_api_server_background(db_path: str, port: int = 8000):
@@ -42,9 +42,8 @@ def setup_demo_database(db_path: str):
     """Set up a demo database with sample data."""
     print("🔧 Setting up demo database...")
     
-    # Create local connection
-    db = connect(db_path)
-    extend_connection_with_models(db)
+    # Create local connection with models enabled
+    db = connect(db_path, models=True)
     
     # Create tables
     db.create_table('authors')
@@ -175,9 +174,8 @@ def demo_local_models(db_path: str):
     print("\n📚 Demonstrating Local Type-Safe Models")
     print("=" * 50)
     
-    # Connect with models
-    db = connect(db_path)
-    extend_connection_with_models(db)
+    # Connect with models enabled
+    db = connect(db_path, models=True)
     
     # Generate models
     models = db.generate_models()
@@ -187,24 +185,47 @@ def demo_local_models(db_path: str):
     
     print(f"✅ Generated {len(models)} models: {list(models.keys())}")
     
-    # Set up relationships
-    author_books_rel = Relationship(
-        related_model=Book,
-        foreign_key='author_id',
-        related_key='id',
-        relationship_type='one_to_many'
-    )
-    add_relationship(Author, 'books', author_books_rel)
+    # Create saved queries for relationships
+    print("\n🔍 Creating saved queries for relationships:")
     
-    book_reviews_rel = Relationship(
-        related_model=Review,
-        foreign_key='book_id', 
-        related_key='id',
-        relationship_type='one_to_many'
+    # Query to get books by author
+    db.queries.create_query(
+        name='books_by_author',
+        query_text='SELECT * FROM books WHERE author_id = :author_id ORDER BY publication_year',
+        description='Get all books by a specific author',
+        parameters={'author_id': {'type': 'text', 'required': True}}
     )
-    add_relationship(Book, 'reviews', book_reviews_rel)
     
-    print("✅ Set up relationships: Author -> Books, Book -> Reviews")
+    # Query to get reviews for a book
+    db.queries.create_query(
+        name='reviews_by_book',
+        query_text='SELECT * FROM reviews WHERE book_id = :book_id ORDER BY created_at DESC',
+        description='Get all reviews for a specific book',
+        parameters={'book_id': {'type': 'text', 'required': True}}
+    )
+    
+    # Query to get author with book count
+    db.queries.create_query(
+        name='author_with_stats',
+        query_text='''
+            SELECT a.*, COUNT(b.id) as book_count 
+            FROM authors a 
+            LEFT JOIN books b ON a.id = b.author_id 
+            WHERE a.id = :author_id
+            GROUP BY a.id
+        ''',
+        description='Get author details with book count',
+        parameters={'author_id': {'type': 'text', 'required': True}}
+    )
+    
+    print("✅ Created saved queries for relationships")
+    
+    # Generate models for saved queries
+    BooksByAuthor = db.generate_query_model('books_by_author')
+    ReviewsByBook = db.generate_query_model('reviews_by_book')
+    AuthorWithStats = db.generate_query_model('author_with_stats')
+    
+    print("✅ Generated models for saved queries")
     
     # Demonstrate model usage
     print("\n📖 Querying with type-safe models:")
@@ -214,13 +235,13 @@ def demo_local_models(db_path: str):
     for author in authors:
         print(f"👤 {author.name} (born {author.birth_year})")
         
-        # Get author's books using relationship
-        books = author.books
+        # Get author's books using saved query
+        books = BooksByAuthor.execute(author_id=author.id)
         for book in books:
             print(f"   📚 {book.title} ({book.publication_year}) - {book.pages} pages")
             
-            # Get book reviews
-            reviews = book.reviews
+            # Get book reviews using saved query
+            reviews = ReviewsByBook.execute(book_id=book.id)
             for review in reviews:
                 print(f"      ⭐ {review.rating}/5 - {review.comment}")
     
@@ -261,6 +282,21 @@ def demo_local_models(db_path: str):
         Author(name="Test", unknown_field="value")
     except Exception as e:
         print(f"🚫 Validation error (expected): {e}")
+    
+    # Demonstrate query model usage
+    print("\n📊 Using typed query models:")
+    
+    # Get author statistics
+    asimov_stats = AuthorWithStats.execute(author_id=author_id)
+    if asimov_stats:
+        stats = asimov_stats[0]
+        print(f"📚 {stats.name} has written {stats.book_count} book(s)")
+    
+    # Execute the comprehensive books_with_authors query
+    print("\n📖 Books with author information (filtered by genre):")
+    scifi_books = db.execute_query_typed('books_with_authors', Book, genre='Science Fiction')
+    for book in scifi_books:
+        print(f"   '{book.title}' - Genre: Science Fiction")
 
 
 def demo_api_client(port: int = 8000):
@@ -354,9 +390,8 @@ def demo_code_generation(db_path: str):
     output_dir.mkdir(exist_ok=True)
     output_file = output_dir / "models.py"
     
-    # Generate models code
-    db = connect(db_path)
-    extend_connection_with_models(db)
+    # Connect with models enabled for code generation
+    db = connect(db_path, models=True)
     
     from synthdb.models import ModelGenerator
     generator = ModelGenerator(db)
@@ -379,10 +414,11 @@ def demo_code_generation(db_path: str):
         table_name = table['name']
         columns = db.list_columns(table_name)
         class_name = generator._table_name_to_class_name(table_name)
+        base_class_name = f"{class_name}Base"
         
         code_lines.extend([
-            f'class {class_name}(SynthDBModel):',
-            f'    """Model for {table_name} table."""',
+            f'class {base_class_name}(SynthDBModel):',
+            f'    """Base model for {table_name} table (auto-generated)."""',
             f'    __table_name__ = "{table_name}"',
             '',
         ])
