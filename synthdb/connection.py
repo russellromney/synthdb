@@ -13,6 +13,7 @@ from .utils import list_tables, list_columns, query_view
 from .views import create_table_views
 from .inference import infer_type
 from .transactions import transaction_context
+from .saved_queries import QueryManager, SavedQuery
 
 
 class Connection:
@@ -74,6 +75,7 @@ class Connection:
         """
         self.connection_info = connection_info
         self.backend_name = backend
+        self._query_manager = None
         
         # Auto-detect backend from connection string if not specified
         if backend is None and isinstance(connection_info, str) and '://' in connection_info:
@@ -99,6 +101,18 @@ class Connection:
             return cast(str, self.connection_info.get('path', 'db.db'))
         else:
             return self.connection_info
+    
+    @property
+    def queries(self) -> QueryManager:
+        """
+        Access the query manager for saved queries.
+        
+        Returns:
+            QueryManager instance
+        """
+        if self._query_manager is None:
+            self._query_manager = QueryManager(self._get_db_path(), self.backend_name)
+        return self._query_manager
     
     def init_db(self) -> None:
         """

@@ -1,7 +1,7 @@
 """CLI interface for SynthDB using Typer with noun-first structure."""
 
 import typer
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 from rich.console import Console
 from rich.table import Table
 from rich.syntax import Syntax
@@ -79,6 +79,11 @@ branch_app = typer.Typer(
     help="Branch management",
     invoke_without_command=True
 )
+query_app = typer.Typer(
+    name="query", 
+    help="Saved query management",
+    invoke_without_command=True
+)
 
 # Add callback functions to show help when no subcommand is provided
 @database_app.callback()
@@ -116,12 +121,20 @@ def branch_callback(ctx: typer.Context) -> None:
         # Default to list if no subcommand
         branch_list()
 
+@query_app.callback()
+def query_callback(ctx: typer.Context) -> None:
+    """Saved query management"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
 # Add main commands
 app.add_typer(database_app, name="db", help="Database operations")
 app.add_typer(table_app, name="table", help="Table operations")
 app.add_typer(config_app, name="config")
 app.add_typer(project_app, name="project", help="Project management")
 app.add_typer(branch_app, name="branch", help="Branch management")
+app.add_typer(query_app, name="query", help="Saved query management")
 
 # Database commands
 @database_app.command("init")
@@ -1446,6 +1459,248 @@ def _add_implementation(table: str, data: str, path: str, backend: str, id: str)
         raise typer.Exit(1)
 
 
+# Query commands
+@query_app.command("create")
+def query_create(
+    name: str = typer.Argument(..., help="Query name"),
+    query: Optional[str] = typer.Option(None, "--query", "-q", help="SQL query text"),
+    file: Optional[Path] = typer.Option(None, "--file", "-f", help="File containing SQL query"),
+    description: Optional[str] = typer.Option(None, "--description", "-d", help="Query description"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection")
+) -> None:
+    """Create a new saved query."""
+    try:
+        # Get query text
+        if file:
+            if not file.exists():
+                console.print(f"[red]Query file '{file}' not found[/red]")
+                raise typer.Exit(1)
+            query_text = file.read_text().strip()
+        elif query:
+            query_text = query
+        else:
+            console.print("[red]Either --query or --file must be provided[/red]")
+            raise typer.Exit(1)
+        
+        if not query_text:
+            console.print("[red]Query text cannot be empty[/red]")
+            raise typer.Exit(1)
+        
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        # Create the query
+        saved_query = db.queries.create_query(
+            name=name,
+            query_text=query_text,
+            description=description
+        )
+        
+        console.print(f"[green]Created saved query '{name}' with ID {saved_query.id}[/green]")
+        if description:
+            console.print(f"[blue]Description: {description}[/blue]")
+        
+    except Exception as e:
+        console.print(f"[red]Error creating query: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@query_app.command("list")
+def query_list(
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection"),
+    include_deleted: bool = typer.Option(False, "--include-deleted", help="Include soft-deleted queries")
+) -> None:
+    """List all saved queries."""
+    try:
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        # Get queries
+        queries = db.queries.list_queries(include_deleted=include_deleted)
+        
+        if not queries:
+            console.print("[yellow]No saved queries found[/yellow]")
+            return
+        
+        # Display queries in a table
+        table = Table(title="Saved Queries")
+        table.add_column("Name", style="green")
+        table.add_column("Description", style="cyan")
+        table.add_column("Parameters", style="yellow")
+        table.add_column("Created", style="blue")
+        if include_deleted:
+            table.add_column("Status", style="red")
+        
+        for query in queries:
+            param_names = [p.name for p in query.parameters] if query.parameters else []
+            param_str = ", ".join(param_names) if param_names else "None"
+            
+            row = [
+                query.name,
+                query.description or "",
+                param_str,
+                query.created_at or ""
+            ]
+            
+            if include_deleted:
+                status = "Deleted" if query.deleted_at else "Active"
+                row.append(status)
+            
+            table.add_row(*row)
+        
+        console.print(table)
+        
+    except Exception as e:
+        console.print(f"[red]Error listing queries: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@query_app.command("show")
+def query_show(
+    name: str = typer.Argument(..., help="Query name"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection")
+) -> None:
+    """Show details of a specific saved query."""
+    try:
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        # Get the query
+        query = db.queries.get_query(name)
+        if not query:
+            console.print(f"[red]Query '{name}' not found[/red]")
+            raise typer.Exit(1)
+        
+        # Display query details
+        console.print(f"[bold green]Query: {query.name}[/bold green]")
+        console.print(f"[bold]ID:[/bold] {query.id}")
+        if query.description:
+            console.print(f"[bold]Description:[/bold] {query.description}")
+        console.print(f"[bold]Created:[/bold] {query.created_at}")
+        console.print(f"[bold]Updated:[/bold] {query.updated_at}")
+        
+        # Show parameters
+        if query.parameters:
+            console.print(f"\n[bold yellow]Parameters:[/bold yellow]")
+            param_table = Table()
+            param_table.add_column("Name", style="green")
+            param_table.add_column("Type", style="cyan")
+            param_table.add_column("Required", style="yellow")
+            param_table.add_column("Default", style="blue")
+            param_table.add_column("Description", style="white")
+            
+            for param in query.parameters:
+                param_table.add_row(
+                    param.name,
+                    param.data_type,
+                    "Yes" if param.is_required else "No",
+                    param.default_value or "",
+                    param.description or ""
+                )
+            console.print(param_table)
+        
+        # Show query text
+        console.print(f"\n[bold yellow]Query Text:[/bold yellow]")
+        syntax = Syntax(query.query_text, "sql", theme="monokai", line_numbers=True)
+        console.print(syntax)
+        
+    except Exception as e:
+        console.print(f"[red]Error showing query: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@query_app.command("exec")
+def query_exec(
+    name: str = typer.Argument(..., help="Query name"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection"),
+    param: Optional[List[str]] = typer.Option(None, "--param", help="Parameter as name=value")
+) -> None:
+    """Execute a saved query with parameters."""
+    try:
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        # Parse parameters
+        params = {}
+        if param:
+            for p in param:
+                if "=" not in p:
+                    console.print(f"[red]Invalid parameter format: '{p}'. Use name=value[/red]")
+                    raise typer.Exit(1)
+                key, value = p.split("=", 1)
+                params[key.strip()] = value.strip()
+        
+        # Execute the query
+        results = db.queries.execute_query(name, **params)
+        
+        if not results:
+            console.print("[yellow]Query returned no results[/yellow]")
+            return
+        
+        # Display results in a table
+        if results:
+            keys = list(results[0].keys())
+            table = Table(title=f"Results for '{name}'")
+            
+            for key in keys:
+                table.add_column(key, style="green")
+            
+            for row in results:
+                table.add_row(*[str(row.get(key, "")) for key in keys])
+            
+            console.print(table)
+            console.print(f"\n[blue]Returned {len(results)} rows[/blue]")
+        
+    except Exception as e:
+        console.print(f"[red]Error executing query: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@query_app.command("delete")
+def query_delete(
+    name: str = typer.Argument(..., help="Query name"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection"),
+    hard: bool = typer.Option(False, "--hard", help="Permanently delete (cannot be undone)")
+) -> None:
+    """Delete a saved query."""
+    try:
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        # Confirm deletion
+        delete_type = "permanently delete" if hard else "soft delete"
+        if not typer.confirm(f"Are you sure you want to {delete_type} query '{name}'?"):
+            console.print("[yellow]Deletion cancelled[/yellow]")
+            return
+        
+        # Delete the query
+        deleted = db.queries.delete_query(name, hard_delete=hard)
+        
+        if deleted:
+            action = "permanently deleted" if hard else "soft deleted"
+            console.print(f"[green]Query '{name}' {action}[/green]")
+        else:
+            console.print(f"[red]Query '{name}' not found[/red]")
+            raise typer.Exit(1)
+        
+    except Exception as e:
+        console.print(f"[red]Error deleting query: {e}[/red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

@@ -51,7 +51,7 @@ def test_cli_workflow():
         assert "Inserted value 'Widget'" in result.stdout
         
         # Query data
-        result = runner.invoke(app, ["query", "products", "--path", db_path])
+        result = runner.invoke(app, ["sql", "SELECT * FROM products", "--path", db_path])
         assert result.exit_code == 0
         assert "Widget" in result.stdout
         

@@ -94,6 +94,40 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
                 PRIMARY KEY (id, table_id, column_id, version)
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS saved_queries (
+                id INTEGER PRIMARY KEY,
+                name TEXT UNIQUE NOT NULL,
+                description TEXT,
+                query_text TEXT NOT NULL,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                deleted_at TEXT
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS query_parameters (
+                id INTEGER PRIMARY KEY,
+                query_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                data_type TEXT NOT NULL,
+                default_value TEXT,
+                is_required BOOLEAN DEFAULT 1,
+                description TEXT,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                FOREIGN KEY (query_id) REFERENCES saved_queries(id) ON DELETE CASCADE
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS query_dependencies (
+                id INTEGER PRIMARY KEY,
+                query_id INTEGER NOT NULL,
+                depends_on_table TEXT,
+                depends_on_query TEXT,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+                FOREIGN KEY (query_id) REFERENCES saved_queries(id) ON DELETE CASCADE
+            )
+            """,
         ],
         "indexes": [
             # Row metadata indexes for efficient row lookups
@@ -117,6 +151,16 @@ def get_sqlite_schema() -> Dict[str, List[str]]:
             # Table and column lookup indexes
             "CREATE INDEX IF NOT EXISTS idx_table_definitions_name ON table_definitions (name)",
             "CREATE INDEX IF NOT EXISTS idx_column_definitions_lookup ON column_definitions (table_id, name)",
+            
+            # Saved queries indexes
+            "CREATE INDEX IF NOT EXISTS idx_saved_queries_name ON saved_queries (name)",
+            "CREATE INDEX IF NOT EXISTS idx_saved_queries_active ON saved_queries (name) WHERE deleted_at IS NULL",
+            
+            # Query parameters and dependencies indexes
+            "CREATE INDEX IF NOT EXISTS idx_query_parameters_query_id ON query_parameters (query_id)",
+            "CREATE INDEX IF NOT EXISTS idx_query_dependencies_query_id ON query_dependencies (query_id)",
+            "CREATE INDEX IF NOT EXISTS idx_query_dependencies_table ON query_dependencies (depends_on_table)",
+            "CREATE INDEX IF NOT EXISTS idx_query_dependencies_query ON query_dependencies (depends_on_query)",
         ]
     }
 
