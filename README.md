@@ -10,6 +10,8 @@ A flexible database system with schema-on-write capabilities. SynthDB makes it e
 - **History Tracking**: Built-in audit trail with creation and update timestamps
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
+- **REST API Server**: FastAPI-based server for remote database access
+- **Type-Safe Models**: Pydantic-based models with relationship support
 - **SQLite Backend**: Built on SQLite, the world's most widely deployed database engine
 - **Local Project Management**: Built-in `.synthdb` directory for project-local databases
 - **Branch Support**: Create and switch between database branches for development workflows
@@ -35,15 +37,19 @@ uv add synthdb
 uv add synthdb
 ```
 
+**Optional Dependencies:**
+
+```bash
+# For API server functionality
+uv add "synthdb[api]"
+
+# For LibSQL remote database support
+uv add libsql-experimental
+```
+
 **Backend:**
 - **SQLite**: Default backend - Battle-tested, stable, and available everywhere
 - **LibSQL**: Optional backend for remote database support (Turso, etc.)
-
-```bash
-# SQLite is included with Python, no additional installation needed
-# For LibSQL remote database support:
-uv add libsql-experimental
-```
 
 ### **Development Setup**
 
@@ -248,6 +254,109 @@ db = synthdb.connect('https://your-database.turso.io')
 # Explicitly specify backend
 db = synthdb.connect('app.db', backend='sqlite')  # Default
 db = synthdb.connect('app.db', backend='libsql')   # For LibSQL features
+
+# Connect to remote API server
+from synthdb.api_client import connect_remote
+api = connect_remote('http://localhost:8000', 'myapp.db')
+```
+
+### 🌐 **API Server & Remote Access**
+
+SynthDB includes a FastAPI-based server for remote database access:
+
+```bash
+# Start API server
+sdb api serve --host 0.0.0.0 --port 8000
+
+# Test API connection
+sdb api test http://localhost:8000
+```
+
+```python
+from synthdb.api_client import connect_remote
+
+# Connect to remote API server
+with connect_remote('http://localhost:8000', 'myapp.db') as api:
+    # Use exactly like local connection
+    api.create_table('users')
+    api.add_columns('users', {'name': 'text', 'email': 'text'})
+    
+    user_id = api.insert('users', {
+        'name': 'Remote User',
+        'email': 'remote@example.com'
+    })
+    
+    users = api.query('users')
+    print(f"Found {len(users)} users")
+    
+    # Execute saved queries remotely
+    results = api.queries.execute_query('user_stats')
+```
+
+### 🏗️ **Type-Safe Models**
+
+Generate Pydantic models from your database schema for type safety and validation:
+
+```python
+from synthdb.models import extend_connection_with_models, Relationship, add_relationship
+
+# Extend connection with model functionality
+db = synthdb.connect('app.db')
+extend_connection_with_models(db)
+
+# Generate models from existing tables
+models = db.generate_models()
+User = models['Users']  # Generates from 'users' table
+Post = models['Posts']  # Generates from 'posts' table
+
+# Use type-safe models
+user = User(
+    name="Alice Johnson",
+    email="alice@example.com",
+    age=28
+)
+
+# Save to database with validation
+user_id = user.save()
+print(f"Created user with ID: {user_id}")
+
+# Query with models
+all_users = User.find_all()
+active_users = User.find_all("is_active = 1")
+specific_user = User.find_by_id(user_id)
+
+# Model validation (Pydantic)
+try:
+    invalid_user = User(name="Bob", age="not-a-number")
+except ValidationError as e:
+    print(f"Validation error: {e}")
+
+# Define relationships between models
+user_posts_rel = Relationship(
+    related_model=Post,
+    foreign_key='user_id',
+    related_key='id',
+    relationship_type='one_to_many'
+)
+add_relationship(User, 'posts', user_posts_rel)
+
+# Use relationships
+user = User.find_by_id(user_id)
+posts = user.posts  # Automatically loads related posts
+print(f"User has {len(posts)} posts")
+
+# Generate model code files
+sdb models generate --output models.py
+```
+
+#### Model CLI Commands
+
+```bash
+# Generate models for all tables
+sdb models generate --output generated_models.py
+
+# Test model generation
+sdb models test
 ```
 
 
@@ -389,6 +498,9 @@ See the `examples/` directory for comprehensive usage examples:
 # Modern connection API demo (recommended)
 python examples/demo.py
 
+# API server and type-safe models demo
+python examples/api_and_models_demo.py
+
 # Local project and branch management demo
 python examples/local_project_demo.py
 
@@ -408,6 +520,14 @@ python examples/merge_demo.py
 - Database inspection and error handling
 - Different connection methods
 - API benefits and best practices
+
+**API & Models Demo** (`api_and_models_demo.py`) demonstrates:
+- Starting and using the FastAPI server
+- Type-safe Pydantic models with validation
+- Model relationships and associations
+- Remote API client usage
+- Code generation for models
+- Integration with saved queries
 
 **SQL Execution Demo** (`sql_execution_demo.py`) demonstrates:
 - Safe execution of custom SELECT queries
@@ -548,6 +668,14 @@ synthdb/
 > 💡 **Tip**: Use shortcuts for faster development: `sdb db init`, `sdb t create users`, `sdb i users '{"name":"John"}'`, `sdb q users`
 
 > 🔗 **Best Practice**: For complex operations, use the Connection class in Python: `db = synthdb.connect('app.db'); db.insert('users', {...})`
+
+### API Commands
+- `sdb api serve [--host <host>] [--port <port>] [--reload]` - Start API server
+- `sdb api test <url>` - Test API server connection
+
+### Model Commands
+- `sdb models generate [--output <file>]` - Generate model code
+- `sdb models test` - Test model generation
 
 All commands support:
 - `--path <path>` to specify database file (defaults to `db.db`)

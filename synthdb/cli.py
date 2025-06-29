@@ -84,6 +84,16 @@ query_app = typer.Typer(
     help="Saved query management",
     invoke_without_command=True
 )
+api_app = typer.Typer(
+    name="api",
+    help="API server management",
+    invoke_without_command=True
+)
+models_app = typer.Typer(
+    name="models",
+    help="Type-safe model generation",
+    invoke_without_command=True
+)
 
 # Add callback functions to show help when no subcommand is provided
 @database_app.callback()
@@ -128,6 +138,20 @@ def query_callback(ctx: typer.Context) -> None:
         print(ctx.get_help())
         raise typer.Exit()
 
+@api_app.callback()
+def api_callback(ctx: typer.Context) -> None:
+    """API server management"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
+@models_app.callback()
+def models_callback(ctx: typer.Context) -> None:
+    """Type-safe model generation"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
 # Add main commands
 app.add_typer(database_app, name="db", help="Database operations")
 app.add_typer(table_app, name="table", help="Table operations")
@@ -135,6 +159,8 @@ app.add_typer(config_app, name="config")
 app.add_typer(project_app, name="project", help="Project management")
 app.add_typer(branch_app, name="branch", help="Branch management")
 app.add_typer(query_app, name="query", help="Saved query management")
+app.add_typer(api_app, name="api", help="API server management")
+app.add_typer(models_app, name="models", help="Type-safe model generation")
 
 # Database commands
 @database_app.command("init")
@@ -1700,6 +1726,206 @@ def query_delete(
         
     except Exception as e:
         console.print(f"[red]Error deleting query: {e}[/red]")
+        raise typer.Exit(1)
+
+
+# API commands
+@api_app.command("serve")
+def api_serve(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host to bind to"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port to bind to"),
+    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload for development"),
+) -> None:
+    """Start the SynthDB API server."""
+    try:
+        from .api_server import start_server
+        console.print(f"[green]Starting SynthDB API server on {host}:{port}[/green]")
+        if reload:
+            console.print("[yellow]Auto-reload enabled (development mode)[/yellow]")
+        start_server(host=host, port=port, reload=reload)
+    except ImportError:
+        console.print("[red]API server dependencies not installed. Install with: pip install synthdb[api][/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error starting API server: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@api_app.command("test")
+def api_test(
+    url: str = typer.Option("http://localhost:8000", "--url", "-u", help="API server URL"),
+    database: str = typer.Option("test.db", "--database", "-d", help="Database name to test"),
+) -> None:
+    """Test connection to SynthDB API server."""
+    try:
+        from .api_client import connect_remote
+        
+        console.print(f"[blue]Testing connection to {url}[/blue]")
+        
+        with connect_remote(url, database) as client:
+            # Test basic functionality
+            try:
+                client.init_db(force=True)
+                console.print("[green]✓ Database initialization successful[/green]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Database init: {e}[/yellow]")
+            
+            info = client.get_info()
+            console.print(f"[green]✓ Connection successful[/green]")
+            console.print(f"[blue]Database: {database}[/blue]")
+            console.print(f"[blue]Tables: {info.get('tables_count', 0)}[/blue]")
+            
+    except ImportError:
+        console.print("[red]API client dependencies not installed. Install with: pip install synthdb[api][/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Error connecting to API server: {e}[/red]")
+        raise typer.Exit(1)
+
+
+# Models commands
+@models_app.command("generate")
+def models_generate(
+    output: str = typer.Argument(..., help="Output file path"),
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection"),
+    template: str = typer.Option("pydantic", "--template", "-t", help="Model template (pydantic, dataclass)"),
+    include_queries: bool = typer.Option(False, "--include-queries", help="Include saved query models"),
+) -> None:
+    """Generate type-safe models from database schema."""
+    try:
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        console.print(f"[blue]Generating models from database: {path}[/blue]")
+        
+        # Generate code
+        from .models import ModelGenerator
+        generator = ModelGenerator(db)
+        
+        # Get all tables
+        tables = db.list_tables()
+        console.print(f"[blue]Found {len(tables)} tables[/blue]")
+        
+        # Generate Python code
+        code_lines = [
+            '"""Auto-generated models for SynthDB."""',
+            '',
+            'from datetime import datetime',
+            'from typing import Optional, List',
+            'from pydantic import BaseModel, Field',
+            '',
+            'from synthdb.models import SynthDBModel',
+            '',
+        ]
+        
+        # Generate model for each table
+        for table in tables:
+            table_name = table['name']
+            console.print(f"[blue]  - Generating model for '{table_name}'[/blue]")
+            
+            # Get columns
+            columns = db.list_columns(table_name)
+            
+            # Generate class
+            class_name = generator._table_name_to_class_name(table_name)
+            
+            code_lines.extend([
+                f'class {class_name}(SynthDBModel):',
+                f'    """Model for {table_name} table."""',
+                f'    __table_name__ = "{table_name}"',
+                '',
+            ])
+            
+            # Add fields for each column (excluding base fields)
+            for col in columns:
+                if col['name'] in ('id', 'created_at', 'updated_at'):
+                    continue
+                
+                python_type = generator._map_synthdb_type(col['data_type'])
+                type_name = python_type.__name__
+                if type_name == 'datetime':
+                    type_name = 'datetime'
+                
+                code_lines.append(f'    {col["name"]}: Optional[{type_name}] = Field(None, description="Column from {table_name} table")')
+            
+            code_lines.extend(['', ''])
+        
+        # Include saved queries if requested
+        if include_queries:
+            try:
+                queries = db.queries.list_queries()
+                console.print(f"[blue]Found {len(queries)} saved queries[/blue]")
+                
+                for query in queries:
+                    console.print(f"[blue]  - Generating model for query '{query.name}'[/blue]")
+                    
+                    class_name = generator._query_name_to_class_name(query.name)
+                    code_lines.extend([
+                        f'class {class_name}(SynthDBModel):',
+                        f'    """Model for saved query \'{query.name}\'."""',
+                        f'    __query_name__ = "{query.name}"',
+                        f'    # Note: Fields will be validated at runtime based on query results',
+                        '',
+                        ''
+                    ])
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not process saved queries: {e}[/yellow]")
+        
+        # Write to file
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            f.write('\n'.join(code_lines))
+        
+        console.print(f"[green]Models generated successfully: {output}[/green]")
+        console.print(f"[blue]Generated {len(tables)} table models[/blue]")
+        
+    except Exception as e:
+        console.print(f"[red]Error generating models: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@models_app.command("test")
+def models_test(
+    path: str = typer.Option("db.db", "--path", "-p", help="Database file path"),
+    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Database backend"),
+    connection_name: Optional[str] = typer.Option(None, "--connection", "-c", help="Named connection"),
+) -> None:
+    """Test type-safe models functionality."""
+    try:
+        # Build connection
+        connection_info = build_connection_info(path, backend, connection_name)
+        db = connect(connection_info, backend)
+        
+        console.print(f"[blue]Testing models functionality with database: {path}[/blue]")
+        
+        # Extend connection with models
+        from .models import extend_connection_with_models
+        extend_connection_with_models(db)
+        
+        # Generate models
+        models = db.generate_models()
+        console.print(f"[green]✓ Generated {len(models)} models[/green]")
+        
+        # Show available models
+        table = Table(title="Generated Models")
+        table.add_column("Model Class", style="green")
+        table.add_column("Table Name", style="cyan")
+        
+        for model_name, model_class in models.items():
+            table_name = model_class.get_table_name()
+            table.add_row(model_name, table_name)
+        
+        console.print(table)
+        
+        console.print("[green]✓ Models functionality working correctly[/green]")
+        
+    except Exception as e:
+        console.print(f"[red]Error testing models: {e}[/red]")
         raise typer.Exit(1)
 
 
