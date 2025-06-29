@@ -5,13 +5,14 @@ A flexible database system with schema-on-write capabilities. SynthDB makes it e
 ## Features
 
 - **Flexible Schema**: Store data with dynamic schemas that evolve as your application grows
-- **Automatic Views**: Automatically generated SQL views that present data as traditional tables
 - **Schema Evolution**: Add columns to existing tables without migration scripts
 - **Type Safety**: Type-specific storage tables for optimal performance and data integrity
 - **History Tracking**: Built-in audit trail with creation and update timestamps
 - **CLI Interface**: Rich command-line interface for database operations
 - **Python API**: Clean, well-documented Python API for programmatic access
 - **SQLite Backend**: Built on SQLite, the world's most widely deployed database engine
+- **Local Project Management**: Built-in `.synthdb` directory for project-local databases
+- **Branch Support**: Create and switch between database branches for development workflows
 
 ## Installation
 
@@ -59,10 +60,43 @@ uv add -e ".[dev]"
 
 ## Quick Start
 
+### Project & Branch Management (New!)
+
+SynthDB now includes built-in project and branch management, similar to Git but for your database:
+
+```bash
+# Initialize a SynthDB project in current directory
+sdb project init
+
+# Check project status
+sdb project status
+
+# Branch commands
+sdb branch                    # List all branches
+sdb branch list               # List all branches (explicit)
+sdb branch current            # Show current branch
+sdb branch create feature-x   # Create new branch
+sdb branch switch main        # Switch to a branch
+sdb branch delete old-branch  # Delete a branch
+
+# Advanced branch operations
+sdb branch create hotfix --from production  # Create from specific branch
+sdb branch create test --no-switch         # Create without switching
+sdb branch delete temp --force              # Delete without confirmation
+```
+
+#### How Branches Work
+
+- Each branch has its own isolated database file in `.synthdb/databases/`
+- Creating a branch copies the current database to the new branch
+- Switching branches automatically points `synthdb.connect()` to the right database
+- Changes in one branch don't affect other branches
+- Perfect for testing features, migrations, or experiments
+
 ### CLI Usage
 
 ```bash
-# Initialize a new database
+# Initialize a standalone database (without project)
 synthdb db init
 # or use the shorter alias:
 sdb db init
@@ -108,6 +142,9 @@ db = synthdb.connect('app.db')
 
 # Or connect to a remote LibSQL database (Turso, etc.)
 db = synthdb.connect('libsql://your-database.turso.io')
+
+# In a project with .synthdb directory, connect automatically uses the active branch
+db = synthdb.connect()  # Uses current branch's database
 
 # Create table and add columns in one go
 db.create_table('products')
@@ -214,6 +251,80 @@ SynthDB automatically creates SQL views for each table that:
 - **real**: Floating-point numbers
 - **timestamp**: Date/time values
 
+## Branch Management in Python
+
+Working with branches programmatically:
+
+```python
+import synthdb
+from synthdb.local_config import get_local_config, init_local_project
+
+# Initialize a project (only needed once)
+init_local_project()
+
+# Get the local config manager
+config = get_local_config()
+
+# Check current branch
+print(f"Current branch: {config.get_active_branch()}")
+
+# Create a new branch
+config.create_branch("feature-new-schema")
+
+# Switch to the new branch
+config.set_active_branch("feature-new-schema")
+
+# Now synthdb.connect() automatically uses the feature branch
+db = synthdb.connect()
+db.create_table("experimental_features")
+db.add_columns("experimental_features", {"name": "text", "enabled": "integer"})
+
+# Switch back to main
+config.set_active_branch("main")
+db_main = synthdb.connect()  # This connects to main branch
+
+# List all branches
+branches = config.list_branches()
+for name, info in branches.items():
+    print(f"Branch: {name} - Database: {info['database']}")
+```
+
+### Real-World Branch Workflow
+
+```python
+# Development workflow example
+config = get_local_config()
+
+# 1. Create feature branch for new functionality
+config.create_branch("feature-user-profiles", from_branch="main")
+config.set_active_branch("feature-user-profiles")
+
+# 2. Develop and test new schema
+db = synthdb.connect()
+db.create_table("user_profiles")
+db.add_columns("user_profiles", {
+    "user_id": "text",
+    "bio": "text", 
+    "avatar_url": "text",
+    "preferences": "text"  # JSON stored as text
+})
+
+# 3. Test with sample data
+db.insert("user_profiles", {
+    "user_id": "user123",
+    "bio": "Software developer passionate about databases",
+    "avatar_url": "https://example.com/avatar.jpg",
+    "preferences": '{"theme": "dark", "notifications": true}'
+})
+
+# 4. Create a staging branch for integration testing
+config.create_branch("staging", from_branch="main")
+config.set_active_branch("staging")
+
+# 5. When ready, manually migrate changes to production
+# (Future versions will include merge capabilities)
+```
+
 ## Examples
 
 See the `examples/` directory for comprehensive usage examples:
@@ -221,9 +332,15 @@ See the `examples/` directory for comprehensive usage examples:
 ```bash
 # Modern connection API demo (recommended)
 python examples/demo.py
+
+# Local project and branch management demo
+python examples/local_project_demo.py
+
+# Comprehensive branch workflow demo
+python examples/branch_demo.py
 ```
 
-**Modern Demo** demonstrates:
+**Modern Demo** (`demo.py`) demonstrates:
 - Clean connection-based interface (`synthdb.connect()`)
 - Automatic database initialization
 - Bulk column creation with type inference
@@ -232,6 +349,20 @@ python examples/demo.py
 - Database inspection and error handling
 - Different connection methods
 - API benefits and best practices
+
+**Local Project Demo** (`local_project_demo.py`) demonstrates:
+- Initializing a `.synthdb` project directory
+- Working with the local configuration
+- Creating and switching between branches
+- Branch isolation (changes don't affect other branches)
+- Automatic database path resolution
+
+**Branch Demo** (`branch_demo.py`) demonstrates:
+- Complete branch management workflow
+- Creating feature and hotfix branches
+- Working with multiple branches simultaneously
+- Branch-specific data modifications
+- Comparing data across branches
 
 ## Documentation
 

@@ -557,7 +557,7 @@ class Connection:
 
 
 # Main connection function
-def connect(connection_info: Union[str, Dict[str, Any]] = 'db.db', 
+def connect(connection_info: Union[str, Dict[str, Any]] = None, 
            backend: Optional[str] = None, auto_init: bool = True) -> Connection:
     """
     Create a SynthDB connection.
@@ -565,7 +565,7 @@ def connect(connection_info: Union[str, Dict[str, Any]] = 'db.db',
     This is the primary way to connect to a SynthDB database.
     
     Args:
-        connection_info: Database file path or dict
+        connection_info: Database file path or dict. If None, uses local project config
         backend: Database backend ('libsql', 'sqlite')
         auto_init: Automatically initialize database if it doesn't exist
         
@@ -578,5 +578,22 @@ def connect(connection_info: Union[str, Dict[str, Any]] = 'db.db',
         
         # Auto-detect backend
         db = synthdb.connect('app.db')
+        
+        # Use local project config (if .synthdb exists)
+        db = synthdb.connect()
     """
+    # Check for local project config if no connection info provided
+    if connection_info is None:
+        from .local_config import get_local_config
+        local_config = get_local_config()
+        
+        if local_config.synthdb_dir:
+            # Use local project database
+            connection_info = local_config.get_database_path()
+            if backend is None:
+                backend = local_config.get_default_backend()
+        else:
+            # Fall back to default
+            connection_info = 'db.db'
+    
     return Connection(connection_info, backend, auto_init)

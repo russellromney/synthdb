@@ -12,6 +12,7 @@ from .inference import smart_insert
 from .bulk import load_csv, load_json, export_csv, export_json
 from .errors import TableNotFoundError, ColumnNotFoundError
 from .config_file import config_manager, get_connection_info
+from .local_config import get_local_config, init_local_project
 
 
 def build_connection_info(path: str, backend: Optional[str] = None, connection_name: Optional[str] = None) -> Union[str, Dict[str, Any]]:
@@ -68,6 +69,16 @@ config_app = typer.Typer(
     help="Configuration management",
     invoke_without_command=True
 )
+project_app = typer.Typer(
+    name="project",
+    help="Project management",
+    invoke_without_command=True
+)
+branch_app = typer.Typer(
+    name="branch",
+    help="Branch management",
+    invoke_without_command=True
+)
 
 # Add callback functions to show help when no subcommand is provided
 @database_app.callback()
@@ -91,10 +102,26 @@ def config_callback(ctx: typer.Context) -> None:
         print(ctx.get_help())
         raise typer.Exit()
 
+@project_app.callback()
+def project_callback(ctx: typer.Context) -> None:
+    """Project management"""
+    if ctx.invoked_subcommand is None:
+        print(ctx.get_help())
+        raise typer.Exit()
+
+@branch_app.callback()
+def branch_callback(ctx: typer.Context) -> None:
+    """Branch management"""
+    if ctx.invoked_subcommand is None:
+        # Default to list if no subcommand
+        branch_list()
+
 # Add main commands
 app.add_typer(database_app, name="db", help="Database operations")
 app.add_typer(table_app, name="table", help="Table operations")
 app.add_typer(config_app, name="config")
+app.add_typer(project_app, name="project", help="Project management")
+app.add_typer(branch_app, name="branch", help="Branch management")
 
 # Database commands
 @database_app.command("init")
@@ -879,6 +906,272 @@ def config_test(
         
     except Exception as e:
         console.print(f"[red]✗ Connection failed: {e}[/red]")
+        raise typer.Exit(1)
+
+
+# Project commands
+@project_app.command("init")
+def project_init(
+    directory: str = typer.Option(".", "--directory", "-d", help="Directory to initialize project in"),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing .synthdb directory"),
+):
+    """Initialize a new SynthDB project with .synthdb directory."""
+    try:
+        target_dir = Path(directory)
+        synthdb_dir = target_dir / ".synthdb"
+        
+        if synthdb_dir.exists() and not force:
+            console.print(f"[red].synthdb directory already exists in '{directory}'. Use --force to overwrite.[/red]")
+            raise typer.Exit(1)
+        
+        # Initialize the project
+        project_path = init_local_project(target_dir)
+        console.print(f"[green]✓ Initialized SynthDB project in {project_path}[/green]")
+        console.print(f"[blue]Created .synthdb/config with default database at .synthdb/databases/main.db[/blue]")
+        
+    except Exception as e:
+        console.print(f"[red]Error initializing project: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@project_app.command("status")
+def project_status():
+    """Show project status and active branch."""
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[yellow]No .synthdb directory found in current directory or parent directories[/yellow]")
+            console.print("[blue]Use 'sdb project init' to initialize a new project[/blue]")
+            raise typer.Exit(1)
+        
+        console.print(f"[bold]Project Directory:[/bold] {local_config.synthdb_dir.parent}")
+        console.print(f"[bold]SynthDB Directory:[/bold] {local_config.synthdb_dir}")
+        
+        # Show active branch
+        active_branch = local_config.get_active_branch()
+        console.print(f"[bold]Active Branch:[/bold] [green]{active_branch}[/green]")
+        
+        # Show database path
+        db_path = local_config.get_database_path()
+        if db_path:
+            console.print(f"[bold]Database Path:[/bold] {db_path}")
+            if Path(db_path).exists():
+                console.print("[green]✓ Database file exists[/green]")
+            else:
+                console.print("[yellow]⚠ Database file does not exist yet[/yellow]")
+        
+    except Exception as e:
+        console.print(f"[red]Error getting project status: {e}[/red]")
+        raise typer.Exit(1)
+
+
+# Branch commands (moved to top-level)
+
+
+@branch_app.command("list")
+def branch_list():
+    """List all branches in the project."""
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[red]No .synthdb directory found[/red]")
+            console.print("[blue]Use 'sdb project init' to initialize a project[/blue]")
+            raise typer.Exit(1)
+        
+        branches = local_config.list_branches()
+        active_branch = local_config.get_active_branch()
+        
+        if not branches:
+            console.print("[yellow]No branches found[/yellow]")
+            return
+        
+        table_display = Table(title="Project Branches")
+        table_display.add_column("Branch", style="green")
+        table_display.add_column("Status", style="magenta")
+        table_display.add_column("Database", style="cyan")
+        table_display.add_column("Created", style="yellow")
+        
+        for branch_name, info in branches.items():
+            status = "● active" if branch_name == active_branch else "○"
+            table_display.add_row(
+                branch_name,
+                status,
+                info.get('database', 'N/A'),
+                info.get('created', 'N/A')
+            )
+        
+        console.print(table_display)
+        
+    except Exception as e:
+        console.print(f"[red]Error listing branches: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@branch_app.command("create")
+def branch_create(
+    name: str = typer.Argument(..., help="Name for the new branch"),
+    from_branch: str = typer.Option(None, "--from", "-f", help="Source branch to copy from (default: current branch)"),
+    switch: bool = typer.Option(True, "--switch/--no-switch", help="Switch to the new branch after creation"),
+):
+    """Create a new branch with a copy of the database."""
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[red]No .synthdb directory found[/red]")
+            console.print("[blue]Use 'sdb project init' to initialize a project[/blue]")
+            raise typer.Exit(1)
+        
+        # Check if branch already exists
+        branches = local_config.list_branches()
+        if name in branches:
+            console.print(f"[red]Branch '{name}' already exists[/red]")
+            raise typer.Exit(1)
+        
+        # Show source branch
+        if from_branch:
+            console.print(f"[blue]Creating branch '{name}' from '{from_branch}'...[/blue]")
+        else:
+            current = local_config.get_active_branch()
+            console.print(f"[blue]Creating branch '{name}' from current branch '{current}'...[/blue]")
+        
+        # Create the branch
+        db_path = local_config.create_branch(name, from_branch)
+        console.print(f"[green]✓ Created branch '{name}'[/green]")
+        console.print(f"[blue]  Database: {db_path}[/blue]")
+        
+        # Switch if requested
+        if switch:
+            local_config.set_active_branch(name)
+            console.print(f"[green]✓ Switched to branch '{name}'[/green]")
+        
+    except Exception as e:
+        console.print(f"[red]Error creating branch: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@branch_app.command("switch")
+def branch_switch(
+    name: str = typer.Argument(..., help="Branch name to switch to"),
+):
+    """Switch to a different branch."""
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[red]No .synthdb directory found[/red]")
+            raise typer.Exit(1)
+        
+        # Check if branch exists
+        branches = local_config.list_branches()
+        if name not in branches:
+            console.print(f"[red]Branch '{name}' does not exist[/red]")
+            console.print("[blue]Available branches:[/blue]")
+            for branch in branches:
+                console.print(f"  - {branch}")
+            raise typer.Exit(1)
+        
+        # Check if already on this branch
+        current = local_config.get_active_branch()
+        if current == name:
+            console.print(f"[yellow]Already on branch '{name}'[/yellow]")
+            return
+        
+        # Switch branch
+        local_config.set_active_branch(name)
+        console.print(f"[green]✓ Switched to branch '{name}'[/green]")
+        
+        # Show database info
+        db_path = local_config.get_database_path(name)
+        if db_path:
+            console.print(f"[blue]Database: {db_path}[/blue]")
+        
+    except Exception as e:
+        console.print(f"[red]Error switching branch: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@branch_app.command("current")
+def branch_current():
+    """Show the current active branch."""
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[red]No .synthdb directory found[/red]")
+            raise typer.Exit(1)
+        
+        current = local_config.get_active_branch()
+        console.print(f"[green]Current branch: {current}[/green]")
+        
+        # Show database path
+        db_path = local_config.get_database_path()
+        if db_path:
+            console.print(f"[blue]Database: {db_path}[/blue]")
+        
+    except Exception as e:
+        console.print(f"[red]Error getting current branch: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@branch_app.command("delete")
+def branch_delete(
+    name: str = typer.Argument(..., help="Branch name to delete"),
+    force: bool = typer.Option(False, "--force", "-f", help="Force deletion without confirmation"),
+):
+    """Delete a branch and its database."""
+    try:
+        local_config = get_local_config()
+        
+        if not local_config.synthdb_dir:
+            console.print("[red]No .synthdb directory found[/red]")
+            raise typer.Exit(1)
+        
+        # Check if branch exists
+        branches = local_config.list_branches()
+        if name not in branches:
+            console.print(f"[red]Branch '{name}' does not exist[/red]")
+            raise typer.Exit(1)
+        
+        # Can't delete active branch
+        current = local_config.get_active_branch()
+        if current == name:
+            console.print(f"[red]Cannot delete the active branch '{name}'[/red]")
+            console.print("[blue]Switch to a different branch first[/blue]")
+            raise typer.Exit(1)
+        
+        # Get database path before deletion
+        branch_info = branches[name]
+        db_path = branch_info.get('database', 'N/A')
+        
+        # Confirm deletion
+        if not force:
+            confirm = typer.confirm(f"Delete branch '{name}' and its database? This cannot be undone.")
+            if not confirm:
+                console.print("[yellow]Deletion cancelled[/yellow]")
+                raise typer.Exit(0)
+        
+        # Delete the database file
+        if db_path != 'N/A':
+            full_path = local_config.synthdb_dir.parent / db_path
+            if full_path.exists():
+                full_path.unlink()
+                console.print(f"[blue]Deleted database: {db_path}[/blue]")
+        
+        # Remove from config
+        config = local_config.config
+        branch_section = f'branch.{name}'
+        if branch_section in config:
+            config.remove_section(branch_section)
+            local_config._write_config(config)
+            local_config._config = None  # Invalidate cache
+        
+        console.print(f"[green]✓ Deleted branch '{name}'[/green]")
+        
+    except Exception as e:
+        console.print(f"[red]Error deleting branch: {e}[/red]")
         raise typer.Exit(1)
 
 

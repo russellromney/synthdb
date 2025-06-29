@@ -51,6 +51,9 @@ venv.bak/
 # Claude Code
 .claude/
 
+# SynthDB project directories
+.synthdb/
+
 # OS
 .DS_Store
 .DS_Store?
@@ -103,3 +106,6 @@ docs/_build/
 sqlite
 tasks
 docs/build
+
+.uv
+.ruff_cache

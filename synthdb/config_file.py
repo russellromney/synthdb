@@ -4,6 +4,7 @@ import os
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, cast
+from .local_config import get_local_config
 
 try:
     import yaml
@@ -106,10 +107,22 @@ class ConfigManager:
     
     def get_default_config(self) -> Dict[str, Any]:
         """Get default configuration."""
+        # Check for local .synthdb directory config first
+        local_config = get_local_config()
+        default_path = 'db.db'
+        default_backend = 'sqlite'
+        
+        if local_config.synthdb_dir:
+            # Use local config if available
+            db_path = local_config.get_database_path()
+            if db_path:
+                default_path = db_path
+            default_backend = local_config.get_default_backend()
+        
         return {
             'database': {
-                'default_backend': 'sqlite',
-                'default_path': 'db.db',
+                'default_backend': default_backend,
+                'default_path': default_path,
                 'batch_size': 5000,
                 'timeout': 30
             },
